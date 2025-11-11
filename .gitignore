@@ -1,0 +1,6 @@
+# Ignora dependências do Node
+node_modules
+
+# Ignora arquivos de ambiente locais do DotEnvX
+.env.local
+.env.*.local
