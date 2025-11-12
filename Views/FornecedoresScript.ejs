@@ -1,0 +1,1255 @@
+<script>
+// IDs dos Elementos do DOM
+// (Nenhuma alteração aqui, todos os IDs são mantidos)
+function initFornecedoresScript() {
+  const FornecedoresScript_ID_TABELA_FORNECEDORES = 'FornecedoresScript_tabelaFornecedores';
+  const FornecedoresScript_ID_CAMPO_BUSCA = 'FornecedoresScript_campoBusca';
+  const FornecedoresScript_ID_MODAL_FORNECEDOR = 'FornecedoresScript_modalFornecedor';
+  const FornecedoresScript_ID_FORM_FORNECEDOR = 'FornecedoresScript_formFornecedor';
+  const FornecedoresScript_ID_TITULO_MODAL = 'FornecedoresScript_tituloModal';
+  const FornecedoresScript_ID_DIV_ID_EXIBICAO_MODAL = 'FornecedoresScript_divIdExibicaoModal';
+  const FornecedoresScript_ID_CAMPO_ID_EXIBICAO = 'FornecedoresScript_campoIdExibicao';
+  const FornecedoresScript_ID_CAMPO_ID_FORM = 'FornecedoresScript_campoIdForm';
+  const FornecedoresScript_ID_BTN_FECHAR_MODAL = 'FornecedoresScript_btnFecharModal';
+  const FornecedoresScript_ID_BTN_CANCELAR_MODAL = 'FornecedoresScript_btnCancelarModal';
+  const FornecedoresScript_ID_BTN_SALVAR_MODAL = 'FornecedoresScript_btnSalvarModal';
+  const FornecedoresScript_ID_MENSAGEM_MODAL = 'FornecedoresScript_mensagemModal';
+  const FornecedoresScript_ID_MENSAGEM_FEEDBACK_GLOBAL = 'FornecedoresScript_mensagemFeedbackGlobal';
+  const FornecedoresScript_ID_INPUT_CNPJ = 'FornecedoresScript_inputCNPJ';
+  const FornecedoresScript_ID_INPUT_TELEFONE = 'FornecedoresScript_inputTelefone';
+  const FornecedoresScript_ID_INPUT_PEDIDO_MINIMO = 'FornecedoresScript_inputPedidoMinimo';
+  const FornecedoresScript_ID_MODAL_CONFIRMAR_EXCLUSAO = 'FornecedoresScript_modalConfirmarExclusao';
+  const FornecedoresScript_ID_NOME_FORNECEDOR_EXCLUIR_MODAL = 'FornecedoresScript_nomeFornecedorParaExcluirModal';
+  const FornecedoresScript_ID_MENSAGEM_SUBPRODUTOS_VINCULADOS_MODAL = 'FornecedoresScript_mensagemSubProdutosVinculadosModal';
+  const FornecedoresScript_ID_OPCOES_EXCLUSAO_SUBPRODUTOS = 'FornecedoresScript_opcoesExclusaoSubProdutos';
+  const FornecedoresScript_ID_MENSAGEM_MODAL_CONFIRMAR_EXCLUSAO = 'FornecedoresScript_mensagemModalConfirmarExclusao';
+  const FornecedoresScript_ID_BTN_FECHAR_MODAL_CONFIRMAR_EXCLUSAO = 'FornecedoresScript_btnFecharModalConfirmarExclusao';
+  const FornecedoresScript_ID_BTN_CANCELAR_MODAL_CONFIRMAR_EXCLUSAO = 'FornecedoresScript_btnCancelarModalConfirmarExclusao';
+  const FornecedoresScript_ID_MODAL_REALOCAR_SUBPRODUTOS = 'FornecedoresScript_modalRealocarSubProdutos';
+  const FornecedoresScript_ID_NOME_FORNECEDOR_REALOCAR_MODAL = 'FornecedoresScript_nomeFornecedorParaRealocarModal';
+  const FornecedoresScript_ID_LISTA_SUBPRODUTOS_REALOCAR = 'FornecedoresScript_listaSubProdutosParaRealocar';
+  const FornecedoresScript_ID_MENSAGEM_MODAL_REALOCAR = 'FornecedoresScript_mensagemModalRealocar';
+  const FornecedoresScript_ID_BTN_FECHAR_MODAL_REALOCAR = 'FornecedoresScript_btnFecharModalRealocar';
+  const FornecedoresScript_ID_BTN_CANCELAR_MODAL_REALOCAR = 'FornecedoresScript_btnCancelarModalRealocar';
+  const FornecedoresScript_ID_BTN_CONFIRMAR_REALOCACAO = 'FornecedoresScript_btnConfirmarRealocacao';
+  const FornecedoresScript_ID_CONTROLES_PAGINACAO = 'FornecedoresScript_controlesPaginacao';
+
+  const FornecedoresScript_ID_MODAL_GERENCIAR_ITENS_FORNECEDOR = 'FornecedoresScript_modalGerenciarSubprodutosFornecedor';
+  const FornecedoresScript_ID_NOME_FORNECEDOR_PRINCIPAL_MODAL_ITENS = 'FornecedoresScript_nomeFornecedorPrincipalModalSubprodutos';
+  const FornecedoresScript_ID_BTN_FECHAR_MODAL_GERENCIAR_ITENS = 'FornecedoresScript_btnFecharModalGerenciarSubprodutosFornecedor';
+  const FornecedoresScript_ID_LISTA_ITENS_ATUAIS_FORNECEDOR = 'FornecedoresScript_listaSubprodutosAtuaisFornecedor';
+  const FornecedoresScript_ID_BTN_TOGGLE_ADICIONAR_ITEM_FORNECEDOR = 'FornecedoresScript_btnToggleAdicionarSubprodutoFornecedor';
+  const FornecedoresScript_ID_ICONE_TOGGLE_ADICIONAR_ITEM_FORNECEDOR = 'FornecedoresScript_iconeToggleAdicionarSubprodutoFornecedor';
+  const FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR_CONTAINER = 'FornecedoresScript_formAdicionarSubprodutoFornecedorContainer';
+  const FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR = 'FornecedoresScript_formAdicionarSubprodutoFornecedor';
+  const FornecedoresScript_ID_FORNECEDOR_PAI_NOME_FORM_ITEM = 'FornecedoresScript_fornecedorPaiNomeFormSubproduto';
+  const FornecedoresScript_ID_ITEM_ID_EDICAO_FORM_ITEM = 'FornecedoresScript_subProdutoIdEdicaoFornecedor';
+  const FornecedoresScript_ID_TITULO_FORM_ITEM = 'FornecedoresScript_tituloFormSubprodutoFornecedor';
+  const FornecedoresScript_ID_SELECT_PRODUTO_PRINCIPAL_NOVO_ITEM = 'FornecedoresScript_selectProdutoPrincipalNovoSubprodutoFornecedor';
+  const FornecedoresScript_ID_BTN_SALVAR_NOVO_ITEM = 'FornecedoresScript_btnSalvarNovoSubprodutoFornecedor';
+  const FornecedoresScript_ID_BTN_CANCELAR_FORM_ITEM = 'FornecedoresScript_btnCancelarFormSubprodutoFornecedor';
+  const FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM = 'FornecedoresScript_mensagemErroModalAdicionarSubprodutoFornecedor';
+  const FornecedoresScript_ID_BTN_CONCLUIR_MODAL_GERENCIAR_ITENS = 'FornecedoresScript_btnConcluirModalGerenciarSubprodutosFornecedor';
+
+  // IDs dos botões do painel de ações global
+  const FornecedoresScript_ID_BTN_NOVO_FORNECEDOR_GLOBAL = 'FornecedoresScript_btnNovoFornecedorGlobal';
+  const FornecedoresScript_ID_BTN_EDITAR_GLOBAL = 'FornecedoresScript_btnEditarGlobal';
+  const FornecedoresScript_ID_BTN_EXCLUIR_GLOBAL = 'FornecedoresScript_btnExcluirGlobal';
+  const FornecedoresScript_ID_BTN_ITENS_GLOBAL = 'FornecedoresScript_btnItensGlobal';
+
+  // Variáveis de estado (sem alteração)
+  let FornecedoresScript_cabecalhosParaExibicao = [];
+  let FornecedoresScript_modoModal = 'criar';
+  let FornecedoresScript_fornecedorParaExcluirTemp = { id: null, nome: null };
+  let FornecedoresScript_paginaAtual = 1;
+  const FornecedoresScript_ITENS_POR_PAGINA = 10;
+  let FornecedoresScript_termoBuscaAtual = "";
+  let FornecedoresScript_debounceTimerBusca;
+  
+  let FornecedoresScript_fornecedorAtualParaItens = { id: null, nome: null };
+  let FornecedoresScript_itemFornecedorEmEdicaoId = null;
+  let FornecedoresScript_formItemAberto = false;
+
+  let FornecedoresScript_fornecedorSelecionadoId = null;
+  let FornecedoresScript_fornecedorSelecionadoNome = null;
+  let FornecedoresScript_fornecedorSelecionadoObjeto = null;
+  let FornecedoresScript_linhaSelecionadaAnterior = null;
+  let FornecedoresScript_tomSelectInstance = null;
+
+  // Funções Utilitárias (Máscaras, Moeda, etc)
+  // (Nenhuma alteração aqui, elas são JS puro e continuam funcionando)
+  function FornecedoresScript_mascaraCnpj(value) { if (!value) return ""; return value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').slice(0, 18); }
+  function FornecedoresScript_mascaraTelefone(value) { if (!value) return ""; value = value.replace(/\D/g, ''); if (value.length > 11) value = value.slice(0, 11); if (value.length > 10) { value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3'); } else if (value.length > 6) { value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3'); } else if (value.length > 2) { value = value.replace(/^(\d{2})(\d*)/, '($1) $2'); } else if (value.length > 0) { value = value.replace(/^(\d*)/, '($1'); } return value; }
+  function FornecedoresScript_formatarMoedaInput(inputElement) { let value = inputElement.value.replace(/\D/g, ''); if (value === '') { inputElement.value = ''; return; } const numero = parseInt(value, 10) / 100; inputElement.value = numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function FornecedoresScript_obterValorMoedaCru(formattedValue) { if (!formattedValue) return ''; return formattedValue.replace('R$', '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.'); }
+  function FornecedoresScript_normalizarTexto(texto) { if (typeof texto !== 'string') return ''; return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
+
+  // --- Funções de UI (Feedback, Modais, Botões) ---
+  // (Nenhuma alteração aqui, são manipulação de DOM)
+  function FornecedoresScript_exibirMensagemGlobal(mensagem, isError = false, duracao = 5000) {
+    const feedbackDiv = document.getElementById(FornecedoresScript_ID_MENSAGEM_FEEDBACK_GLOBAL);
+    if (feedbackDiv) {
+      feedbackDiv.innerHTML = `<div class="p-3 rounded-md text-sm ${isError ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-green-100 text-green-700 border border-green-300'}">${mensagem}</div>`;
+      if (duracao > 0) {
+        setTimeout(() => { if (feedbackDiv) feedbackDiv.innerHTML = ''; }, duracao);
+      }
+    }
+  }
+
+  function FornecedoresScript_exibirMensagemEmModal(modalMsgId, mensagem, isError = false) {
+    const mensagemDiv = document.getElementById(modalMsgId);
+    if (mensagemDiv) {
+      mensagemDiv.textContent = mensagem;
+      mensagemDiv.className = `text-sm my-3 min-h-[20px] ${isError ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}`;
+    }
+  }
+
+  function FornecedoresScript_atualizarEstadoBotoesPainelAcoes() {
+    const btnEditar = document.getElementById(FornecedoresScript_ID_BTN_EDITAR_GLOBAL);
+    const btnExcluir = document.getElementById(FornecedoresScript_ID_BTN_EXCLUIR_GLOBAL);
+    const btnItens = document.getElementById(FornecedoresScript_ID_BTN_ITENS_GLOBAL);
+
+    if (FornecedoresScript_fornecedorSelecionadoId) {
+      if (btnEditar) btnEditar.disabled = false;
+      if (btnExcluir) btnExcluir.disabled = false;
+      if (btnItens) btnItens.disabled = false;
+    } else {
+      if (btnEditar) btnEditar.disabled = true;
+      if (btnExcluir) btnExcluir.disabled = true;
+      if (btnItens) btnItens.disabled = true;
+    }
+  }
+
+  function FornecedoresScript_abrirModalParaCriar() {
+    FornecedoresScript_modoModal = 'criar';
+    document.getElementById(FornecedoresScript_ID_TITULO_MODAL).textContent = 'Novo Fornecedor';
+    document.getElementById(FornecedoresScript_ID_DIV_ID_EXIBICAO_MODAL).classList.add('hidden');
+    const form = document.getElementById(FornecedoresScript_ID_FORM_FORNECEDOR);
+    if (form) form.reset();
+    document.getElementById(FornecedoresScript_ID_CAMPO_ID_FORM).value = '';
+    const btnSalvar = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_MODAL);
+    if (btnSalvar) {
+      if(!btnSalvar.dataset.originalContent) btnSalvar.dataset.originalContent = btnSalvar.innerHTML;
+      btnSalvar.innerHTML = 'Criar Fornecedor';
+      btnSalvar.disabled = false;
+    }
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL, '', false);
+    document.getElementById(FornecedoresScript_ID_MODAL_FORNECEDOR).classList.remove('hidden');
+    const inputFornecedor = document.getElementById('FornecedoresScript_inputFornecedor');
+    if (inputFornecedor) inputFornecedor.focus();
+  }
+
+  function FornecedoresScript_abrirModalParaEditar(fornecedorId, fornecedor) {
+    FornecedoresScript_modoModal = 'editar';
+    if (!fornecedor) {
+      FornecedoresScript_exibirMensagemGlobal("Dados do fornecedor não encontrados para edição.", true);
+      console.error("Objeto fornecedor não fornecido para abrirModalParaEditar");
+      return;
+    }
+    document.getElementById(FornecedoresScript_ID_TITULO_MODAL).textContent = 'Editar Fornecedor';
+    document.getElementById(FornecedoresScript_ID_DIV_ID_EXIBICAO_MODAL).classList.remove('hidden');
+    document.getElementById(FornecedoresScript_ID_CAMPO_ID_EXIBICAO).value = fornecedor.ID;
+    document.getElementById(FornecedoresScript_ID_CAMPO_ID_FORM).value = fornecedor.ID;
+    const btnSalvar = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_MODAL);
+    if (btnSalvar) {
+      if(!btnSalvar.dataset.originalContent) btnSalvar.dataset.originalContent = btnSalvar.innerHTML;
+      btnSalvar.innerHTML = 'Salvar Alterações';
+      btnSalvar.disabled = false;
+    }
+    const form = document.getElementById(FornecedoresScript_ID_FORM_FORNECEDOR);
+    if (form) form.reset();
+    for (const nomeCabecalho in fornecedor) {
+      if (fornecedor.hasOwnProperty(nomeCabecalho)) {
+        if (nomeCabecalho === "Data de Cadastro" || nomeCabecalho === "ID") continue;
+        if (form && form.elements[nomeCabecalho]) {
+          const inputElement = form.elements[nomeCabecalho];
+          let valor = fornecedor[nomeCabecalho] || '';
+          if (nomeCabecalho === "Pedido Mínimo (R$)") {
+            const valorNumerico = parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
+            inputElement.value = !isNaN(valorNumerico) ? valorNumerico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+          } else if (nomeCabecalho === "CNPJ") {
+            inputElement.value = FornecedoresScript_mascaraCnpj(valor);
+          } else if (nomeCabecalho === "Telefone") {
+            inputElement.value = FornecedoresScript_mascaraTelefone(valor);
+          } else {
+            inputElement.value = valor;
+          }
+        }
+      }
+    }
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL, '', false);
+    document.getElementById(FornecedoresScript_ID_MODAL_FORNECEDOR).classList.remove('hidden');
+  }
+
+  function FornecedoresScript_fecharModalPrincipal() {
+    document.getElementById(FornecedoresScript_ID_MODAL_FORNECEDOR).classList.add('hidden');
+    const form = document.getElementById(FornecedoresScript_ID_FORM_FORNECEDOR);
+    if (form) form.reset();
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL, '', false);
+    const btnSalvar = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_MODAL);
+    if (btnSalvar) {
+        FornecedoresScript_restaurarBotao(btnSalvar);
+        btnSalvar.disabled = false;
+    }
+  }
+
+  function FornecedoresScript_fecharModalConfirmarExclusao() {
+    document.getElementById(FornecedoresScript_ID_MODAL_CONFIRMAR_EXCLUSAO).classList.add('hidden');
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL_CONFIRMAR_EXCLUSAO, '', false);
+    const divOpcoes = document.getElementById(FornecedoresScript_ID_OPCOES_EXCLUSAO_SUBPRODUTOS);
+    if (divOpcoes) divOpcoes.innerHTML = '';
+  }
+
+  function FornecedoresScript_fecharModalRealocarSubProdutos() {
+    document.getElementById(FornecedoresScript_ID_MODAL_REALOCAR_SUBPRODUTOS).classList.add('hidden');
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL_REALOCAR, '', false);
+    const listaDiv = document.getElementById(FornecedoresScript_ID_LISTA_SUBPRODUTOS_REALOCAR);
+    if (listaDiv) listaDiv.innerHTML = '<p class="text-center text-gray-500 py-4">Carregando itens...</p>';
+  }
+
+  function FornecedoresScript_mostrarLoadingBotao(botao, textoLoading = "Processando...") {
+    if (!botao) return;
+    if (!botao.dataset.originalContent) {
+        botao.dataset.originalContent = botao.innerHTML;
+    }
+    botao.disabled = true;
+    botao.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${textoLoading}`;
+  }
+
+  function FornecedoresScript_restaurarBotao(botao) {
+    if (!botao) return;
+    if (botao.dataset.originalContent) {
+        botao.innerHTML = botao.dataset.originalContent;
+        delete botao.dataset.originalContent;
+    }
+    else if (botao.innerHTML.includes('animate-spin')) {
+        if(botao.id === FornecedoresScript_ID_BTN_SALVAR_MODAL) {
+            botao.innerHTML = FornecedoresScript_modoModal === 'criar' ? 'Criar Fornecedor' : 'Salvar Alterações';
+        } else if (botao.id === FornecedoresScript_ID_BTN_SALVAR_NOVO_ITEM) {
+            botao.innerHTML = FornecedoresScript_itemFornecedorEmEdicaoId ? 'Salvar Alterações do Item' : 'Salvar Item';
+        } else {
+            botao.innerHTML = "Confirmar";
+        }
+    }
+    botao.disabled = false;
+  }
+  
+  // ====================================================================
+  // INÍCIO DA MIGRAÇÃO (Funções de API)
+  // ====================================================================
+
+  /**
+   * Função genérica para tratar chamadas de API (fetch)
+   */
+  async function FornecedoresScript_apiCall(endpoint, options = {}) {
+    try {
+      const response = await fetch(endpoint, options);
+      const data = await response.json(); // Sempre espera uma resposta JSON
+
+      if (!response.ok) {
+        // Se a resposta não for OK (ex: 404, 500), usa a mensagem de erro do servidor
+        throw new Error(data.message || `Erro ${response.status}: ${response.statusText}`);
+      }
+      
+      // Se a resposta for OK, mas o *servidor* indicar uma falha (ex: success: false)
+      if (data.success === false) {
+         throw new Error(data.message || "Ocorreu um erro no servidor.");
+      }
+
+      return data; // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
+    } catch (error) {
+      console.error(`Erro na chamada da API para ${endpoint}:`, error);
+      // Retorna um objeto de erro padronizado
+      return { success: false, message: error.message };
+    }
+  }
+
+
+  function FornecedoresScript_iniciarConfirmacaoExclusao() {
+    if (!FornecedoresScript_fornecedorSelecionadoId || !FornecedoresScript_fornecedorSelecionadoNome) {
+      FornecedoresScript_exibirMensagemGlobal("Nenhum fornecedor selecionado para exclusão.", true);
+      return;
+    }
+    FornecedoresScript_fornecedorParaExcluirTemp = {
+      id: FornecedoresScript_fornecedorSelecionadoId,
+      nome: FornecedoresScript_fornecedorSelecionadoNome
+    };
+    FornecedoresScript_exibirMensagemGlobal("Verificando itens vinculados...", false, 0);
+
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/fornecedores/obterSubProdutos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nomeFornecedor: FornecedoresScript_fornecedorSelecionadoNome })
+    }).then(response => {
+      FornecedoresScript_exibirMensagemGlobal("", false, 1);
+      if (response.success) {
+        FornecedoresScript_abrirModalOpcoesExclusao(response.dados); // 'dados' é o array de subprodutos
+      } else {
+        FornecedoresScript_exibirMensagemGlobal(response.message, true);
+      }
+    });
+  }
+
+  function FornecedoresScript_abrirModalOpcoesExclusao(subProdutosVinculados) {
+    const { id, nome } = FornecedoresScript_fornecedorParaExcluirTemp;
+    const modal = document.getElementById(FornecedoresScript_ID_MODAL_CONFIRMAR_EXCLUSAO);
+    if (!modal) return;
+    document.getElementById(FornecedoresScript_ID_NOME_FORNECEDOR_EXCLUIR_MODAL).textContent = nome;
+    const divOpcoes = document.getElementById(FornecedoresScript_ID_OPCOES_EXCLUSAO_SUBPRODUTOS);
+    const msgSubProdutos = document.getElementById(FornecedoresScript_ID_MENSAGEM_SUBPRODUTOS_VINCULADOS_MODAL);
+    const containerBotoesRodape = modal.querySelector(".flex.justify-end");
+    const cancelarBtn = document.getElementById(FornecedoresScript_ID_BTN_CANCELAR_MODAL_CONFIRMAR_EXCLUSAO);
+    if (!divOpcoes || !msgSubProdutos || !containerBotoesRodape || !cancelarBtn) return;
+    const btnConfirmarExistente = containerBotoesRodape.querySelector('#FornecedoresScript_btnConfirmaExcluirSimples');
+    if (btnConfirmarExistente) {
+      containerBotoesRodape.removeChild(btnConfirmarExistente);
+    }
+    divOpcoes.innerHTML = '';
+    if (subProdutosVinculados && subProdutosVinculados.length > 0) {
+      msgSubProdutos.innerHTML = `Este fornecedor possui <strong>${subProdutosVinculados.length} item(ns)</strong> vinculado(s). O que você deseja fazer?`;
+      const btnExcluirTudo = document.createElement('button');
+      btnExcluirTudo.type = 'button';
+      btnExcluirTudo.id = 'FornecedoresScript_btnConfirmaExcluirTudo';
+      btnExcluirTudo.className = 'w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-colors text-sm';
+      btnExcluirTudo.textContent = 'Excluir Fornecedor e TODOS os Itens';
+      btnExcluirTudo.onclick = function() { FornecedoresScript_executarExclusao(true, null, this); };
+      divOpcoes.appendChild(btnExcluirTudo);
+      const btnRealocar = document.createElement('button');
+      btnRealocar.type = 'button';
+      btnRealocar.id = 'FornecedoresScript_btnAbrirRealocacao';
+      btnRealocar.className = 'w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-colors text-sm mt-2';
+      btnRealocar.textContent = 'Excluir Fornecedor e REALOCAR Itens';
+      btnRealocar.onclick = function() { FornecedoresScript_prepararModalRealocacao(subProdutosVinculados); };
+      divOpcoes.appendChild(btnRealocar);
+    } else {
+      msgSubProdutos.textContent = 'Este fornecedor não possui itens vinculados. Deseja realmente excluí-lo?';
+      const btnConfirmarExclusaoSimples = document.createElement('button');
+      btnConfirmarExclusaoSimples.type = 'button';
+      btnConfirmarExclusaoSimples.id = 'FornecedoresScript_btnConfirmaExcluirSimples';
+      btnConfirmarExclusaoSimples.className = 'bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-colors mr-3';
+      btnConfirmarExclusaoSimples.textContent = 'Sim, Excluir Fornecedor';
+      btnConfirmarExclusaoSimples.onclick = function() { FornecedoresScript_executarExclusao(true, null, this); };
+      containerBotoesRodape.insertBefore(btnConfirmarExclusaoSimples, cancelarBtn);
+    }
+    modal.classList.remove('hidden');
+  }
+
+  function FornecedoresScript_prepararModalRealocacao(subProdutosDoFornecedor) {
+    const { id, nome } = FornecedoresScript_fornecedorParaExcluirTemp;
+    FornecedoresScript_fecharModalConfirmarExclusao();
+    document.getElementById(FornecedoresScript_ID_NOME_FORNECEDOR_REALOCAR_MODAL).textContent = nome;
+    document.getElementById(FornecedoresScript_ID_MODAL_REALOCAR_SUBPRODUTOS).classList.remove('hidden');
+    const listaDiv = document.getElementById(FornecedoresScript_ID_LISTA_SUBPRODUTOS_REALOCAR);
+    if (listaDiv) listaDiv.innerHTML = '<p class="text-center text-gray-500 py-4">Carregando outros fornecedores...</p>';
+    
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/fornecedores/obterOutros', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idFornecedorExcluido: id })
+    }).then(response => {
+      const btnConfirmarRealocacao = document.getElementById(FornecedoresScript_ID_BTN_CONFIRMAR_REALOCACAO);
+      if (response.success) {
+        const outrosFornecedores = response.dados;
+        if (!outrosFornecedores || outrosFornecedores.length === 0) {
+          if (listaDiv) listaDiv.innerHTML = '<p class="text-center text-red-500 py-4">Não há outros fornecedores para realocar.</p>';
+          if (btnConfirmarRealocacao) btnConfirmarRealocacao.disabled = true;
+          return;
+        }
+        if (btnConfirmarRealocacao) btnConfirmarRealocacao.disabled = false;
+        FornecedoresScript_popularModalRealocacao(subProdutosDoFornecedor, outrosFornecedores);
+      } else {
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL_REALOCAR, response.message, true);
+        if (listaDiv) listaDiv.innerHTML = '<p class="text-center text-red-500 py-4">Falha ao carregar.</p>';
+      }
+    });
+  }
+
+  function FornecedoresScript_popularModalRealocacao(subProdutos, outrosFornecedores) {
+    const listaDiv = document.getElementById(FornecedoresScript_ID_LISTA_SUBPRODUTOS_REALOCAR);
+    if (!listaDiv) return;
+    listaDiv.innerHTML = '';
+    if (!subProdutos || subProdutos.length === 0) {
+      listaDiv.innerHTML = '<p class="text-gray-600">Nenhum item para este fornecedor.</p>';
+      return;
+    }
+    subProdutos.forEach(sub => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'p-3 border rounded-md bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2';
+      const nomeSubProduto = document.createElement('span');
+      nomeSubProduto.className = 'text-sm text-gray-800 font-medium';
+      nomeSubProduto.textContent = `${sub.nome} (ID: ${sub.id})`;
+      itemDiv.appendChild(nomeSubProduto);
+      const selectFornecedor = document.createElement('select');
+      selectFornecedor.className = 'p-2 border border-gray-300 rounded-md shadow-sm text-sm w-full sm:w-auto focus:ring-blue-500 focus:border-blue-500';
+      selectFornecedor.dataset.subProdutoId = sub.id;
+      const defaultOption = document.createElement('option');
+      defaultOption.value = "";
+      defaultOption.textContent = "Selecione novo fornecedor";
+      selectFornecedor.appendChild(defaultOption);
+      outrosFornecedores.forEach(outroForn => {
+        const option = document.createElement('option');
+        option.value = outroForn.nome;
+        option.textContent = `${outroForn.nome} (ID: ${outroForn.id})`;
+        selectFornecedor.appendChild(option);
+      });
+      itemDiv.appendChild(selectFornecedor);
+      listaDiv.appendChild(itemDiv);
+    });
+  }
+
+  function FornecedoresScript_confirmarRealocacaoEExcluir() {
+    const selects = document.querySelectorAll(`#${FornecedoresScript_ID_LISTA_SUBPRODUTOS_REALOCAR} select`);
+    const realocacoes = [];
+    let todasSelecoesFeitas = true;
+    selects.forEach(select => {
+      if (select.value) {
+        realocacoes.push({ subProdutoId: select.dataset.subProdutoId, novoFornecedorNome: select.value });
+      } else {
+        todasSelecoesFeitas = false;
+      }
+    });
+    if (!todasSelecoesFeitas && selects.length > 0) {
+      FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL_REALOCAR, "Selecione um novo fornecedor para todos os itens.", true);
+      return;
+    }
+    const btnConfirmar = document.getElementById(FornecedoresScript_ID_BTN_CONFIRMAR_REALOCACAO);
+    FornecedoresScript_executarExclusao(false, realocacoes, btnConfirmar);
+  }
+
+  function FornecedoresScript_executarExclusao(deletarSubprodutos, realocacoesArray, botaoAcionado) {
+    const { id, nome } = FornecedoresScript_fornecedorParaExcluirTemp;
+    let originatingModalMsgId = FornecedoresScript_ID_MENSAGEM_MODAL_CONFIRMAR_EXCLUSAO;
+    const modalRealocar = document.getElementById(FornecedoresScript_ID_MODAL_REALOCAR_SUBPRODUTOS);
+    if (modalRealocar && !modalRealocar.classList.contains('hidden')) {
+      originatingModalMsgId = FornecedoresScript_ID_MENSAGEM_MODAL_REALOCAR;
+    }
+    if(botaoAcionado) FornecedoresScript_mostrarLoadingBotao(botaoAcionado, "Excluindo...");
+    FornecedoresScript_exibirMensagemEmModal(originatingModalMsgId, 'Processando exclusão...', false);
+
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/fornecedores/excluir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idFornecedor: id,
+        nomeFornecedorOriginal: nome,
+        deletarSubprodutosVinculados: deletarSubprodutos,
+        realocacoesSubprodutos: realocacoesArray
+      })
+    }).then(response => {
+      if (botaoAcionado) FornecedoresScript_restaurarBotao(botaoAcionado);
+      if (response && response.success) {
+        FornecedoresScript_fecharModalConfirmarExclusao();
+        FornecedoresScript_fecharModalRealocarSubProdutos();
+        FornecedoresScript_exibirMensagemGlobal(response.message || "Operação concluída!", false);
+        FornecedoresScript_carregarListaFornecedores(FornecedoresScript_paginaAtual, FornecedoresScript_termoBuscaAtual);
+        FornecedoresScript_fornecedorSelecionadoId = null;
+        FornecedoresScript_fornecedorSelecionadoNome = null;
+        FornecedoresScript_fornecedorSelecionadoObjeto = null;
+        if (FornecedoresScript_linhaSelecionadaAnterior) {
+          FornecedoresScript_linhaSelecionadaAnterior.classList.remove('linha-selecionada');
+          FornecedoresScript_linhaSelecionadaAnterior = null;
+        }
+        FornecedoresScript_atualizarEstadoBotoesPainelAcoes();
+      } else {
+        FornecedoresScript_exibirMensagemEmModal(originatingModalMsgId, (response ? response.message : "Erro.") || "Falha.", true);
+      }
+    });
+  }
+
+  function FornecedoresScript_abrirModalGerenciarItensFornecedor() {
+    if (!FornecedoresScript_fornecedorSelecionadoId || !FornecedoresScript_fornecedorSelecionadoNome) {
+      FornecedoresScript_exibirMensagemGlobal("Nenhum fornecedor selecionado para gerenciar itens.", true);
+      return;
+    }
+    FornecedoresScript_fornecedorAtualParaItens = {
+      id: FornecedoresScript_fornecedorSelecionadoId,
+      nome: FornecedoresScript_fornecedorSelecionadoNome
+    };
+    document.getElementById(FornecedoresScript_ID_NOME_FORNECEDOR_PRINCIPAL_MODAL_ITENS).textContent = FornecedoresScript_fornecedorSelecionadoNome;
+    document.getElementById(FornecedoresScript_ID_FORNECEDOR_PAI_NOME_FORM_ITEM).value = FornecedoresScript_fornecedorSelecionadoNome;
+
+    if (FornecedoresScript_tomSelectInstance) {
+      FornecedoresScript_tomSelectInstance.destroy();
+      FornecedoresScript_tomSelectInstance = null;
+    }
+    const selectElement = document.getElementById(FornecedoresScript_ID_SELECT_PRODUTO_PRINCIPAL_NOVO_ITEM);
+    FornecedoresScript_tomSelectInstance = new TomSelect(selectElement,{
+        create: false,
+        sortField: {
+            field: "text",
+            direction: "asc"
+        },
+        placeholder: 'Selecione um Produto Principal (opcional)'
+    });
+
+    FornecedoresScript_carregarEListarItensFornecedor(FornecedoresScript_fornecedorSelecionadoNome);
+    FornecedoresScript_carregarProdutosParaSelectNoModalItem();
+    FornecedoresScript_resetarFormItemFornecedor();
+
+    const formContainer = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR_CONTAINER);
+    const iconeToggle = document.getElementById(FornecedoresScript_ID_ICONE_TOGGLE_ADICIONAR_ITEM_FORNECEDOR);
+    if (formContainer && iconeToggle) {
+      if (FornecedoresScript_formItemAberto) {
+        formContainer.classList.remove('hidden');
+        iconeToggle.classList.add('rotate-180');
+      } else {
+        formContainer.classList.add('hidden');
+        iconeToggle.classList.remove('rotate-180');
+      }
+    }
+    document.getElementById(FornecedoresScript_ID_MODAL_GERENCIAR_ITENS_FORNECEDOR).classList.remove('hidden');
+  }
+
+  function FornecedoresScript_fecharModalGerenciarItensFornecedor() {
+    document.getElementById(FornecedoresScript_ID_MODAL_GERENCIAR_ITENS_FORNECEDOR).classList.add('hidden');
+    FornecedoresScript_fornecedorAtualParaItens = { id: null, nome: null };
+    FornecedoresScript_itemFornecedorEmEdicaoId = null;
+
+    if (FornecedoresScript_tomSelectInstance) {
+      FornecedoresScript_tomSelectInstance.destroy();
+      FornecedoresScript_tomSelectInstance = null;
+    }
+
+    const listaItens = document.getElementById(FornecedoresScript_ID_LISTA_ITENS_ATUAIS_FORNECEDOR);
+    if (listaItens) listaItens.innerHTML = '<p class="text-gray-500 text-sm">Carregando itens fornecidos...</p>';
+    FornecedoresScript_resetarFormItemFornecedor();
+    const formContainer = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR_CONTAINER);
+    const iconeToggle = document.getElementById(FornecedoresScript_ID_ICONE_TOGGLE_ADICIONAR_ITEM_FORNECEDOR);
+    if (formContainer && !formContainer.classList.contains('hidden')) {
+        formContainer.classList.add('hidden');
+        if (iconeToggle) iconeToggle.classList.remove('rotate-180');
+        FornecedoresScript_formItemAberto = false;
+    }
+  }
+
+  function FornecedoresScript_toggleFormAdicionarItemFornecedor() {
+    const formContainer = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR_CONTAINER);
+    const icone = document.getElementById(FornecedoresScript_ID_ICONE_TOGGLE_ADICIONAR_ITEM_FORNECEDOR);
+    
+    if (!formContainer || !icone) return;
+
+    const isHidden = formContainer.classList.contains('hidden');
+
+    if (isHidden) {
+      FornecedoresScript_resetarFormItemFornecedor();
+      formContainer.classList.remove('hidden');
+      icone.classList.add('rotate-180');
+      FornecedoresScript_formItemAberto = true;
+      const primeiroInput = formContainer.querySelector('input[name="SubProduto"]');
+      if (primeiroInput) primeiroInput.focus();
+    } else {
+      formContainer.classList.add('hidden');
+      icone.classList.remove('rotate-180');
+      FornecedoresScript_formItemAberto = false;
+      FornecedoresScript_resetarFormItemFornecedor();
+    }
+  }
+
+  function FornecedoresScript_carregarEListarItensFornecedor(nomeFornecedorPai) {
+    const listaDiv = document.getElementById(FornecedoresScript_ID_LISTA_ITENS_ATUAIS_FORNECEDOR);
+    if (listaDiv) listaDiv.innerHTML = '<p class="text-gray-500 text-sm">Carregando itens...</p>';
+    
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/subprodutos/listarPorPai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nomePai: nomeFornecedorPai, tipoPai: 'FORNECEDOR' })
+    }).then(response => {
+      if (response.success) {
+        FornecedoresScript_renderizarListaItensFornecedor(response.dados || []);
+      } else {
+        if (listaDiv) listaDiv.innerHTML = `<p class="text-red-500 text-sm">Erro ao carregar itens: ${response.message}</p>`;
+      }
+    });
+  }
+
+  function FornecedoresScript_renderizarListaItensFornecedor(itens) {
+    const listaDiv = document.getElementById(FornecedoresScript_ID_LISTA_ITENS_ATUAIS_FORNECEDOR);
+    if (!listaDiv) return;
+    listaDiv.innerHTML = '';
+    if (!itens || itens.length === 0) {
+      listaDiv.innerHTML = '<p class="text-gray-500 text-sm p-4 text-center">Nenhum item vinculado a este fornecedor.</p>';
+      return;
+    }
+    const ul = document.createElement('ul');
+    ul.className = 'space-y-2';
+    itens.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'flex justify-between items-center p-2 border rounded-md bg-white hover:bg-gray-50 text-sm';
+      
+      let displayText = `${item.SubProduto || 'Nome Indefinido'}`;
+      if (item.Tamanho) displayText += ` - Tam: ${item.Tamanho}`;
+      if (item.UN) displayText += ` (${item.UN})`;
+
+      const nomeSpan = document.createElement('span');
+      nomeSpan.textContent = displayText;
+      nomeSpan.title = `ID: ${item.ID_SubProduto || 'N/A'} | Fornecedor: ${item['Fornecedor'] || 'N/A'} | Prod. Vinculado: ${item['Produto Vinculado'] || 'Nenhum'}`;
+      
+      const botoesDiv = document.createElement('div');
+      botoesDiv.className = 'flex-shrink-0 space-x-2';
+
+      const btnEditar = document.createElement('button');
+      btnEditar.textContent = 'Editar';
+      btnEditar.className = "text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 transition-colors";
+      btnEditar.title = "Editar Item";
+      btnEditar.onclick = () => FornecedoresScript_prepararFormParaEditarItemFornecedor(item.ID_SubProduto);
+      botoesDiv.appendChild(btnEditar);
+
+      const btnExcluir = document.createElement('button');
+      btnExcluir.textContent = 'Excluir';
+      btnExcluir.className = "text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-100 transition-colors";
+      btnExcluir.title = "Excluir Item";
+      btnExcluir.onclick = () => FornecedoresScript_confirmarExcluirItemFornecedor(item.ID_SubProduto, item.SubProduto);
+      botoesDiv.appendChild(btnExcluir);
+      
+      li.appendChild(nomeSpan);
+      li.appendChild(botoesDiv);
+      ul.appendChild(li);
+    });
+    listaDiv.appendChild(ul);
+  }
+
+  function FornecedoresScript_carregarProdutosParaSelectNoModalItem() {
+    if (!FornecedoresScript_tomSelectInstance) {
+      console.error("Instância do TomSelect não encontrada para carregar produtos.");
+      return;
+    }
+    const tomSelect = FornecedoresScript_tomSelectInstance;
+    tomSelect.clear();
+    tomSelect.clearOptions();
+    tomSelect.disable();
+    tomSelect.addOption({ value: '', text: 'Carregando produtos...' });
+    
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/produtos/listarNomesIds', {
+      method: 'GET' // GET é o padrão, mas é bom ser explícito
+    }).then(response => {
+      tomSelect.enable();
+      tomSelect.clearOptions(); // Limpa o "Carregando..."
+      
+      if (response.success && response.dados && response.dados.length > 0) {
+        const opcoesParaAdicionar = response.dados.map(produto => {
+          return { value: produto.id, text: produto.nome };
+        });
+        tomSelect.addOptions(opcoesParaAdicionar);
+      } else {
+        // Se não houver produtos ou falhar, o placeholder padrão será exibido
+        console.warn(response.message || "Nenhum produto encontrado para o dropdown.");
+      }
+    });
+  }
+
+  function FornecedoresScript_handleSalvarItemFornecedor(event) {
+    event.preventDefault();
+    const form = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR);
+    const btnSalvar = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_NOVO_ITEM);
+    if (btnSalvar) FornecedoresScript_mostrarLoadingBotao(btnSalvar, "Salvando Item...");
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, 'Processando...', false);
+    
+    const formData = new FormData(form);
+    const dadosItem = {};
+    for (let [key, value] of formData.entries()) {
+      dadosItem[key] = value;
+    }
+    
+    let endpoint;
+    let serverFunction;
+    
+    if (FornecedoresScript_itemFornecedorEmEdicaoId) {
+      endpoint = '/api/subprodutos/atualizar';
+      serverFunction = 'SubProdutosCRUD_atualizarSubProduto'; // Para o log de erro
+    } else {
+      endpoint = '/api/subprodutos/criar';
+      serverFunction = 'SubProdutosCRUD_criarNovoSubProduto_NOVO'; // Para o log de erro
+    }
+
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dadosItem)
+    }).then(response => {
+      if (btnSalvar) FornecedoresScript_restaurarBotao(btnSalvar);
+      if (response && response.success) {
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, response.message || 'Item salvo!', false);
+        FornecedoresScript_carregarEListarItensFornecedor(dadosItem['Fornecedor'] || FornecedoresScript_fornecedorAtualParaItens.nome);
+        FornecedoresScript_resetarFormItemFornecedor();
+      } else {
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, (response ? response.message : "Erro.") || 'Falha ao salvar.', true);
+      }
+    }).catch(error => {
+        if (btnSalvar) FornecedoresScript_restaurarBotao(btnSalvar);
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, `Erro: ${error.message}`, true);
+        console.error(`Erro ao chamar ${serverFunction}:`, error);
+    });
+  }
+
+  function FornecedoresScript_prepararFormParaEditarItemFornecedor(itemId) {
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, 'Carregando dados do item...', false);
+
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/subprodutos/obterDetalhes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: itemId })
+    }).then(response => {
+      const itemData = response.dados;
+      if (response.success && itemData && itemData.SubProduto) {
+        const form = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR);
+        if (form) form.reset();
+        for (const key in itemData) {
+          if (form.elements[key]) {
+            form.elements[key].value = itemData[key] || '';
+          }
+        }
+        
+        // --- Lógica de seleção do TomSelect ---
+        const produtoVinculadoNome = itemData['Produto Vinculado'];
+        if (FornecedoresScript_tomSelectInstance && produtoVinculadoNome) {
+          // Encontra o ID do produto pelo nome
+          const produtoOpcao = FornecedoresScript_tomSelectInstance.options[
+            Object.keys(FornecedoresScript_tomSelectInstance.options).find(k => FornecedoresScript_tomSelectInstance.options[k].text === produtoVinculadoNome)
+          ];
+          if (produtoOpcao) {
+            FornecedoresScript_tomSelectInstance.setValue(produtoOpcao.value);
+          } else {
+            console.warn(`Não foi possível encontrar o ID para o produto vinculado "${produtoVinculadoNome}" no TomSelect.`);
+            FornecedoresScript_tomSelectInstance.clear();
+          }
+        } else if (FornecedoresScript_tomSelectInstance) {
+           FornecedoresScript_tomSelectInstance.clear();
+        }
+        // --- Fim da lógica TomSelect ---
+
+        document.getElementById(FornecedoresScript_ID_TITULO_FORM_ITEM).textContent = 'Editar Item Fornecido';
+        const btnSalvarItem = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_NOVO_ITEM);
+        if(btnSalvarItem) {
+            if(!btnSalvarItem.dataset.originalContent) btnSalvarItem.dataset.originalContent = btnSalvarItem.innerHTML;
+            btnSalvarItem.innerHTML = 'Salvar Alterações do Item';
+        }
+        FornecedoresScript_itemFornecedorEmEdicaoId = itemId;
+        document.getElementById(FornecedoresScript_ID_ITEM_ID_EDICAO_FORM_ITEM).value = itemId; // Usa o nome "ID_SubProduto_Edicao" do form
+        
+        const formContainer = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR_CONTAINER);
+        if (formContainer && formContainer.classList.contains('hidden')) {
+          FornecedoresScript_toggleFormAdicionarItemFornecedor();
+        }
+        FornecedoresScript_formItemAberto = true;
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, '', false);
+        if (form && form.elements['SubProduto']) form.elements['SubProduto'].focus();
+      } else {
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, response.message || 'Item não encontrado ou dados incompletos.', true);
+      }
+    });
+  }
+
+  function FornecedoresScript_confirmarExcluirItemFornecedor(itemId, nomeItem) {
+    const confirmacao = window.confirm(`Tem certeza que deseja excluir o item "${nomeItem || 'este item'}"? Esta ação não pode ser desfeita.`);
+    if (confirmacao) {
+      FornecedoresScript_exibirMensagemGlobal('Excluindo item...', false, 0);
+      
+      // Substitui google.script.run por fetch
+      FornecedoresScript_apiCall('/api/subprodutos/excluir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: itemId })
+      }).then(response => {
+        if (response && response.success) {
+          FornecedoresScript_exibirMensagemGlobal(response.message || 'Item excluído!', false);
+          FornecedoresScript_carregarEListarItensFornecedor(FornecedoresScript_fornecedorAtualParaItens.nome);
+        } else {
+          FornecedoresScript_exibirMensagemGlobal((response ? response.message : "Erro.") || 'Falha ao excluir item.', true);
+        }
+      });
+    }
+  }
+
+  function FornecedoresScript_resetarFormItemFornecedor() {
+    const form = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR);
+    if (form) form.reset();
+
+    const tituloForm = document.getElementById(FornecedoresScript_ID_TITULO_FORM_ITEM);
+    if (tituloForm) tituloForm.textContent = 'Novo Item Fornecido';
+
+    const btnSalvar = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_NOVO_ITEM);
+    if (btnSalvar) {
+      if (btnSalvar.dataset.originalContent) {
+        FornecedoresScript_restaurarBotao(btnSalvar);
+      }
+      btnSalvar.innerHTML = 'Salvar SubProduto';
+    }
+    
+    FornecedoresScript_itemFornecedorEmEdicaoId = null;
+
+    const idEdicaoInput = document.getElementById(FornecedoresScript_ID_ITEM_ID_EDICAO_FORM_ITEM);
+    if (idEdicaoInput) idEdicaoInput.value = '';
+
+    const fornecedorPaiInput = document.getElementById(FornecedoresScript_ID_FORNECEDOR_PAI_NOME_FORM_ITEM);
+    if (fornecedorPaiInput && FornecedoresScript_fornecedorAtualParaItens.nome) {
+      fornecedorPaiInput.value = FornecedoresScript_fornecedorAtualParaItens.nome;
+    }
+    
+    // Limpa o TomSelect
+    if (FornecedoresScript_tomSelectInstance) {
+      FornecedoresScript_tomSelectInstance.clear();
+    }
+
+    FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_ITEM, '', false);
+  }
+
+  // --- Funções de Renderização da Tabela e Paginação ---
+  // (Nenhuma alteração aqui, são manipulação de DOM)
+  function FornecedoresScript_renderizarTabela(dadosObjetos, cabecalhosExibicao) {
+    const tabela = document.getElementById(FornecedoresScript_ID_TABELA_FORNECEDORES);
+    if (!tabela) { console.error("Elemento da tabela não encontrado: " + FornecedoresScript_ID_TABELA_FORNECEDORES); return; }
+    tabela.dataset.fornecedoresPaginados = JSON.stringify(dadosObjetos || '[]');
+    const thead = tabela.querySelector('thead');
+    const tbody = tabela.querySelector('tbody');
+    if (!thead || !tbody) { console.error("Thead ou Tbody não encontrados na tabela: " + FornecedoresScript_ID_TABELA_FORNECEDORES); return; }
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+    let numColunasDados = (cabecalhosExibicao && cabecalhosExibicao.length > 0) ? cabecalhosExibicao.length : 0;
+    if (numColunasDados > 0) {
+      const cabecalhoRow = document.createElement('tr');
+      cabecalhosExibicao.forEach(textoCabecalho => {
+        const th = document.createElement('th');
+        th.className = 'px-4 py-3 text-left text-xs font-semibold tracking-wider whitespace-normal';
+        th.textContent = textoCabecalho;
+        cabecalhoRow.appendChild(th);
+      });
+      thead.appendChild(cabecalhoRow);
+    } else {
+      const tr = document.createElement('tr');
+      const th = document.createElement('th');
+      th.colSpan = 1;
+      th.className = 'px-4 py-3 text-left text-xs font-semibold tracking-wider';
+      th.textContent = 'Cabeçalhos Indisponíveis';
+      tr.appendChild(th);
+      thead.appendChild(tr);
+    }
+    if (dadosObjetos && dadosObjetos.length > 0) {
+      dadosObjetos.forEach(fornecedorObj => {
+        const tr = document.createElement('tr');
+        tr.addEventListener('click', function() {
+          if (FornecedoresScript_linhaSelecionadaAnterior && FornecedoresScript_linhaSelecionadaAnterior !== this) {
+            FornecedoresScript_linhaSelecionadaAnterior.classList.remove('linha-selecionada');
+          }
+          if (FornecedoresScript_fornecedorSelecionadoId === fornecedorObj.ID && this.classList.contains('linha-selecionada')) {
+            this.classList.remove('linha-selecionada');
+            FornecedoresScript_fornecedorSelecionadoId = null;
+            FornecedoresScript_fornecedorSelecionadoNome = null;
+            FornecedoresScript_fornecedorSelecionadoObjeto = null;
+            FornecedoresScript_linhaSelecionadaAnterior = null;
+          } else {
+            this.classList.add('linha-selecionada');
+            FornecedoresScript_fornecedorSelecionadoId = fornecedorObj.ID;
+            FornecedoresScript_fornecedorSelecionadoNome = fornecedorObj.Fornecedor;
+            FornecedoresScript_fornecedorSelecionadoObjeto = fornecedorObj;
+            FornecedoresScript_linhaSelecionadaAnterior = this;
+          }
+          FornecedoresScript_atualizarEstadoBotoesPainelAcoes();
+        });
+        cabecalhosExibicao.forEach(nomeCabecalho => {
+          const td = document.createElement('td');
+          td.className = 'px-4 py-3 text-sm text-gray-700 border-b border-gray-300 whitespace-normal break-words';
+          if (nomeCabecalho === "CNPJ" || nomeCabecalho === "Telefone") {
+            td.classList.remove('whitespace-normal'); td.classList.add('whitespace-nowrap');
+          }
+          td.textContent = fornecedorObj[nomeCabecalho] || '';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    } else {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = numColunasDados > 0 ? numColunasDados : 1;
+      td.className = 'px-4 py-8 text-md text-gray-500 text-center';
+      if (FornecedoresScript_termoBuscaAtual) {
+        td.textContent = `Nenhum fornecedor para "${FornecedoresScript_termoBuscaAtual}".`;
+      } else {
+        td.textContent = 'Nenhum fornecedor cadastrado.';
+      }
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+    if (!FornecedoresScript_fornecedorSelecionadoId) {
+      FornecedoresScript_atualizarEstadoBotoesPainelAcoes();
+    }
+  }
+
+  function FornecedoresScript_renderizarControlesPaginacao(totalItens, paginaAtual, totalPaginas) {
+    const controlesDiv = document.getElementById(FornecedoresScript_ID_CONTROLES_PAGINACAO);
+    if (!controlesDiv) return;
+    controlesDiv.innerHTML = '';
+    if (totalItens === 0 && !FornecedoresScript_termoBuscaAtual) {
+      controlesDiv.innerHTML = `<span class="text-sm text-gray-500"></span>`;
+      return;
+    }
+    if (totalItens === 0 && FornecedoresScript_termoBuscaAtual) {
+      controlesDiv.innerHTML = `<span class="text-sm text-gray-500">0 resultados para "${FornecedoresScript_termoBuscaAtual}"</span>`;
+      return;
+    }
+    if (totalPaginas <= 1 && !FornecedoresScript_termoBuscaAtual && totalItens <= FornecedoresScript_ITENS_POR_PAGINA) {
+      controlesDiv.innerHTML = `<span class="text-sm text-gray-500">Total de ${totalItens} fornecedores.</span>`;
+      return;
+    }
+    const inicio = Math.min((paginaAtual - 1) * FornecedoresScript_ITENS_POR_PAGINA + 1, totalItens);
+    const fim = Math.min(paginaAtual * FornecedoresScript_ITENS_POR_PAGINA, totalItens);
+    const infoPaginacao = document.createElement('div');
+    infoPaginacao.className = 'text-sm text-gray-700';
+    infoPaginacao.innerHTML = `Mostrando <span class="font-medium">${inicio}</span>-<span class="font-medium">${fim}</span> de <span class="font-medium">${totalItens}</span>`;
+    const botoesPaginacao = document.createElement('div');
+    botoesPaginacao.className = 'inline-flex items-center gap-x-1 sm:gap-x-2 mt-2 sm:mt-0';
+    const btnAnterior = document.createElement('button');
+    btnAnterior.textContent = 'Anterior';
+    btnAnterior.className = 'btn-paginacao';
+    btnAnterior.disabled = paginaAtual <= 1;
+    btnAnterior.onclick = function() {
+      if (paginaAtual > 1) FornecedoresScript_carregarListaFornecedores(paginaAtual - 1, FornecedoresScript_termoBuscaAtual);
+    };
+    const btnProximo = document.createElement('button');
+    btnProximo.textContent = 'Próximo';
+    btnProximo.className = 'btn-paginacao';
+    btnProximo.disabled = paginaAtual >= totalPaginas;
+    btnProximo.onclick = function() {
+      if (paginaAtual < totalPaginas) FornecedoresScript_carregarListaFornecedores(paginaAtual + 1, FornecedoresScript_termoBuscaAtual);
+    };
+    const infoPaginaNumero = document.createElement('span');
+    infoPaginaNumero.className = 'text-sm px-2 py-1';
+    infoPaginaNumero.textContent = `Pág ${paginaAtual} de ${totalPaginas}`;
+    botoesPaginacao.appendChild(btnAnterior);
+    botoesPaginacao.appendChild(infoPaginaNumero);
+    botoesPaginacao.appendChild(btnProximo);
+    controlesDiv.appendChild(infoPaginacao);
+    controlesDiv.appendChild(botoesPaginacao);
+  }
+
+  function FornecedoresScript_popularTabelaInicial(resultadoServidor) {
+    if (resultadoServidor && resultadoServidor.error) {
+      FornecedoresScript_falhaCarregarFornecedores({ message: resultadoServidor.message });
+      const controlesDiv = document.getElementById(FornecedoresScript_ID_CONTROLES_PAGINACAO);
+      if (controlesDiv) controlesDiv.innerHTML = '';
+      return;
+    }
+    FornecedoresScript_cabecalhosParaExibicao = (resultadoServidor && resultadoServidor.cabecalhosParaExibicao) ? resultadoServidor.cabecalhosParaExibicao : [];
+    const fornecedoresDaPagina = (resultadoServidor && resultadoServidor.fornecedoresPaginados) ? resultadoServidor.fornecedoresPaginados : [];
+    FornecedoresScript_renderizarTabela(fornecedoresDaPagina, FornecedoresScript_cabecalhosParaExibicao);
+    if (resultadoServidor) {
+      FornecedoresScript_paginaAtual = resultadoServidor.paginaAtual;
+      FornecedoresScript_renderizarControlesPaginacao(
+        resultadoServidor.totalItens,
+        resultadoServidor.paginaAtual,
+        resultadoServidor.totalPaginas
+      );
+    } else {
+      const controlesDiv = document.getElementById(FornecedoresScript_ID_CONTROLES_PAGINACAO);
+      if (controlesDiv) controlesDiv.innerHTML = '';
+    }
+    FornecedoresScript_fornecedorSelecionadoId = null;
+    FornecedoresScript_fornecedorSelecionadoNome = null;
+    FornecedoresScript_fornecedorSelecionadoObjeto = null;
+    if (FornecedoresScript_linhaSelecionadaAnterior) {
+      FornecedoresScript_linhaSelecionadaAnterior.classList.remove('linha-selecionada');
+      FornecedoresScript_linhaSelecionadaAnterior = null;
+    }
+    FornecedoresScript_atualizarEstadoBotoesPainelAcoes();
+    const campoBuscaEl = document.getElementById(FornecedoresScript_ID_CAMPO_BUSCA);
+    if (campoBuscaEl && !campoBuscaEl.dataset.listenerAttached) {
+      campoBuscaEl.addEventListener('input', function() {
+        clearTimeout(FornecedoresScript_debounceTimerBusca);
+        const termo = this.value;
+        FornecedoresScript_debounceTimerBusca = setTimeout(() => {
+          FornecedoresScript_termoBuscaAtual = termo;
+          FornecedoresScript_carregarListaFornecedores(1, termo);
+        }, 500);
+      });
+      campoBuscaEl.dataset.listenerAttached = 'true';
+    }
+    const btnNovoGlobal = document.getElementById(FornecedoresScript_ID_BTN_NOVO_FORNECEDOR_GLOBAL);
+    if (btnNovoGlobal && !btnNovoGlobal.dataset.listenerAttached) {
+      btnNovoGlobal.onclick = FornecedoresScript_abrirModalParaCriar;
+      btnNovoGlobal.dataset.listenerAttached = 'true';
+    }
+    const btnEditarGlobal = document.getElementById(FornecedoresScript_ID_BTN_EDITAR_GLOBAL);
+    if (btnEditarGlobal && !btnEditarGlobal.dataset.listenerAttached) {
+      btnEditarGlobal.onclick = () => {
+        if (FornecedoresScript_fornecedorSelecionadoId && FornecedoresScript_fornecedorSelecionadoObjeto) {
+          FornecedoresScript_abrirModalParaEditar(FornecedoresScript_fornecedorSelecionadoId, FornecedoresScript_fornecedorSelecionadoObjeto);
+        } else {
+          FornecedoresScript_exibirMensagemGlobal("Nenhum fornecedor selecionado para editar.", true);
+        }
+      };
+      btnEditarGlobal.dataset.listenerAttached = 'true';
+    }
+    const btnExcluirGlobal = document.getElementById(FornecedoresScript_ID_BTN_EXCLUIR_GLOBAL);
+    if (btnExcluirGlobal && !btnExcluirGlobal.dataset.listenerAttached) {
+      btnExcluirGlobal.onclick = FornecedoresScript_iniciarConfirmacaoExclusao;
+      btnExcluirGlobal.dataset.listenerAttached = 'true';
+    }
+    const btnItensGlobal = document.getElementById(FornecedoresScript_ID_BTN_ITENS_GLOBAL);
+    if (btnItensGlobal && !btnItensGlobal.dataset.listenerAttached) {
+      btnItensGlobal.onclick = FornecedoresScript_abrirModalGerenciarItensFornecedor;
+      btnItensGlobal.dataset.listenerAttached = 'true';
+    }
+    const btnFecharModal = document.getElementById(FornecedoresScript_ID_BTN_FECHAR_MODAL);
+    if (btnFecharModal && !btnFecharModal.dataset.listenerAttachedModal) {
+      btnFecharModal.onclick = FornecedoresScript_fecharModalPrincipal;
+      btnFecharModal.dataset.listenerAttachedModal = 'true';
+    }
+    const btnCancelarModal = document.getElementById(FornecedoresScript_ID_BTN_CANCELAR_MODAL);
+    if (btnCancelarModal && !btnCancelarModal.dataset.listenerAttachedModal) {
+      btnCancelarModal.onclick = FornecedoresScript_fecharModalPrincipal;
+      btnCancelarModal.dataset.listenerAttachedModal = 'true';
+    }
+    const btnFecharConfirmarExclusao = document.getElementById(FornecedoresScript_ID_BTN_FECHAR_MODAL_CONFIRMAR_EXCLUSAO);
+    if (btnFecharConfirmarExclusao && !btnFecharConfirmarExclusao.dataset.listenerAttached) {
+      btnFecharConfirmarExclusao.onclick = FornecedoresScript_fecharModalConfirmarExclusao;
+      btnFecharConfirmarExclusao.dataset.listenerAttached = 'true';
+    }
+    const btnCancelarConfirmarExclusao = document.getElementById(FornecedoresScript_ID_BTN_CANCELAR_MODAL_CONFIRMAR_EXCLUSAO);
+    if (btnCancelarConfirmarExclusao && !btnCancelarConfirmarExclusao.dataset.listenerAttached) {
+      btnCancelarConfirmarExclusao.onclick = FornecedoresScript_fecharModalConfirmarExclusao;
+      btnCancelarConfirmarExclusao.dataset.listenerAttached = 'true';
+    }
+    const btnFecharRealocar = document.getElementById(FornecedoresScript_ID_BTN_FECHAR_MODAL_REALOCAR);
+    if (btnFecharRealocar && !btnFecharRealocar.dataset.listenerAttached) {
+      btnFecharRealocar.onclick = FornecedoresScript_fecharModalRealocarSubProdutos;
+      btnFecharRealocar.dataset.listenerAttached = 'true';
+    }
+    const btnCancelarRealocar = document.getElementById(FornecedoresScript_ID_BTN_CANCELAR_MODAL_REALOCAR);
+    if (btnCancelarRealocar && !btnCancelarRealocar.dataset.listenerAttached) {
+      btnCancelarRealocar.onclick = FornecedoresScript_fecharModalRealocarSubProdutos;
+      btnCancelarRealocar.dataset.listenerAttached = 'true';
+    }
+    const btnConfirmarRealocacao = document.getElementById(FornecedoresScript_ID_BTN_CONFIRMAR_REALOCACAO);
+    if (btnConfirmarRealocacao && !btnConfirmarRealocacao.dataset.listenerAttached) {
+      btnConfirmarRealocacao.onclick = FornecedoresScript_confirmarRealocacaoEExcluir;
+      btnConfirmarRealocacao.dataset.listenerAttached = 'true';
+    }
+    
+    // Substitui google.script.run por fetch
+    const formFornecedor = document.getElementById(FornecedoresScript_ID_FORM_FORNECEDOR);
+    if (formFornecedor && !formFornecedor.dataset.listenerAttached) {
+      formFornecedor.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const btnSalvar = document.getElementById(FornecedoresScript_ID_BTN_SALVAR_MODAL);
+        if (btnSalvar) FornecedoresScript_mostrarLoadingBotao(btnSalvar, "Salvando...");
+        FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL, 'Processando...', false);
+        const formData = new FormData(this);
+        const dadosDoFormulario = {};
+        for (let [key, value] of formData.entries()) {
+          if (key === "Pedido Mínimo (R$)") dadosDoFormulario[key] = FornecedoresScript_obterValorMoedaCru(value);
+          else dadosDoFormulario[key] = value;
+        }
+        
+        let endpoint = '';
+        if (FornecedoresScript_modoModal === 'criar') {
+          delete dadosDoFormulario.ID;
+          endpoint = '/api/fornecedores/criar';
+        } else {
+          endpoint = '/api/fornecedores/atualizar';
+        }
+
+        FornecedoresScript_apiCall(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosDoFormulario)
+        }).then(respostaServidor => {
+            if (btnSalvar) FornecedoresScript_restaurarBotao(btnSalvar);
+            if (respostaServidor && respostaServidor.success) {
+              FornecedoresScript_fecharModalPrincipal();
+              FornecedoresScript_exibirMensagemGlobal(respostaServidor.message || "Operação concluída!", false);
+              const paginaParaRecarregar = FornecedoresScript_modoModal === 'criar' ? 1 : FornecedoresScript_paginaAtual;
+              const buscaParaRecarregar = FornecedoresScript_modoModal === 'criar' ? "" : FornecedoresScript_termoBuscaAtual;
+              FornecedoresScript_carregarListaFornecedores(paginaParaRecarregar, buscaParaRecarregar);
+            } else {
+              FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL, (respostaServidor ? respostaServidor.message : "Erro.") || "Erro.", true);
+            }
+        }).catch(error => {
+            if (btnSalvar) FornecedoresScript_restaurarBotao(btnSalvar);
+            FornecedoresScript_exibirMensagemEmModal(FornecedoresScript_ID_MENSAGEM_MODAL, "Erro: " + error.message, true);
+        });
+      });
+      formFornecedor.dataset.listenerAttached = 'true';
+    }
+
+    const btnFecharModalItens = document.getElementById(FornecedoresScript_ID_BTN_FECHAR_MODAL_GERENCIAR_ITENS);
+    if (btnFecharModalItens && !btnFecharModalItens.dataset.listenerAttached) {
+      btnFecharModalItens.onclick = FornecedoresScript_fecharModalGerenciarItensFornecedor;
+      btnFecharModalItens.dataset.listenerAttached = 'true';
+    }
+    const btnConcluirModalItens = document.getElementById(FornecedoresScript_ID_BTN_CONCLUIR_MODAL_GERENCIAR_ITENS);
+    if (btnConcluirModalItens && !btnConcluirModalItens.dataset.listenerAttached) {
+      btnConcluirModalItens.onclick = FornecedoresScript_fecharModalGerenciarItensFornecedor;
+      btnConcluirModalItens.dataset.listenerAttached = 'true';
+    }
+    const btnToggleAddItem = document.getElementById(FornecedoresScript_ID_BTN_TOGGLE_ADICIONAR_ITEM_FORNECEDOR);
+    if (btnToggleAddItem && !btnToggleAddItem.dataset.listenerAttached) {
+      btnToggleAddItem.onclick = FornecedoresScript_toggleFormAdicionarItemFornecedor;
+      btnToggleAddItem.dataset.listenerAttached = 'true';
+    }
+    const formAddItem = document.getElementById(FornecedoresScript_ID_FORM_ADICIONAR_ITEM_FORNECEDOR);
+    if (formAddItem && !formAddItem.dataset.listenerAttached) {
+      formAddItem.addEventListener('submit', FornecedoresScript_handleSalvarItemFornecedor);
+      formAddItem.dataset.listenerAttached = 'true';
+    }
+    const btnCancelarAddItem = document.getElementById(FornecedoresScript_ID_BTN_CANCELAR_FORM_ITEM);
+    if (btnCancelarAddItem && !btnCancelarAddItem.dataset.listenerAttached) {
+      btnCancelarAddItem.onclick = function() {
+        FornecedoresScript_resetarFormItemFornecedor();
+      };
+      btnCancelarAddItem.dataset.listenerAttached = 'true';
+    }
+    const inputCnpjModal = document.getElementById(FornecedoresScript_ID_INPUT_CNPJ);
+    if (inputCnpjModal && !inputCnpjModal.dataset.maskAttached) { inputCnpjModal.addEventListener('input', function(e) { e.target.value = FornecedoresScript_mascaraCnpj(e.target.value); }); inputCnpjModal.dataset.maskAttached = 'true'; }
+    const inputTelefoneModal = document.getElementById(FornecedoresScript_ID_INPUT_TELEFONE);
+    if (inputTelefoneModal && !inputTelefoneModal.dataset.maskAttached) { inputTelefoneModal.addEventListener('input', function(e) { e.target.value = FornecedoresScript_mascaraTelefone(e.target.value); }); inputTelefoneModal.dataset.maskAttached = 'true'; }
+    const inputPedidoMinimoModal = document.getElementById(FornecedoresScript_ID_INPUT_PEDIDO_MINIMO);
+    if (inputPedidoMinimoModal && !inputPedidoMinimoModal.dataset.maskAttached) { inputPedidoMinimoModal.addEventListener('input', function(e) { FornecedoresScript_formatarMoedaInput(e.target); }); inputPedidoMinimoModal.addEventListener('blur', function(e) { FornecedoresScript_formatarMoedaInput(e.target); }); inputPedidoMinimoModal.dataset.maskAttached = 'true'; }
+  }
+
+  function FornecedoresScript_falhaCarregarFornecedores(error) {
+    console.error("Falha ao carregar fornecedores:", error);
+    let mensagemErro = "Ocorreu um erro ao carregar os dados.";
+    if (error && error.message) {
+      mensagemErro = String(error.message).includes("Exception:") ? String(error.message).split("Exception:")[1].trim() : String(error.message);
+    }
+    const tabela = document.getElementById(FornecedoresScript_ID_TABELA_FORNECEDORES);
+    if (tabela) {
+      const tbody = tabela.querySelector('tbody');
+      const numColFallback = (FornecedoresScript_cabecalhosParaExibicao.length > 0 ? FornecedoresScript_cabecalhosParaExibicao.length : 5);
+      if (tbody) {
+        tbody.innerHTML = '';
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = numColFallback;
+        td.className = "text-center p-8 text-red-700 bg-red-50";
+        
+        const strong = document.createElement('strong');
+        strong.textContent = "Erro: ";
+        td.appendChild(strong);
+        
+        td.appendChild(document.createTextNode(mensagemErro)); 
+        
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+    }
+    const controlesDiv = document.getElementById(FornecedoresScript_ID_CONTROLES_PAGINACAO);
+    if (controlesDiv) controlesDiv.innerHTML = '';
+  }
+
+  function FornecedoresScript_carregarListaFornecedores(pagina = 1, termoBusca = "") {
+    console.log(`Carregando fornecedores: Pág ${pagina}, Busca: "${termoBusca}"`);
+    FornecedoresScript_paginaAtual = pagina; FornecedoresScript_termoBuscaAtual = termoBusca;
+    const feedbackGlobalEl = document.getElementById(FornecedoresScript_ID_MENSAGEM_FEEDBACK_GLOBAL); if (feedbackGlobalEl) feedbackGlobalEl.innerHTML = '';
+    const tabelaFornecedoresEl = document.getElementById(FornecedoresScript_ID_TABELA_FORNECEDORES);
+    const numColCarregamento = (FornecedoresScript_cabecalhosParaExibicao.length > 0 ? FornecedoresScript_cabecalhosParaExibicao.length : 1);
+    if (tabelaFornecedoresEl) {
+      const thead = tabelaFornecedoresEl.querySelector('thead'); if (thead) { thead.innerHTML = `<tr><th colspan="${numColCarregamento}" class="px-4 py-3 text-left text-xs font-semibold tracking-wider">Carregando Cabeçalhos...</th></tr>`; }
+      const tbody = tabelaFornecedoresEl.querySelector('tbody'); if (tbody) { tbody.innerHTML = `<tr><td colspan="${numColCarregamento}" class="text-center p-8 text-gray-500"><svg class="animate-spin h-6 w-6 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Obtendo dados...</td></tr>`; }
+    }
+    const controlesPaginacaoEl = document.getElementById(FornecedoresScript_ID_CONTROLES_PAGINACAO); if (controlesPaginacaoEl) controlesPaginacaoEl.innerHTML = '<div class="text-sm text-gray-500">Carregando paginação...</div>';
+    
+    const options = {
+      pagina: FornecedoresScript_paginaAtual,
+      itensPorPagina: FornecedoresScript_ITENS_POR_PAGINA,
+      termoBusca: FornecedoresScript_termoBuscaAtual
+    };
+    
+    // Substitui google.script.run por fetch
+    FornecedoresScript_apiCall('/api/fornecedores/listar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options)
+    }).then(resultadoServidor => {
+        // O .dados aqui é porque nossa FornecedoresScript_apiCall retorna { success: true, ...dadosDoServidor }
+        // e a função do servidor (que ainda vamos criar) retornará { success: true, cabecalhosParaExibicao: ..., ... }
+        // então o objeto final será { success: true, cabecalhosParaExibicao: ..., ... }
+        FornecedoresScript_popularTabelaInicial(resultadoServidor);
+    }).catch(error => {
+        // O .catch é para erros de rede. Erros lógicos (ex: 500) são tratados em popularTabelaInicial
+        FornecedoresScript_falhaCarregarFornecedores(error);
+    });
+  }
+
+  // --- Inicialização e Listeners Globais ---
+  // (Nenhuma alteração aqui, são manipulação de DOM)
+  const campoBuscaProdutosEl = document.getElementById(FornecedoresScript_ID_CAMPO_BUSCA);
+  if (campoBuscaProdutosEl && !campoBuscaProdutosEl.dataset.listenerAttached) {
+    campoBuscaProdutosEl.addEventListener('input', function() {
+      clearTimeout(FornecedoresScript_debounceTimerBusca);
+      const termo = this.value;
+      FornecedoresScript_debounceTimerBusca = setTimeout(() => { FornecedoresScript_carregarListaFornecedores(1, termo); }, 500);
+    });
+    campoBuscaProdutosEl.dataset.listenerAttached = 'true';
+  }
+
+  const btnNovoGlobal = document.getElementById(FornecedoresScript_ID_BTN_NOVO_FORNECEDOR_GLOBAL);
+  if (btnNovoGlobal && !btnNovoGlobal.dataset.listenerAttached) {
+    btnNovoGlobal.onclick = FornecedoresScript_abrirModalParaCriar;
+    btnNovoGlobal.dataset.listenerAttached = 'true';
+  }
+  
+  const btnEditarGlobal = document.getElementById(FornecedoresScript_ID_BTN_EDITAR_GLOBAL);
+  if (btnEditarGlobal && !btnEditarGlobal.dataset.listenerAttached) {
+    btnEditarGlobal.onclick = () => {
+      if (FornecedoresScript_fornecedorSelecionadoId && FornecedoresScript_fornecedorSelecionadoObjeto) {
+        FornecedoresScript_abrirModalParaEditar(FornecedoresScript_fornecedorSelecionadoId, FornecedoresScript_fornecedorSelecionadoObjeto);
+      } else {
+        FornecedoresScript_exibirMensagemGlobal("Nenhum fornecedor selecionado para editar.", true);
+      }
+    };
+    btnEditarGlobal.dataset.listenerAttached = 'true';
+  }
+
+  const btnExcluirGlobal = document.getElementById(FornecedoresScript_ID_BTN_EXCLUIR_GLOBAL);
+  if (btnExcluirGlobal && !btnExcluirGlobal.dataset.listenerAttached) {
+    btnExcluirGlobal.onclick = () => {
+      if (FornecedoresScript_fornecedorSelecionadoId && FornecedoresScript_fornecedorSelecionadoNome) {
+        FornecedoresScript_iniciarConfirmacaoExclusao(FornecedoresScript_fornecedorSelecionadoId, FornecedoresScript_fornecedorSelecionadoNome);
+      } else {
+        FornecedoresScript_exibirMensagemGlobal("Nenhum fornecedor selecionado para excluir.", true);
+      }
+    };
+    btnExcluirGlobal.dataset.listenerAttached = 'true';
+  }
+
+  const btnItensGlobal = document.getElementById(FornecedoresScript_ID_BTN_ITENS_GLOBAL);
+  if (btnItensGlobal && !btnItensGlobal.dataset.listenerAttached) {
+    btnItensGlobal.onclick = () => {
+      if (FornecedoresScript_fornecedorSelecionadoId && FornecedoresScript_fornecedorSelecionadoNome) {
+        FornecedoresScript_abrirModalGerenciarItensFornecedor(FornecedoresScript_fornecedorSelecionadoId, FornecedoresScript_fornecedorSelecionadoNome);
+      } else {
+        FornecedoresScript_exibirMensagemGlobal("Nenhum fornecedor selecionado para gerenciar subprodutos.", true);
+      }
+    };
+    btnItensGlobal.dataset.listenerAttached = 'true';
+  }
+
+  // Carregamento inicial
+  FornecedoresScript_carregarListaFornecedores(1);
+  FornecedoresScript_atualizarEstadoBotoesPainelAcoes();
+  
+  // Pré-carrega os dados dos produtos para os dropdowns (SubProdutos)
+  FornecedoresScript_apiCall('/api/produtos/listarNomesIds', { method: 'GET' })
+    .then(response => {
+      if (response.success) {
+        FornecedoresScript_listaProdutosCache = response.dados || [];
+      } else {
+        console.warn('Não foi possível pré-carregar a lista de produtos.');
+      }
+    });
+
+  console.log("FornecedoresScript inicializado com chamadas de API fetch.");
+}
+
+// A inicialização (init) agora é chamada pelo script da PaginaPrincipal.ejs
+// quando este arquivo é carregado.
+initFornecedoresScript();
+
+</script>

@@ -94,74 +94,70 @@
       }
     }
 
-    function navigateTo(viewName) {
+    /**
+     * Executa scripts de um container HTML
+     * Isso é necessário porque o .innerHTML não executa <script> tags.
+     */
+    function executeScripts(container) {
+      const scriptsToExecute = Array.from(container.querySelectorAll('script'));
+      scriptsToExecute.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        // Copia atributos (ex: src)
+        Array.from(oldScript.attributes).forEach(attr => {
+          newScript.setAttribute(attr.name, attr.value);
+        });
+        
+        if (oldScript.src) {
+          // Se for um script externo, anexa ao <head> para carregar
+          newScript.onload = () => console.log(`Script ${oldScript.src} carregado.`);
+          newScript.onerror = () => console.error(`Erro ao carregar script ${oldScript.src}`);
+          document.head.appendChild(newScript);
+        } else {
+          // Se for script inline, copia o conteúdo e executa
+          newScript.textContent = oldScript.textContent;
+          document.body.appendChild(newScript).parentNode.removeChild(newScript);
+        }
+      });
+    }
+
+    /**
+     * Esta é a nova função navigateTo, migrada do google.script.run
+     */
+    async function navigateTo(viewName) {
       mainContentArea.innerHTML = `<div class="p-4 text-center text-blue-600"><svg class="animate-spin h-6 w-6 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Carregando ${viewName}...</div>`;
       setActiveMenu(viewName);
 
-      google.script.run
-        .withSuccessHandler(function(htmlContent) {
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = htmlContent;
+      try {
+        // 1. Faz a chamada de rede para a nossa rota /view/:viewName
+        const response = await fetch(`/view/${viewName}`);
+        
+        if (!response.ok) {
+          // Se a resposta for 404 ou 500, exibe o erro
+          const errorText = await response.text();
+          throw new Error(`Erro ${response.status}: ${errorText}`);
+        }
 
-          mainContentArea.innerHTML = '';
+        // 2. Pega o HTML puro retornado pelo servidor
+        const htmlContent = await response.text();
+        
+        // 3. Injeta o HTML na página
+        mainContentArea.innerHTML = htmlContent;
+        
+        // 4. A mágica: Encontra e executa os scripts que vieram no HTML
+        // (Isso substitui a lógica complexa de 'scriptLoadChain' que você tinha)
+        executeScripts(mainContentArea);
 
-          Array.from(tempDiv.childNodes).forEach(node => {
-            if (node.nodeName !== 'SCRIPT') {
-              mainContentArea.appendChild(node.cloneNode(true));
-            }
-          });
-
-          const scriptsToExecute = Array.from(tempDiv.querySelectorAll('script'));
-          let scriptLoadChain = Promise.resolve();
-
-          scriptsToExecute.forEach(oldScript => {
-            scriptLoadChain = scriptLoadChain.then(() => {
-              return new Promise((resolve, reject) => {
-                const newScript = document.createElement('script');
-                Array.from(oldScript.attributes).forEach(attr => {
-                  newScript.setAttribute(attr.name, attr.value);
-                });
-
-                if (oldScript.src) {
-                  newScript.src = oldScript.src;
-                  newScript.onload = resolve;
-                  newScript.onerror = (err) => {
-                    console.error('Erro ao carregar script externo:', oldScript.src, err);
-                    resolve();
-                  };
-                  document.head.appendChild(newScript);
-                } else {
-                  newScript.textContent = oldScript.textContent;
-                  document.head.appendChild(newScript);
-                  if (newScript.parentNode) {
-                    newScript.parentNode.removeChild(newScript);
-                  }
-                  resolve();
-                }
-              });
-            });
-          });
-
-          scriptLoadChain
-            .catch(error => {
-              console.error("Erro na cadeia de carregamento de scripts para " + viewName + ":", error);
-              mainContentArea.innerHTML += `<div class="error-message p-2">Erro ao processar scripts da view ${viewName}.</div>`;
-            });
-
-        })
-        .withFailureHandler(function(error) {
-          let errMsg = "Erro desconhecido.";
-          if (error && error.message) {
-            const match = String(error.message).match(/Exception: (.*)/);
-            errMsg = match ? match[1].trim() : String(error.message).trim();
-          } else if (typeof error === 'object') {
-            errMsg = JSON.stringify(error);
-          }
-          mainContentArea.innerHTML = `<div class="error-message p-4">Erro ao carregar a view '${viewName}': ${errMsg}</div>`;
-          console.error("Erro ao chamar App_obterView para '" + viewName + "':", error);
-        })
-        .App_obterView(viewName);
+      } catch (error) {
+        // 5. Exibe um erro de falha
+        let errMsg = "Erro desconhecido.";
+        if (error && error.message) {
+          const match = String(error.message).match(/Exception: (.*)/);
+          errMsg = match ? match[1].trim() : String(error.message).trim();
+        }
+        mainContentArea.innerHTML = `<div class="error-message p-4">Erro ao carregar a view '${viewName}': ${errMsg}</div>`;
+        console.error("Erro ao chamar /view/" + viewName + ":", error);
+      }
     }
   </script>
-</body>
+  </body>
 </html>
