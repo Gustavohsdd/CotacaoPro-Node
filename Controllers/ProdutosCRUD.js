@@ -15,6 +15,7 @@ const {
  * @returns {Promise<Array<Array<string>>>} Os dados brutos da planilha (incluindo cabeçalho).
  */
 async function getProdutosPlanilha(sheets, spreadsheetId) {
+  // *** CORREÇÃO: Usa a constante ABA_PRODUTOS ***
   console.log(`[ProdutosCRUD] Lendo dados da aba: ${ABA_PRODUTOS}`);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
@@ -32,16 +33,18 @@ async function getProdutosPlanilha(sheets, spreadsheetId) {
  */
 async function getNomesEIdsProdutosAtivos(sheets, spreadsheetId) {
   try {
+    // *** CORREÇÃO: Passa o spreadsheetId correto ***
     const dados = await getProdutosPlanilha(sheets, spreadsheetId);
     if (dados.length < 2) return []; // Vazia
 
     const cabecalhos = dados[0].map(String);
-    const idxIdProduto = cabecalhos.indexOf("ID");
-    const idxNomeProduto = cabecalhos.indexOf("Produto");
-    const idxStatusProduto = cabecalhos.indexOf("Status");
+    // *** CORREÇÃO: Usa as constantes para encontrar os índices ***
+    const idxIdProduto = cabecalhos.indexOf(CABECALHOS_PRODUTOS[1]); // "ID"
+    const idxNomeProduto = cabecalhos.indexOf(CABECALHOS_PRODUTOS[2]); // "Produto"
+    const idxStatusProduto = cabecalhos.indexOf(CABECALHOS_PRODUTOS[8]); // "Status"
 
     if (idxIdProduto === -1 || idxNomeProduto === -1) {
-      throw new Error("Colunas 'ID' ou 'Produto' não encontradas na aba Produtos.");
+      throw new Error(`Colunas "ID" ou "Produto" não encontradas na aba ${ABA_PRODUTOS}.`);
     }
 
     const produtos = [];
