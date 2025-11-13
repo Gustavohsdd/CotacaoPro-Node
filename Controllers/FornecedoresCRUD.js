@@ -340,6 +340,45 @@ async function getSheetIdByName(sheets, spreadsheetId, sheetName) {
   return sheet ? sheet.properties.sheetId : null;
 }
 
+/**
+ * (Migrado de ProdutosCRUD_obterListaTodosFornecedores)
+ * Busca uma lista simplificada de {id, nome} de todos os fornecedores.
+ * @param {object} sheets - O cliente da API Google Sheets autenticado.
+ * @param {string} spreadsheetId - O ID da planilha principal.
+ * @returns {Promise<Array<object>>} Array de objetos {id, nome}.
+ */
+async function getTodosFornecedoresParaDropdown(sheets, spreadsheetId) {
+  try {
+    // Reutiliza a função de buscar todos os dados
+    const dados = await getFornecedoresPlanilha(sheets, spreadsheetId);
+    if (dados.length < 2) return [];
+
+    const cabecalhos = dados[0].map(String);
+    const idxId = cabecalhos.indexOf("ID");
+    const idxNome = cabecalhos.indexOf("Fornecedor");
+
+    if (idxId === -1 || idxNome === -1) {
+      throw new Error("Colunas 'ID' ou 'Fornecedor' não encontradas na aba Fornecedores.");
+    }
+
+    const fornecedores = [];
+    for (let i = 1; i < dados.length; i++) {
+      if (dados[i][idxId] && dados[i][idxNome]) {
+        fornecedores.push({
+          id: dados[i][idxId],
+          nome: dados[i][idxNome]
+        });
+      }
+    }
+    
+    fornecedores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
+    return fornecedores;
+
+  } catch (e) {
+    console.error("Erro em getTodosFornecedoresParaDropdown: " + e.toString());
+    return []; 
+  }
+}
 
 // Exporta as funções para serem usadas pelo Controller
 module.exports = {
@@ -352,6 +391,6 @@ module.exports = {
   getSubProdutosPorFornecedor,
   getOutrosFornecedores,
   batchExcluirFornecedorEAtualizarSubprodutos,
-  // Precisamos também das funções de SubProdutos que o FornecedoresScript usa
-  // (Elas serão movidas para controllers/subprodutos.js, mas por enquanto linkamos aqui)
+  getSheetIdByName,
+  getTodosFornecedoresParaDropdown
 };

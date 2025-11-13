@@ -329,9 +329,8 @@ async function excluirProduto(req, res) {
  */
 async function getTodosFornecedores(req, res) {
    try {
-     // CORREÇÃO: Chama a função que realmente existe no FornecedoresCRUD
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
-    const dados = FornecedoresCRUD.getOutrosFornecedores(todosDados, null); // null para pegar todos
+    // CORREÇÃO: Chama a função correta no FornecedoresCRUD
+    const dados = await FornecedoresCRUD.getTodosFornecedoresParaDropdown(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     res.json({ success: true, dados: dados });
   } catch (e) {
     console.error("ERRO em getTodosFornecedores (ProdutosController):", e);
