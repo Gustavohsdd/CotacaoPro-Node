@@ -64,14 +64,14 @@ async function obterListaFornecedoresPaginada(req, res) {
       return res.json({ 
         success: true,
         // *** CORREÇÃO: Usa a constante importada ***
-        cabecalhosParaExibicao: constants.CABECALHOS_FORNECEDORES.slice(2, 7), // Ex: Fornecedor, CNPJ, Categoria, Vendedor, Telefone
+        cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7), // Ex: Fornecedor, CNPJ, Categoria, Vendedor, Telefone
         fornecedoresPaginados: [], totalItens: 0, paginaAtual: 1, totalPaginas: 1
       });
     }
 
     // 2. Converte para objetos
     // *** CORREÇÃO: Usa a constante importada ***
-    let todosFornecedoresObj = FornecedoresCRUD.sheetDataToObjects(todosDados, constants.CABECALHOS_FORNECEDORES);
+    let todosFornecedoresObj = FornecedoresCRUD.sheetDataToObjects(todosDados, CABECALHOS_FORNECEDORES);
 
     // 3. Aplica filtro de busca (se existir)
     let fornecedoresFiltrados = todosFornecedoresObj;
@@ -95,7 +95,7 @@ async function obterListaFornecedoresPaginada(req, res) {
     res.json({
       success: true,
       // *** CORREÇÃO: Usa a constante importada ***
-      cabecalhosParaExibicao: constants.CABECALHOS_FORNECEDORES.slice(2, 7), // Ajuste conforme suas colunas de exibição
+      cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7), // Ajuste conforme suas colunas de exibição
       fornecedoresPaginados: fornecedoresPaginados,
       totalItens: totalItens,
       paginaAtual: paginaAjustada,
@@ -116,8 +116,8 @@ async function criarNovoFornecedor(req, res) {
   try {
     const dadosNovoFornecedor = req.body;
     // *** CORREÇÃO: Usa a constante importada ***
-    const nomeNovoFornecedor = dadosNovoFornecedor[constants.CABECALHOS_FORNECEDORES[2]]; // "Fornecedor"
-    const cnpjNovoFornecedor = dadosNovoFornecedor[constants.CABECALHOS_FORNECEDORES[3]]; // "CNPJ"
+    const nomeNovoFornecedor = dadosNovoFornecedor[CABECALHOS_FORNECEDORES[2]]; // "Fornecedor"
+    const cnpjNovoFornecedor = dadosNovoFornecedor[CABECALHOS_FORNECEDORES[3]]; // "CNPJ"
 
     if (!nomeNovoFornecedor) {
       return res.status(400).json({ success: false, message: "Nome do Fornecedor é obrigatório." });
@@ -126,9 +126,9 @@ async function criarNovoFornecedor(req, res) {
     // *** CORREÇÃO: Usa a ID da planilha principal ***
     const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const cabecalhosDaPlanilha = todosDados[0].map(String);
-    const idColunaIndex = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[1]); // "ID"
-    const nomeFornecedorColunaIndex = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
-    const cnpjColunaIndex = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[3]); // "CNPJ"
+    const idColunaIndex = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[1]); // "ID"
+    const nomeFornecedorColunaIndex = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
+    const cnpjColunaIndex = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[3]); // "CNPJ"
 
     if (idColunaIndex === -1 || nomeFornecedorColunaIndex === -1 || cnpjColunaIndex === -1) {
       throw new Error("Colunas essenciais (ID, Fornecedor, CNPJ) não encontradas na planilha.");
@@ -182,8 +182,8 @@ async function atualizarFornecedor(req, res) {
     // *** CORREÇÃO: Usa a ID da planilha principal ***
     const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const cabecalhosDaPlanilha = todosDados[0].map(String);
-    const idxId = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[1]); // "ID"
-    const idxNome = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
+    const idxId = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[1]); // "ID"
+    const idxNome = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
 
     let linhaIndex = -1; // 0-based
     for (let i = 1; i < todosDados.length; i++) {
@@ -215,7 +215,7 @@ async function atualizarFornecedor(req, res) {
     const linhaOriginal = todosDados[linhaIndex];
     const linhaAtualizadaArray = cabecalhosDaPlanilha.map((cab, k) => {
       // *** CORREÇÃO: Usa a constante importada ***
-      if (cab === constants.CABECALHOS_FORNECEDORES[1] || cab === constants.CABECALHOS_FORNECEDORES[0]) { // ID ou Data de Cadastro
+      if (cab === CABECALHOS_FORNECEDORES[1] || cab === CABECALHOS_FORNECEDORES[0]) { // ID ou Data de Cadastro
         return linhaOriginal[k]; // Mantém ID e Data de Cadastro
       }
       // Se o dado veio no body, usa, senão mantém o original
@@ -291,7 +291,7 @@ async function excluirFornecedor(req, res) {
     // 1. Encontrar a linha (0-based) do fornecedor para excluir
     // *** CORREÇÃO: Usa a ID da planilha principal ***
     const todosDadosForn = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
-    const idxId = todosDadosForn[0].indexOf(constants.CABECALHOS_FORNECEDORES[1]); // "ID"
+    const idxId = todosDadosForn[0].indexOf(CABECALHOS_FORNECEDORES[1]); // "ID"
     let linhaIndexFornecedor = -1;
     for (let i = 1; i < todosDadosForn.length; i++) {
       if (String(todosDadosForn[i][idxId]) === String(idFornecedor)) {
@@ -312,8 +312,8 @@ async function excluirFornecedor(req, res) {
       // *** CORREÇÃO: Usa a ID da planilha principal ***
       const dadosSub = await SubProdutosCRUD.getSubProdutosPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL); // Esta função precisa ser criada em SubProdutosCRUD
       const cabecalhosSub = dadosSub[0].map(String);
-      const idxSubId = cabecalhosSub.indexOf(constants.CABECALHOS_SUBPRODUTOS[1]); // "ID"
-      const idxSubForn = cabecalhosSub.indexOf(constants.CABECALHOS_SUBPRODUTOS[5]); // "Fornecedor"
+      const idxSubId = cabecalhosSub.indexOf(CABECALHOS_SUBPRODUTOS[1]); // "ID"
+      const idxSubForn = cabecalhosSub.indexOf(CABECALHOS_SUBPRODUTOS[5]); // "Fornecedor"
       const nomeFornNorm = normalizarTextoComparacao(nomeFornecedorOriginal);
       
       const mapaRealocacao = (realocacoesSubprodutos || []).reduce((map, r) => {

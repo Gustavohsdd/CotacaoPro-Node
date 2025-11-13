@@ -14,7 +14,8 @@ const ProdutosCRUD = require('../Controllers/ProdutosCRUD');
 router.get('/listarNomesIds', async (req, res) => {
   try {
     // req.sheets e req.constants vêm do middleware no server.js
-    const produtos = await ProdutosCRUD.getNomesEIdsProdutosAtivos(req.sheets, req.constants.ID_PLANILHA_NF); 
+    // *** CORREÇÃO: Trocado ID_PLANILHA_NF por ID_PLANILHA_PRINCIPAL ***
+    const produtos = await ProdutosCRUD.getNomesEIdsProdutosAtivos(req.sheets, req.ID_PLANILHA_PRINCIPAL); 
     res.json({ success: true, dados: produtos });
   } catch (e) {
     console.error("ERRO em GET /api/produtos/listarNomesIds:", e);

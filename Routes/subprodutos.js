@@ -11,7 +11,8 @@ const SubProdutosCRUD = require('../Controllers/SubProdutosCRUD');
 router.post('/listarPorPai', async (req, res) => {
   try {
     const { nomePai, tipoPai } = req.body;
-    const itens = await SubProdutosCRUD.getSubProdutosPorPai(req.sheets, req.constants.ID_PLANILHA_NF, nomePai, tipoPai);
+    // *** CORREÇÃO: Trocado req.constants.ID_PLANILHA_NF por req.ID_PLANILHA_PRINCIPAL ***
+    const itens = await SubProdutosCRUD.getSubProdutosPorPai(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomePai, tipoPai);
     res.json({ success: true, dados: itens });
   } catch (e) {
     console.error("ERRO em POST /api/subprodutos/listarPorPai:", e);
@@ -26,7 +27,8 @@ router.post('/listarPorPai', async (req, res) => {
 router.post('/obterDetalhes', async (req, res) => {
   try {
     const { itemId } = req.body;
-    const item = await SubProdutosCRUD.getDetalhesSubProdutoPorId(req.sheets, req.constants.ID_PLANILHA_NF, itemId);
+    // *** CORREÇÃO: Trocado req.constants.ID_PLANILHA_NF por req.ID_PLANILHA_PRINCIPAL ***
+    const item = await SubProdutosCRUD.getDetalhesSubProdutoPorId(req.sheets, req.ID_PLANILHA_PRINCIPAL, itemId);
     if (item) {
       res.json({ success: true, dados: item });
     } else {
