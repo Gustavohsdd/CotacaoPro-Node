@@ -11,7 +11,8 @@ const constants = require('./config/constants');
 
 // --- Importa os roteadores da API ---
 const fornecedoresRouterApi = require('./Routes/fornecedores');
-// (Você importará os outros, como produtosRouterApi, subprodutosRouterApi, aqui)
+const produtosRouterApi = require('./Routes/produtos');
+const subprodutosRouterApi = require('./Routes/subprodutos');
 
 
 // --- Configuração do Aplicativo ---
@@ -21,16 +22,16 @@ const PORT = process.env.PORT || 8080;
 // --- Autenticação com Google ---
 // Esta função nos dará um cliente autenticado para usar as APIs
 async function getAuthClient() {
-  // *** CORREÇÃO: Lendo o arquivo .json diretamente ***
-  // Este método é mais robusto e corrige o erro 'Invalid JWT Signature'
-  // causado pelos '\n' na chave privada dentro do arquivo .env.
+  // *** ESTA É A CORREÇÃO ***
+  // Lendo o arquivo .json diretamente do disco.
+  // Este método é robusto e corrige o erro 'Invalid JWT Signature'.
 
   // Define o caminho para o arquivo JSON da conta de serviço
   const keyFilePath = path.join(__dirname, 'cotacaopro-node-service-account.json');
 
   // A GoogleAuth pode carregar diretamente do caminho do arquivo
   const auth = new google.auth.GoogleAuth({
-    keyFile: keyFilePath, // Usamos 'keyFile' em vez de 'credentials'
+    keyFile: keyFilePath, // Usamos 'keyFile'
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive',
@@ -159,9 +160,10 @@ app.get('/view/:viewName', async (req, res) => {
 // --- ROTAS DA API (Substituem os *Controller.js) ---
 // Aqui é onde registramos os endpoints que o seu frontend chamará
 
-// Registra o roteador importado do arquivo /Routes
+// Registra os roteadores importados dos arquivos /Routes
 app.use('/api/fornecedores', fornecedoresRouterApi);
-// (Você adicionará os outros aqui, ex: app.use('/api/produtos', produtosRouterApi);)
+app.use('/api/produtos', produtosRouterApi);
+app.use('/api/subprodutos', subprodutosRouterApi);
 
 
 // --- Iniciar o Servidor ---

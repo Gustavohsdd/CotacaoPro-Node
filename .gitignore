@@ -4,3 +4,4 @@ node_modules
 # Ignora arquivos de ambiente locais do DotEnvX
 .env.local
 .env.*.local
+cotacaopro-node-service-account.json
