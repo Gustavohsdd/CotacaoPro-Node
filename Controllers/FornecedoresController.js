@@ -11,7 +11,7 @@ const {
   CABECALHOS_SUBPRODUTOS,
   ABA_PRODUTOS,
   CABECALHOS_PRODUTOS
-} = require('../Config/constants');
+} = require('../config/constants');
 
 // --- Funções Auxiliares de Lógica (Migradas) ---
 
@@ -49,25 +49,29 @@ function gerarProximoId(data, idColumnIndex) {
 /**
  * (Migrado de FornecedoresController_obterDadosCompletosFornecedores)
  * Obtém os dados dos fornecedores de forma paginada e com filtro de busca.
+ * *** CORREÇÃO: O nome da função foi corrigido para bater com o router. ***
  */
-async function obterListaProdutosPaginada(req, res) {
+async function obterListaFornecedoresPaginada(req, res) {
   try {
     const { pagina = 1, itensPorPagina = 10, termoBusca = null } = req.body;
     const termoBuscaNorm = termoBusca ? normalizarTextoComparacao(termoBusca) : null;
 
     // 1. Busca TODOS os dados (o CRUD não sabe sobre paginação)
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.constants.ID_PLANILHA_NF); // Assumindo NF, mude se for outra
+    // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL do .env ***
+    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     
     if (todosDados.length <= 1) { // Apenas cabeçalho
       return res.json({ 
         success: true,
-        cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(0, 5), // Exemplo
+        // *** CORREÇÃO: Usa a constante importada ***
+        cabecalhosParaExibicao: constants.CABECALHOS_FORNECEDORES.slice(2, 7), // Ex: Fornecedor, CNPJ, Categoria, Vendedor, Telefone
         fornecedoresPaginados: [], totalItens: 0, paginaAtual: 1, totalPaginas: 1
       });
     }
 
     // 2. Converte para objetos
-    let todosFornecedoresObj = FornecedoresCRUD.sheetDataToObjects(todosDados, CABECALHOS_FORNECEDORES);
+    // *** CORREÇÃO: Usa a constante importada ***
+    let todosFornecedoresObj = FornecedoresCRUD.sheetDataToObjects(todosDados, constants.CABECALHOS_FORNECEDORES);
 
     // 3. Aplica filtro de busca (se existir)
     let fornecedoresFiltrados = todosFornecedoresObj;
@@ -90,7 +94,8 @@ async function obterListaProdutosPaginada(req, res) {
     // 5. Retorna os dados paginados
     res.json({
       success: true,
-      cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7), // Ajuste conforme suas colunas de exibição
+      // *** CORREÇÃO: Usa a constante importada ***
+      cabecalhosParaExibicao: constants.CABECALHOS_FORNECEDORES.slice(2, 7), // Ajuste conforme suas colunas de exibição
       fornecedoresPaginados: fornecedoresPaginados,
       totalItens: totalItens,
       paginaAtual: paginaAjustada,
@@ -98,7 +103,7 @@ async function obterListaProdutosPaginada(req, res) {
     });
 
   } catch (e) {
-    console.error("ERRO em obterListaProdutosPaginada:", e);
+    console.error("ERRO em obterListaFornecedoresPaginada:", e);
     res.status(500).json({ success: false, message: e.message });
   }
 }
@@ -110,18 +115,20 @@ async function obterListaProdutosPaginada(req, res) {
 async function criarNovoFornecedor(req, res) {
   try {
     const dadosNovoFornecedor = req.body;
-    const nomeNovoFornecedor = dadosNovoFornecedor["Fornecedor"];
-    const cnpjNovoFornecedor = dadosNovoFornecedor["CNPJ"];
+    // *** CORREÇÃO: Usa a constante importada ***
+    const nomeNovoFornecedor = dadosNovoFornecedor[constants.CABECALHOS_FORNECEDORES[2]]; // "Fornecedor"
+    const cnpjNovoFornecedor = dadosNovoFornecedor[constants.CABECALHOS_FORNECEDORES[3]]; // "CNPJ"
 
     if (!nomeNovoFornecedor) {
       return res.status(400).json({ success: false, message: "Nome do Fornecedor é obrigatório." });
     }
 
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.constants.ID_PLANILHA_NF);
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const cabecalhosDaPlanilha = todosDados[0].map(String);
-    const idColunaIndex = cabecalhosDaPlanilha.indexOf("ID");
-    const nomeFornecedorColunaIndex = cabecalhosDaPlanilha.indexOf("Fornecedor");
-    const cnpjColunaIndex = cabecalhosDaPlanilha.indexOf("CNPJ");
+    const idColunaIndex = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[1]); // "ID"
+    const nomeFornecedorColunaIndex = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
+    const cnpjColunaIndex = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[3]); // "CNPJ"
 
     if (idColunaIndex === -1 || nomeFornecedorColunaIndex === -1 || cnpjColunaIndex === -1) {
       throw new Error("Colunas essenciais (ID, Fornecedor, CNPJ) não encontradas na planilha.");
@@ -138,7 +145,7 @@ async function criarNovoFornecedor(req, res) {
       if (normalizarTextoComparacao(nomeLinhaAtual) === nomeNovoNorm) {
         throw new Error(`O nome de fornecedor '${nomeNovoFornecedor}' já está cadastrado.`);
       }
-      if (cnpjNovoFornecedor && normalizarCnpjComparacao(cnpjLinhaAtual) === cnpjNovoNorm) {
+      if (cnpjNovoFornecedor && normalizarCnpjComparacao(cnpjLinhaAtual) === cnpjNovoNorm && cnpjNovoNorm !== "") {
         throw new Error(`O CNPJ '${cnpjNovoFornecedor}' já está cadastrado.`);
       }
     }
@@ -149,7 +156,8 @@ async function criarNovoFornecedor(req, res) {
     // Converte o objeto para um array na ordem correta da planilha
     const novaLinhaArray = FornecedoresCRUD.objectToSheetRow(dadosNovoFornecedor, cabecalhosDaPlanilha);
 
-    await FornecedoresCRUD.appendFornecedor(req.sheets, req.constants.ID_PLANILHA_NF, novaLinhaArray);
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    await FornecedoresCRUD.appendFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, novaLinhaArray);
 
     res.json({ success: true, message: "Fornecedor criado com sucesso!", novoId: novoIdGerado });
 
@@ -171,10 +179,11 @@ async function atualizarFornecedor(req, res) {
       return res.status(400).json({ success: false, message: "ID do fornecedor é obrigatório." });
     }
 
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.constants.ID_PLANILHA_NF);
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const cabecalhosDaPlanilha = todosDados[0].map(String);
-    const idxId = cabecalhosDaPlanilha.indexOf("ID");
-    const idxNome = cabecalhosDaPlanilha.indexOf("Fornecedor");
+    const idxId = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[1]); // "ID"
+    const idxNome = cabecalhosDaPlanilha.indexOf(constants.CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
 
     let linhaIndex = -1; // 0-based
     for (let i = 1; i < todosDados.length; i++) {
@@ -205,7 +214,8 @@ async function atualizarFornecedor(req, res) {
     // Montar linha atualizada
     const linhaOriginal = todosDados[linhaIndex];
     const linhaAtualizadaArray = cabecalhosDaPlanilha.map((cab, k) => {
-      if (k === idxId || k === cabecalhosDaPlanilha.indexOf("Data de Cadastro")) {
+      // *** CORREÇÃO: Usa a constante importada ***
+      if (cab === constants.CABECALHOS_FORNECEDORES[1] || cab === constants.CABECALHOS_FORNECEDORES[0]) { // ID ou Data de Cadastro
         return linhaOriginal[k]; // Mantém ID e Data de Cadastro
       }
       // Se o dado veio no body, usa, senão mantém o original
@@ -213,11 +223,13 @@ async function atualizarFornecedor(req, res) {
     });
 
     // 1. Atualiza a linha do fornecedor
-    await FornecedoresCRUD.updateFornecedorRow(req.sheets, req.constants.ID_PLANILHA_NF, linhaIndex, linhaAtualizadaArray, cabecalhosDaPlanilha.length);
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    await FornecedoresCRUD.updateFornecedorRow(req.sheets, req.ID_PLANILHA_PRINCIPAL, linhaIndex, linhaAtualizadaArray, cabecalhosDaPlanilha.length);
 
     // 2. Propaga a mudança de nome para SubProdutos (se o nome mudou)
     if (nomeAntigo !== nomeAtualizado) {
-      await FornecedoresCRUD.propagarNomeFornecedor(req.sheets, req.constants.ID_PLANILHA_NF, nomeAntigo, nomeAtualizado);
+      // *** CORREÇÃO: Usa a ID da planilha principal ***
+      await FornecedoresCRUD.propagarNomeFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeAntigo, nomeAtualizado);
     }
 
     res.json({ success: true, message: "Fornecedor atualizado com sucesso!" });
@@ -238,7 +250,8 @@ async function obterSubProdutos(req, res) {
     if (!nomeFornecedor) {
       return res.status(400).json({ success: false, message: "Nome do fornecedor não fornecido." });
     }
-    const dados = await FornecedoresCRUD.getSubProdutosPorFornecedor(req.sheets, req.constants.ID_PLANILHA_NF, nomeFornecedor);
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    const dados = await FornecedoresCRUD.getSubProdutosPorFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeFornecedor);
     res.json({ success: true, dados: dados });
   } catch (e) {
     console.error("ERRO em obterSubProdutos:", e);
@@ -253,7 +266,8 @@ async function obterSubProdutos(req, res) {
 async function obterOutrosFornecedores(req, res) {
   try {
     const { idFornecedorExcluido } = req.body;
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.constants.ID_PLANILHA_NF);
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const dados = FornecedoresCRUD.getOutrosFornecedores(todosDados, idFornecedorExcluido);
     res.json({ success: true, dados: dados });
   } catch (e) {
@@ -275,8 +289,9 @@ async function excluirFornecedor(req, res) {
     }
 
     // 1. Encontrar a linha (0-based) do fornecedor para excluir
-    const todosDadosForn = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.constants.ID_PLANILHA_NF);
-    const idxId = todosDadosForn[0].indexOf("ID");
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
+    const todosDadosForn = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    const idxId = todosDadosForn[0].indexOf(constants.CABECALHOS_FORNECEDORES[1]); // "ID"
     let linhaIndexFornecedor = -1;
     for (let i = 1; i < todosDadosForn.length; i++) {
       if (String(todosDadosForn[i][idxId]) === String(idFornecedor)) {
@@ -294,10 +309,11 @@ async function excluirFornecedor(req, res) {
     
     if (deletarSubprodutosVinculados || (realocacoesSubprodutos && realocacoesSubprodutos.length > 0)) {
       // Precisamos dos dados dos subprodutos
-      const dadosSub = await SubProdutosCRUD.getSubProdutosPlanilha(req.sheets, req.constants.ID_PLANILHA_NF); // Esta função precisa ser criada em SubProdutosCRUD
+      // *** CORREÇÃO: Usa a ID da planilha principal ***
+      const dadosSub = await SubProdutosCRUD.getSubProdutosPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL); // Esta função precisa ser criada em SubProdutosCRUD
       const cabecalhosSub = dadosSub[0].map(String);
-      const idxSubId = cabecalhosSub.indexOf("ID");
-      const idxSubForn = cabecalhosSub.indexOf("Fornecedor");
+      const idxSubId = cabecalhosSub.indexOf(constants.CABECALHOS_SUBPRODUTOS[1]); // "ID"
+      const idxSubForn = cabecalhosSub.indexOf(constants.CABECALHOS_SUBPRODUTOS[5]); // "Fornecedor"
       const nomeFornNorm = normalizarTextoComparacao(nomeFornecedorOriginal);
       
       const mapaRealocacao = (realocacoesSubprodutos || []).reduce((map, r) => {
@@ -321,9 +337,10 @@ async function excluirFornecedor(req, res) {
     }
     
     // 3. Executar o Batch Update
+    // *** CORREÇÃO: Usa a ID da planilha principal ***
     await FornecedoresCRUD.batchExcluirFornecedorEAtualizarSubprodutos(
       req.sheets,
-      req.constants.ID_PLANILHA_NF,
+      req.ID_PLANILHA_PRINCIPAL,
       linhaIndexFornecedor,
       deletarSubprodutosVinculados,
       realocacoesComIndex,
@@ -340,7 +357,8 @@ async function excluirFornecedor(req, res) {
 
 // Exporta as funções para o Router
 module.exports = {
-  obterListaProdutosPaginada,
+  // *** CORREÇÃO: Exporta o nome correto da função ***
+  obterListaFornecedoresPaginada,
   criarNovoFornecedor,
   atualizarFornecedor,
   obterSubProdutos,

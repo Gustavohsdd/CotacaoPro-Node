@@ -7,7 +7,12 @@ const ejs = require('ejs'); // Importamos o EJS para renderizar HTML
 const { google } = require('googleapis');
 
 // Importa nossas constantes do arquivo que acabamos de criar
-const constants = require('./Config/constants');
+const constants = require('./config/constants');
+
+// --- Importa os roteadores da API ---
+const fornecedoresRouterApi = require('./Routes/fornecedores');
+// (Você importará os outros, como produtosRouterApi, subprodutosRouterApi, aqui)
+
 
 // --- Configuração do Aplicativo ---
 const app = express();
@@ -16,17 +21,16 @@ const PORT = process.env.PORT || 8080;
 // --- Autenticação com Google ---
 // Esta função nos dará um cliente autenticado para usar as APIs
 async function getAuthClient() {
-  // Pega as credenciais do arquivo .env
-  const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS;
-  if (!credentialsJson) {
-    throw new Error('A variável GOOGLE_SERVICE_ACCOUNT_CREDENTIALS não foi encontrada no .env');
-  }
+  // *** CORREÇÃO: Lendo o arquivo .json diretamente ***
+  // Este método é mais robusto e corrige o erro 'Invalid JWT Signature'
+  // causado pelos '\n' na chave privada dentro do arquivo .env.
 
-  // O JSON está como uma string dentro do .env, então precisamos fazer o parse
-  const credentials = JSON.parse(credentialsJson);
+  // Define o caminho para o arquivo JSON da conta de serviço
+  const keyFilePath = path.join(__dirname, 'cotacaopro-node-service-account.json');
 
+  // A GoogleAuth pode carregar diretamente do caminho do arquivo
   const auth = new google.auth.GoogleAuth({
-    credentials,
+    keyFile: keyFilePath, // Usamos 'keyFile' em vez de 'credentials'
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive',
@@ -68,6 +72,7 @@ app.use(async (req, res, next) => {
       // Disponibiliza os IDs das planilhas para todos os controllers
       app.locals.ID_PLANILHA_NF = process.env.ID_PLANILHA_NF;
       app.locals.ID_PLANILHA_FINANCEIRO = process.env.ID_PLANILHA_FINANCEIRO;
+      app.locals.ID_PLANILHA_PRINCIPAL = process.env.ID_PLANILHA_PRINCIPAL; 
       // Disponibiliza todas as constantes
       app.locals.constants = constants;
       console.log("[Auth] Autenticado e clientes prontos.");
@@ -79,6 +84,7 @@ app.use(async (req, res, next) => {
     req.drive = app.locals.googleDrive;
     req.ID_PLANILHA_NF = app.locals.ID_PLANILHA_NF;
     req.ID_PLANILHA_FINANCEIRO = app.locals.ID_PLANILHA_FINANCEIRO;
+    req.ID_PLANILHA_PRINCIPAL = app.locals.ID_PLANILHA_PRINCIPAL;
     req.constants = app.locals.constants;
     
     // Continua para a próxima rota
@@ -135,24 +141,13 @@ app.get('/view/:viewName', async (req, res) => {
   }
 
   try {
-    // Esta é a mágica:
-    // `ejs.renderFile` lê o arquivo .ejs (ex: views/FornecedoresView.ejs),
-    // processa qualquer tag EJS (como <%- include(...) %>),
-    // e nos devolve uma string de HTML puro.
+    // Passamos o 'filename' para que o EJS saiba onde
+    // encontrar os arquivos referenciados em <%- include(...) %>
     const filePath = path.join(__dirname, 'views', `${fileName}.ejs`);
-    const html = await ejs.renderFile(filePath, {
-        // 'App_incluirHtml' não é mais necessário.
-        // Vamos criar uma função 'includeScript' para o EJS usar
-        // que simula o `<?!= App_incluirHtml('...', true) ?>`
-        includeScript: (scriptName) => {
-            // Esta é uma função de ajuda que o EJS pode chamar
-            // No seu EJS, você usará: <%- includeScript('FornecedoresScript') %>
-            // (Ainda não criamos os arquivos de script, mas isso prepara)
-            const scriptPath = path.join(__dirname, 'views', `${scriptName}.ejs`);
-            return ejs.renderFile(scriptPath);
-        }
+    const html = await ejs.renderFile(filePath, { 
+        filename: filePath 
     });
-    // Enviamos o HTML puro como resposta, que o JS da PaginaPrincipal irá injetar na tela.
+    // Enviamos o HTML puro como resposta
     res.send(html);
   } catch (error) {
     console.error(`Erro ao renderizar a view ${fileName}.ejs:`, error.message);
@@ -162,25 +157,16 @@ app.get('/view/:viewName', async (req, res) => {
 
 
 // --- ROTAS DA API (Substituem os *Controller.js) ---
-// Aqui é onde registraremos os endpoints que o seu frontend chamará
-// (Substituindo 'google.script.run.FornecedoresController_...()')
+// Aqui é onde registramos os endpoints que o seu frontend chamará
 
-// Por enquanto, vamos criar um placeholder para a API de Fornecedores:
-const fornecedoresRouter = express.Router();
-fornecedoresRouter.post('/obterDados', (req, res) => {
-    // O código de FornecedoresController.js virá para cá
-    res.json({ 
-        success: true, 
-        message: "Endpoint /api/fornecedores/obterDados está funcionando!",
-        dados: [] 
-    });
-});
-// Registra o roteador no caminho principal
-app.use('/api/fornecedores', fornecedoresRouter);
+// Registra o roteador importado do arquivo /Routes
+app.use('/api/fornecedores', fornecedoresRouterApi);
+// (Você adicionará os outros aqui, ex: app.use('/api/produtos', produtosRouterApi);)
 
 
 // --- Iniciar o Servidor ---
 app.listen(PORT, () => {
   console.log(`[CotacaoPro-Node] Servidor rodando com sucesso na porta http://localhost:${PORT}`);
+  console.log(`[CotacaoPro-Node] Usando Planilha Principal: ${process.env.ID_PLANILHA_PRINCIPAL}`);
   console.log(`[CotacaoPro-Node] Usando Planilha NF: ${process.env.ID_PLANILHA_NF}`);
 });

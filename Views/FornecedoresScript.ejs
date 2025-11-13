@@ -929,12 +929,18 @@ function initFornecedoresScript() {
   }
 
   function FornecedoresScript_popularTabelaInicial(resultadoServidor) {
-    if (resultadoServidor && resultadoServidor.error) {
+    // --- [CORREÇÃO APLICADA AQUI] ---
+    // O 'apiCall' retorna { success: false, message: '...' } em caso de erro.
+    // O código antigo verificava 'resultadoServidor.error' (padrão GAS).
+    if (resultadoServidor && resultadoServidor.success === false) {
+      // Usamos a função de falha para exibir o erro na tabela
       FornecedoresScript_falhaCarregarFornecedores({ message: resultadoServidor.message });
       const controlesDiv = document.getElementById(FornecedoresScript_ID_CONTROLES_PAGINACAO);
       if (controlesDiv) controlesDiv.innerHTML = '';
       return;
     }
+    // --- [FIM DA CORREÇÃO] ---
+
     FornecedoresScript_cabecalhosParaExibicao = (resultadoServidor && resultadoServidor.cabecalhosParaExibicao) ? resultadoServidor.cabecalhosParaExibicao : [];
     const fornecedoresDaPagina = (resultadoServidor && resultadoServidor.fornecedoresPaginados) ? resultadoServidor.fornecedoresPaginados : [];
     FornecedoresScript_renderizarTabela(fornecedoresDaPagina, FornecedoresScript_cabecalhosParaExibicao);
@@ -1167,12 +1173,8 @@ function initFornecedoresScript() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options)
     }).then(resultadoServidor => {
-        // O .dados aqui é porque nossa FornecedoresScript_apiCall retorna { success: true, ...dadosDoServidor }
-        // e a função do servidor (que ainda vamos criar) retornará { success: true, cabecalhosParaExibicao: ..., ... }
-        // então o objeto final será { success: true, cabecalhosParaExibicao: ..., ... }
         FornecedoresScript_popularTabelaInicial(resultadoServidor);
     }).catch(error => {
-        // O .catch é para erros de rede. Erros lógicos (ex: 500) são tratados em popularTabelaInicial
         FornecedoresScript_falhaCarregarFornecedores(error);
     });
   }
