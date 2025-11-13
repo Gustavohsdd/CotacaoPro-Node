@@ -11,9 +11,8 @@ const constants = require('./config/constants');
 
 // --- Importa os roteadores da API ---
 const fornecedoresRouterApi = require('./Routes/fornecedores');
-// [NOVO] Importa os roteadores de produtos e subprodutos
-const produtosRouterApi = require('./Routes/produtos');
-const subprodutosRouterApi = require('./Routes/subprodutos');
+const produtosRouterApi = require('./Routes/produtos'); // <<< LINHA ADICIONADA
+// (Você importará os outros, como subprodutosRouterApi, aqui)
 
 
 // --- Configuração do Aplicativo ---
@@ -163,9 +162,8 @@ app.get('/view/:viewName', async (req, res) => {
 
 // Registra o roteador importado do arquivo /Routes
 app.use('/api/fornecedores', fornecedoresRouterApi);
-// [NOVO] Registra as rotas de produtos e subprodutos
-app.use('/api/produtos', produtosRouterApi);
-app.use('/api/subprodutos', subprodutosRouterApi);
+app.use('/api/produtos', produtosRouterApi); // <<< LINHA ADICIONADA
+// (Você adicionará os outros aqui, ex: app.use('/api/subprodutos', subprodutosRouterApi);)
 
 
 // --- Iniciar o Servidor ---
