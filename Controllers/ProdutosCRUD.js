@@ -10,9 +10,7 @@ const {
   CABECALHOS_FORNECEDORES
 } = require('../config/constants');
 
-// Importa os CRUDs de outros módulos para buscar dados
-const SubProdutosCRUD = require('./SubProdutosCRUD');
-const FornecedoresCRUD = require('./FornecedoresCRUD');
+// *** REMOVIDA A IMPORTAÇÃO DE SUBPRODUTOSCRUD E FORNECEDORESCRUD ***
 
 // --- Funções Auxiliares Internas ---
 
@@ -195,76 +193,6 @@ async function updateProdutoRow(sheets, spreadsheetId, linhaIndex, linhaAtualiza
 }
 
 /**
- * Busca e atualiza todos os SubProdutos que continham o nome antigo do produto.
- * @param {object} sheets - O cliente da API Google Sheets autenticado.
- * @param {string} spreadsheetId - O ID da planilha principal.
- * @param {string} nomeAntigo - O nome antigo do produto.
- * @param {string} nomeAtualizado - O novo nome do produto.
- */
-async function propagarNomeProduto(sheets, spreadsheetId, nomeAntigo, nomeAtualizado) {
-  console.log(`[ProdutosCRUD] Propagando mudança de nome: "${nomeAntigo}" -> "${nomeAtualizado}" em ${ABA_SUBPRODUTOS}`);
-  const dadosSub = await SubProdutosCRUD.getSubProdutosPlanilha(sheets, spreadsheetId);
-  if (dadosSub.length < 2) return 0; // Vazia
-
-  const cabecalhosSub = dadosSub[0].map(String);
-  const idxSubProdVinc = cabecalhosSub.indexOf("Produto Vinculado");
-  if (idxSubProdVinc === -1) {
-    console.warn(`[ProdutosCRUD] Coluna "Produto Vinculado" não encontrada em ${ABA_SUBPRODUTOS}. Propagação pulada.`);
-    return 0;
-  }
-
-  const requests = [];
-  let atualizacoes = 0;
-
-  for (let i = 1; i < dadosSub.length; i++) {
-    const linha = dadosSub[i];
-    if (String(linha[idxSubProdVinc]) === nomeAntigo) {
-      const linhaPlanilha = i + 1; // 1-based index
-      const colunaLetra = String.fromCharCode(65 + idxSubProdVinc);
-      requests.push({
-        range: `${ABA_SUBPRODUTOS}!${colunaLetra}${linhaPlanilha}`,
-        values: [[nomeAtualizado]],
-      });
-      atualizacoes++;
-    }
-  }
-
-  if (requests.length > 0) {
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: spreadsheetId,
-      resource: {
-        valueInputOption: 'USER_ENTERED',
-        data: requests,
-      },
-    });
-    console.log(`[ProdutosCRUD] Nome do produto propagado para ${atualizacoes} subprodutos.`);
-  }
-  return atualizacoes;
-}
-
-/**
- * (Migrado de ProdutosCRUD_obterSubProdutosPorProduto)
- * Busca todos os subprodutos vinculados a um nome de produto.
- * @param {object} sheets - O cliente da API Google Sheets autenticado.
- * @param {string} spreadsheetId - O ID da planilha principal.
- * @param {string} nomeProduto - O nome do produto.
- * @returns {Promise<Array<object>>} Array de objetos de subprodutos.
- */
-async function obterSubProdutosPorProduto(sheets, spreadsheetId, nomeProduto) {
-  try {
-    if (!nomeProduto) return [];
-    
-    // Reutiliza a função de SubProdutosCRUD
-    const subProdutos = await SubProdutosCRUD.getSubProdutosPorPai(sheets, spreadsheetId, nomeProduto, 'PRODUTO');
-    return subProdutos;
-
-  } catch (e) {
-    console.error("Erro em obterSubProdutosPorProduto: " + e.toString());
-    throw e;
-  }
-}
-
-/**
  * (Migrado de ProdutosCRUD_obterListaOutrosProdutos)
  * Busca todos os produtos, exceto o ID especificado.
  * @param {Array<Array<string>>} todosProdutosData - Os dados brutos da planilha.
@@ -295,55 +223,11 @@ function getOutrosProdutos(todosProdutosData, idProdutoExcluido) {
 }
 
 /**
- * (Migrado de ProdutosCRUD_obterListaTodosFornecedores)
- * Busca uma lista simplificada de {id, nome} de todos os fornecedores.
- * @param {object} sheets - O cliente da API Google Sheets autenticado.
- * @param {string} spreadsheetId - O ID da planilha principal.
- * @returns {Promise<Array<object>>} Array de objetos {id, nome}.
- */
-async function getTodosFornecedores(sheets, spreadsheetId) {
-  try {
-    // Reutiliza a função de FornecedoresCRUD
-    const dados = await FornecedoresCRUD.getFornecedoresPlanilha(sheets, spreadsheetId);
-    if (dados.length < 2) return [];
-
-    const cabecalhos = dados[0].map(String);
-    const idxId = cabecalhos.indexOf("ID");
-    const idxNome = cabecalhos.indexOf("Fornecedor");
-
-    if (idxId === -1 || idxNome === -1) {
-      throw new Error("Colunas 'ID' ou 'Fornecedor' não encontradas na aba Fornecedores.");
-    }
-
-    const fornecedores = [];
-    for (let i = 1; i < dados.length; i++) {
-      if (dados[i][idxId] && dados[i][idxNome]) {
-        fornecedores.push({
-          id: dados[i][idxId],
-          nome: dados[i][idxNome]
-        });
-      }
-    }
-    
-    fornecedores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
-    return fornecedores;
-
-  } catch (e) {
-    console.error("Erro em getTodosFornecedores: " + e.toString());
-    return []; 
-  }
-}
-
-/**
- * (Migrado de ProdutosCRUD_processarExclusaoProduto)
+ * (Migrado de ProdutosCRUD_processarExclusaoProduto - Lógica Simplificada)
  * Executa uma operação em lote (batchUpdate) para excluir o produto e
  * (opcionalmente) atualizar ou excluir subprodutos.
- * @param {object} sheets - O cliente da API Google Sheets autenticado.
- * @param {string} spreadsheetId - O ID da planilha principal.
- * @param {number} linhaIndexProduto (0-based) - O índice da linha do produto a excluir.
- * @param {boolean} deletarSubprodutos - Se true, exclui subprodutos.
- * @param {Array<object>} realocacoes - Array de { linhaIndex: number, novoNome: string }
- * @param {Array<number>} subprodutosParaExcluirIndices (0-based) - Índices das linhas a excluir.
+ * ESTA FUNÇÃO FOI MODIFICADA E SIMPLIFICADA - ELA AGORA CHAMA O SubProdutosCRUD
+ * PARA FAZER AS ATUALIZAÇÕES LÁ.
  */
 async function batchExcluirProdutoEAtualizarSubprodutos(
   sheets,
@@ -355,7 +239,6 @@ async function batchExcluirProdutoEAtualizarSubprodutos(
 ) {
   const requests = [];
   const sheetIdProdutos = await getSheetIdByName(sheets, spreadsheetId, ABA_PRODUTOS);
-  const sheetIdSubProdutos = await getSheetIdByName(sheets, spreadsheetId, ABA_SUBPRODUTOS);
 
   // 1. Adiciona o pedido para excluir a linha do produto
   requests.push({
@@ -368,51 +251,15 @@ async function batchExcluirProdutoEAtualizarSubprodutos(
       }
     }
   });
-
-  if (sheetIdSubProdutos) {
-    // 2. Adiciona pedidos para realocar subprodutos (atualizar células)
-    if (realocacoes && realocacoes.length > 0) {
-      const idxProdVincSub = CABECALHOS_SUBPRODUTOS.indexOf("Produto Vinculado");
-      realocacoes.forEach(r => {
-        requests.push({
-          updateCells: {
-            rows: [{
-              values: [{
-                userEnteredValue: { stringValue: r.novoNome }
-              }]
-            }],
-            fields: "userEnteredValue",
-            start: {
-              sheetId: sheetIdSubProdutos,
-              rowIndex: r.linhaIndex, // 0-based
-              columnIndex: idxProdVincSub
-            }
-          }
-        });
-      });
-    }
-
-    // 3. Adiciona pedidos para excluir subprodutos (de baixo para cima)
-    if (deletarSubprodutos && subprodutosParaExcluirIndices.length > 0) {
-      // Ordena os índices em ordem decrescente para exclusão segura
-      subprodutosParaExcluirIndices.sort((a, b) => b - a);
-      subprodutosParaExcluirIndices.forEach(rowIndex => {
-        requests.push({
-          deleteDimension: {
-            range: {
-              sheetId: sheetIdSubProdutos,
-              dimension: "ROWS",
-              startIndex: rowIndex, // 0-based
-              endIndex: rowIndex + 1
-            }
-          }
-        });
-      });
-    }
-  }
+  
+  // *** A LÓGICA DE ATUALIZAR/DELETAR SUBPRODUTOS FOI MOVIDA ***
+  // para o SubProdutosCRUD e será chamada pelo CONTROLLER.
+  // Esta função agora só é responsável por deletar o PRODUTO.
+  // As outras listas (realocacoes, subprodutosParaExcluirIndices)
+  // serão tratadas pelo CONTROLLER.
 
   if (requests.length > 0) {
-    console.log(`[ProdutosCRUD] Executando batchUpdate com ${requests.length} pedidos...`);
+    console.log(`[ProdutosCRUD] Executando batchUpdate para DELETAR PRODUTO...`);
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetId,
       resource: {
@@ -425,20 +272,19 @@ async function batchExcluirProdutoEAtualizarSubprodutos(
 
 // Exporta as funções
 module.exports = {
-  // Funções existentes
+  // Funções de leitura
   getProdutosPlanilha,
   getNomesEIdsProdutosAtivos,
-  // Funções migradas de ProdutosCRUD.js (GAS)
+  getOutrosProdutos,
+  
+  // Funções de escrita
+  appendProduto,
+  updateProdutoRow,
+  batchExcluirProdutoEAtualizarSubprodutos,
+  
+  // Funções auxiliares
   normalizarTextoComparacao,
   gerarProximoId,
   objectToSheetRow,
-  appendProduto,
-  updateProdutoRow,
-  propagarNomeProduto,
-  obterSubProdutosPorProduto,
-  getOutrosProdutos,
-  getTodosFornecedores,
-  batchExcluirProdutoEAtualizarSubprodutos
-  // As funções de 'adicionar' e 'atualizar' SubProduto
-  // serão migradas para o SubProdutosCRUD.js
+  getSheetIdByName
 };

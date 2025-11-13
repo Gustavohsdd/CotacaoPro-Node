@@ -82,7 +82,7 @@ function initProdutosScript() {
 
   // Cache para dropdowns
   let ProdutosScript_listaFornecedoresCache = [];
-  // Adiciona instância para o TomSelect do modal de subprodutos
+  let ProdutosScript_listaProdutosCache = [];
   let ProdutosScript_tomSelectInstanceFornecedor = null;
 
 
@@ -92,28 +92,24 @@ function initProdutosScript() {
   async function ProdutosScript_apiCall(endpoint, options = {}) {
     try {
       const response = await fetch(endpoint, options);
-      const data = await response.json(); // Sempre espera uma resposta JSON
+      const data = await response.json();
 
       if (!response.ok) {
-        // Se a resposta não for OK (ex: 404, 500), usa a mensagem de erro do servidor
         throw new Error(data.message || `Erro ${response.status}: ${response.statusText}`);
       }
       
-      // Se a resposta for OK, mas o *servidor* indicar uma falha (ex: success: false)
       if (data.success === false) {
          throw new Error(data.message || "Ocorreu um erro no servidor.");
       }
 
-      return data; // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
+      return data;
     } catch (error) {
       console.error(`Erro na chamada da API para ${endpoint}:`, error);
-      // Retorna um objeto de erro padronizado
-      return { success: false, message: error.message };
+      return Promise.reject(error);
     }
   }
 
   // --- Funções Utilitárias de UI ---
-  // (Nenhuma alteração, são manipulação de DOM)
   function ProdutosScript_exibirFeedbackGlobal(mensagem, isError = false, duracao = 7000) {
     const feedbackDiv = document.getElementById(ProdutosScript_ID_MENSAGEM_FEEDBACK_GLOBAL);
     if (feedbackDiv) {
@@ -153,7 +149,6 @@ function initProdutosScript() {
   }
 
   // --- Funções do Painel de Ações Global ---
-  // (Nenhuma alteração, são manipulação de DOM)
   function ProdutosScript_atualizarEstadoBotoesPainelAcoes() {
     const btnEditar = document.getElementById(ProdutosScript_ID_BTN_EDITAR_GLOBAL);
     const btnExcluir = document.getElementById(ProdutosScript_ID_BTN_EXCLUIR_GLOBAL);
@@ -163,62 +158,151 @@ function initProdutosScript() {
     if (btnExcluir) btnExcluir.disabled = !habilitar;
     if (btnSubprodutos) btnSubprodutos.disabled = !habilitar;
   }
+  
+  // --- Funções de setup de listeners ---
+  function ProdutosScript_configurarListenersModalProduto() {
+    const btnFechar = document.getElementById(ProdutosScript_ID_BTN_FECHAR_MODAL_PRODUTO); if (btnFechar && !btnFechar.dataset.listener) { btnFechar.onclick = ProdutosScript_fecharModalProduto; btnFechar.dataset.listener = 'true'; }
+    const btnCancelar = document.getElementById(ProdutosScript_ID_BTN_CANCELAR_MODAL_PRODUTO); if (btnCancelar && !btnCancelar.dataset.listener) { btnCancelar.onclick = ProdutosScript_fecharModalProduto; btnCancelar.dataset.listener = 'true'; }
+    const formProduto = document.getElementById(ProdutosScript_ID_FORM_PRODUTO); if (formProduto && !formProduto.dataset.listener) { formProduto.addEventListener('submit', ProdutosScript_submeterFormularioProduto); formProduto.dataset.listener = 'true'; }
+  }
+
+  function ProdutosScript_configurarListenersModaisExclusao() {
+    const btnFecharConfirmar = document.getElementById(ProdutosScript_ID_BTN_FECHAR_MODAL_CONFIRMAR_EXCLUSAO_PRODUTO); if(btnFecharConfirmar && !btnFecharConfirmar.dataset.listener) { btnFecharConfirmar.onclick = ProdutosScript_fecharModalConfirmarExclusaoProduto; btnFecharConfirmar.dataset.listener = 'true'; }
+    const btnCancelarConfirmar = document.getElementById(ProdutosScript_ID_BTN_CANCELAR_MODAL_CONFIRMAR_EXCLUSAO_PRODUTO); if(btnCancelarConfirmar && !btnCancelarConfirmar.dataset.listener) { btnCancelarConfirmar.onclick = ProdutosScript_fecharModalConfirmarExclusaoProduto; btnCancelarConfirmar.dataset.listener = 'true'; }
+    const btnFecharRealocar = document.getElementById(ProdutosScript_ID_BTN_FECHAR_MODAL_REALOCAR_SUBPRODUTOS_PRODUTO); if(btnFecharRealocar && !btnFecharRealocar.dataset.listener) { btnFecharRealocar.onclick = ProdutosScript_fecharModalRealocarSubProdutosProduto; btnFecharRealocar.dataset.listener = 'true'; }
+    const btnCancelarRealocar = document.getElementById(ProdutosScript_ID_BTN_CANCELAR_MODAL_REALOCAR_SUBPRODUTOS_PRODUTO); if(btnCancelarRealocar && !btnCancelarRealocar.dataset.listener) { btnCancelarRealocar.onclick = ProdutosScript_fecharModalRealocarSubProdutosProduto; btnCancelarRealocar.dataset.listener = 'true'; }
+    const btnConfirmarRealocacao = document.getElementById(ProdutosScript_ID_BTN_CONFIRMAR_REALOCACAO_PRODUTO); if(btnConfirmarRealocacao && !btnConfirmarRealocacao.dataset.listener) { btnConfirmarRealocacao.onclick = ProdutosScript_confirmarRealocacaoEExcluirProduto; btnConfirmarRealocacao.dataset.listener = 'true'; }
+  }
+
+  function ProdutosScript_configurarListenersModalGerenciarSubprodutos() {
+    const btnFechar = document.getElementById(ProdutosScript_ID_BTN_FECHAR_MODAL_GERENCIAR_SUBPRODUTOS); if (btnFechar && !btnFechar.dataset.listener) { btnFechar.onclick = ProdutosScript_fecharModalGerenciarSubprodutos; btnFechar.dataset.listener = 'true'; }
+    const btnConcluir = document.getElementById(ProdutosScript_ID_BTN_CONCLUIR_MODAL_GERENCIAR_SUBPRODUTOS); if (btnConcluir && !btnConcluir.dataset.listener) { btnConcluir.onclick = ProdutosScript_fecharModalGerenciarSubprodutos; btnConcluir.dataset.listener = 'true'; }
+    const btnToggle = document.getElementById(ProdutosScript_ID_BTN_TOGGLE_ADICIONAR_SUBPRODUTO); if (btnToggle && !btnToggle.dataset.listener) { btnToggle.onclick = ProdutosScript_toggleAdicionarSubprodutoForm; btnToggle.dataset.listener = 'true'; }
+    const formAdicionar = document.getElementById(ProdutosScript_ID_FORM_ADICIONAR_SUBPRODUTO); if (formAdicionar && !formAdicionar.dataset.listener) { formAdicionar.addEventListener('submit', ProdutosScript_salvarNovoSubprodutoVinculadoHandler); formAdicionar.dataset.listener = 'true'; }
+    const btnCancelarFormSub = document.getElementById(ProdutosScript_ID_BTN_CANCELAR_FORM_SUBPRODUTO); if(btnCancelarFormSub && !btnCancelarFormSub.dataset.listener) { btnCancelarFormSub.onclick = ProdutosScript_cancelarFormSubproduto; btnCancelarFormSub.dataset.listener = 'true'; }
+  }
+
 
   // --- Funções para popular Dropdowns ---
-  // (Modificadas para usar API)
-  async function ProdutosScript_carregarFornecedoresParaDropdown(selectElementId, valorSelecionado = null) {
+  async function ProdutosScript_carregarDadosDropdowns(selectElementId, apiEndpoint, cacheKey, placeholder, valorKey, textoKey, valorSelecionado = null) {
     const selectEl = document.getElementById(selectElementId);
+    let tomSelectInstance = null;
+    let cache = [];
     
-    // Migração para TomSelect
-    if (ProdutosScript_tomSelectInstanceFornecedor) {
-      ProdutosScript_tomSelectInstanceFornecedor.destroy();
-      ProdutosScript_tomSelectInstanceFornecedor = null;
+    if (cacheKey === 'ProdutosScript_listaFornecedoresCache') {
+        cache = ProdutosScript_listaFornecedoresCache;
+    } else {
+        cache = ProdutosScript_listaProdutosCache;
     }
-    
+
     if (selectEl) {
-        ProdutosScript_tomSelectInstanceFornecedor = new TomSelect(selectEl, {
+        tomSelectInstance = new TomSelect(selectEl, {
             create: false,
             sortField: { field: "text", direction: "asc" },
-            placeholder: 'Selecione um Fornecedor (opcional)'
+            placeholder: placeholder
         });
-        
-        const tomSelect = ProdutosScript_tomSelectInstanceFornecedor;
-        tomSelect.clear();
-        tomSelect.clearOptions();
-        tomSelect.disable();
+        tomSelectInstance.clear();
+        tomSelectInstance.clearOptions();
+        tomSelectInstance.disable();
     }
-    
-    if (ProdutosScript_listaFornecedoresCache.length > 0) {
-        if (ProdutosScript_tomSelectInstanceFornecedor) {
-            ProdutosScript_popularDropdownTomSelect(ProdutosScript_tomSelectInstanceFornecedor, ProdutosScript_listaFornecedoresCache, valorSelecionado, 'id', 'nome');
-            ProdutosScript_tomSelectInstanceFornecedor.enable();
+
+    if (cache.length > 0) {
+        if (tomSelectInstance) {
+            ProdutosScript_popularDropdownTomSelect(tomSelectInstance, cache, valorSelecionado, valorKey, textoKey);
+            tomSelectInstance.enable();
         }
-        return Promise.resolve(ProdutosScript_listaFornecedoresCache);
+        return Promise.resolve(cache);
     }
 
     return new Promise((resolve, reject) => {
-        // Esta rota é POST
-        ProdutosScript_apiCall('/api/produtos/getTodosFornecedores', { method: 'POST' })
+        ProdutosScript_apiCall(apiEndpoint, { method: 'GET' })
             .then(function(resposta) {
                 if(resposta.success) {
-                    ProdutosScript_listaFornecedoresCache = resposta.dados || [];
-                    if (ProdutosScript_tomSelectInstanceFornecedor) {
-                        ProdutosScript_popularDropdownTomSelect(ProdutosScript_tomSelectInstanceFornecedor, ProdutosScript_listaFornecedoresCache, valorSelecionado, 'id', 'nome');
-                        ProdutosScript_tomSelectInstanceFornecedor.enable();
+                    const dados = resposta.dados || [];
+                    if (cacheKey === 'ProdutosScript_listaFornecedoresCache') {
+                        ProdutosScript_listaFornecedoresCache = dados;
+                    } else {
+                        ProdutosScript_listaProdutosCache = dados;
                     }
-                    resolve(ProdutosScript_listaFornecedoresCache);
+                    
+                    if (tomSelectInstance) {
+                        ProdutosScript_popularDropdownTomSelect(tomSelectInstance, dados, valorSelecionado, valorKey, textoKey);
+                        tomSelectInstance.enable();
+                    }
+                    resolve(dados);
                 } else {
                     throw new Error(resposta.message);
                 }
             })
             .catch(function(error) {
-                console.error("Erro ao carregar fornecedores para dropdown:", error);
-                if (ProdutosScript_tomSelectInstanceFornecedor) {
-                    ProdutosScript_tomSelectInstanceFornecedor.enable();
+                console.error(`Erro ao carregar ${cacheKey}:`, error);
+                if (tomSelectInstance) {
+                    tomSelectInstance.clearOptions();
+                    tomSelectInstance.addOption({value: '', text: 'Erro ao carregar'});
+                    tomSelectInstance.enable();
                 }
                 reject(error);
             });
     });
+  }
+
+  async function ProdutosScript_carregarFornecedoresParaDropdown(selectElementId, valorSelecionado = null) {
+      if (ProdutosScript_tomSelectInstanceFornecedor) {
+        ProdutosScript_tomSelectInstanceFornecedor.destroy();
+        ProdutosScript_tomSelectInstanceFornecedor = null;
+      }
+      
+      const selectEl = document.getElementById(selectElementId);
+      if (!selectEl) return;
+      
+      ProdutosScript_tomSelectInstanceFornecedor = new TomSelect(selectEl, {
+          create: false,
+          sortField: { field: "text", direction: "asc" },
+          placeholder: 'Selecione um Fornecedor (Opcional)'
+      });
+      const tomSelect = ProdutosScript_tomSelectInstanceFornecedor;
+      
+      tomSelect.clear();
+      tomSelect.clearOptions();
+      tomSelect.disable();
+
+      if (ProdutosScript_listaFornecedoresCache.length > 0) {
+          ProdutosScript_popularDropdownTomSelect(tomSelect, ProdutosScript_listaFornecedoresCache, valorSelecionado, 'id', 'nome');
+          tomSelect.enable();
+          return Promise.resolve(ProdutosScript_listaFornecedoresCache);
+      }
+
+      return new Promise((resolve, reject) => {
+          ProdutosScript_apiCall('/api/produtos/getTodosFornecedores', { method: 'POST' })
+              .then(function(resposta) {
+                  if(resposta.success) {
+                      ProdutosScript_listaFornecedoresCache = resposta.dados || [];
+                      ProdutosScript_popularDropdownTomSelect(tomSelect, ProdutosScript_listaFornecedoresCache, valorSelecionado, 'id', 'nome');
+                      tomSelect.enable();
+                      resolve(ProdutosScript_listaFornecedoresCache);
+                  } else {
+                      throw new Error(resposta.message);
+                  }
+              })
+              .catch(function(error) {
+                  console.error("Erro ao carregar fornecedores:", error);
+                  tomSelect.enable();
+                  reject(error);
+              });
+      });
+  }
+
+  async function ProdutosScript_carregarProdutosParaDropdown(selectElementId, valorSelecionado = null) {
+      // Esta API é GET
+      return await ProdutosScript_carregarDadosDropdowns(
+          selectElementId,
+          '/api/produtos/listarNomesIds', 
+          'ProdutosScript_listaProdutosCache',
+          'Selecione um Produto Vinculado*',
+          'id',
+          'nome',
+          valorSelecionado
+      );
   }
   
   function ProdutosScript_popularDropdownTomSelect(tomSelectInstance, dados, valorSelecionado, valorKey = 'id', textoKey = 'nome') {
@@ -232,14 +316,13 @@ function initProdutosScript() {
           }));
           tomSelectInstance.addOptions(opcoes);
           if (valorSelecionado) {
-              tomSelectInstance.setValue(valorSelecionado, true); // true = silent
+              tomSelectInstance.setValue(valorSelecionado, true);
           }
       }
   }
 
 
   // --- Funções do Modal Principal de Produto ---
-  // (Modificadas para carregar dropdowns)
   function ProdutosScript_fecharModalProduto() {
     const modal = document.getElementById(ProdutosScript_ID_MODAL_PRODUTO);
     if (modal) modal.classList.add('hidden');
@@ -284,7 +367,7 @@ function initProdutosScript() {
     const form = document.getElementById(ProdutosScript_ID_FORM_PRODUTO);
     if (form) form.reset();
 
-    if (!produtoObj) {
+    if (!produtoObj) { 
       const tabelaProdutosEl = document.getElementById(ProdutosScript_ID_TABELA_PRODUTOS);
       if (tabelaProdutosEl && tabelaProdutosEl.dataset.produtosPaginados) {
         try {
@@ -328,7 +411,6 @@ function initProdutosScript() {
     if (inputNomeProduto) inputNomeProduto.focus();
   }
 
-  // (MIGRADA PARA API)
   function ProdutosScript_submeterFormularioProduto(event) {
     event.preventDefault();
     const btnSalvar = document.getElementById(ProdutosScript_ID_BTN_SALVAR_MODAL_PRODUTO);
@@ -356,7 +438,6 @@ function initProdutosScript() {
         if (resposta.success) {
             ProdutosScript_fecharModalProduto();
             ProdutosScript_exibirFeedbackGlobal(resposta.message || "Operação concluída!", false);
-            // Se criou, vai para a página 1, se editou, fica na página atual
             const paginaParaRecarregar = ProdutosScript_modoModalProduto === 'criar' ? 1 : ProdutosScript_paginaAtual;
             const buscaParaRecarregar = ProdutosScript_modoModalProduto === 'criar' ? "" : ProdutosScript_termoBuscaAtual;
             ProdutosScript_carregarListaProdutos(paginaParaRecarregar, buscaParaRecarregar);
@@ -370,7 +451,6 @@ function initProdutosScript() {
   }
 
   // --- Funções dos Modais de Exclusão ---
-  // (Modificadas para API)
   function ProdutosScript_fecharModalConfirmarExclusaoProduto() {
     const modal = document.getElementById(ProdutosScript_ID_MODAL_CONFIRMAR_EXCLUSAO_PRODUTO);
     if (modal) modal.classList.add('hidden');
@@ -409,6 +489,8 @@ function initProdutosScript() {
         } else {
             ProdutosScript_exibirFeedbackGlobal(response.message, true);
         }
+    }).catch(error => {
+        ProdutosScript_exibirFeedbackGlobal("Erro: " + error.message, true);
     });
   }
 
@@ -422,7 +504,10 @@ function initProdutosScript() {
     const msgSubProdutos = document.getElementById(ProdutosScript_ID_MENSAGEM_SUBPRODUTOS_VINCULADOS_PRODUTO_MODAL);
     const containerBotoesRodape = modal.querySelector(".flex.justify-end");
     const cancelarBtn = document.getElementById(ProdutosScript_ID_BTN_CANCELAR_MODAL_CONFIRMAR_EXCLUSAO_PRODUTO);
-    if (!divOpcoes || !msgSubProdutos || !containerBotoesRodape || !cancelarBtn) return;
+    if (!divOpcoes || !msgSubProdutos || !containerBotoesRodape || !cancelarBtn) {
+      console.error("Elementos cruciais do modal de confirmação de exclusão não foram encontrados.");
+      return;
+    }
     
     const btnConfirmarExistente = containerBotoesRodape.querySelector('#ProdutosScript_btnConfirmaExcluirSimplesProduto');
     if (btnConfirmarExistente) containerBotoesRodape.removeChild(btnConfirmarExistente);
@@ -481,6 +566,8 @@ function initProdutosScript() {
         } else {
              if (listaDiv) listaDiv.innerHTML = `<p class="text-center text-red-500 py-4">Falha ao carregar: ${response.message}</p>`;
         }
+    }).catch(error => {
+        if (listaDiv) listaDiv.innerHTML = `<p class="text-center text-red-500 py-4">Falha: ${error.message}</p>`;
     });
   }
 
@@ -546,11 +633,13 @@ function initProdutosScript() {
         } else {
             ProdutosScript_exibirMensagemEmModal(originatingModalMsgId, response.message, true);
         }
+    }).catch(error => {
+        if (botaoAcionado) ProdutosScript_restaurarBotao(botaoAcionado);
+        ProdutosScript_exibirMensagemEmModal(originatingModalMsgId, "Erro de comunicação: " + error.message, true);
     });
   }
 
   // --- Funções para Modal de Gerenciar Subprodutos ---
-  // (Modificadas para API e TomSelect)
   function ProdutosScript_resetarFormSubproduto() {
     const form = document.getElementById(ProdutosScript_ID_FORM_ADICIONAR_SUBPRODUTO);
     if (form) form.reset();
@@ -572,7 +661,6 @@ function initProdutosScript() {
     if (produtoPaiInput && ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome) {
         produtoPaiInput.value = ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome;
     }
-    // Limpa o TomSelect
     if (ProdutosScript_tomSelectInstanceFornecedor) {
         ProdutosScript_tomSelectInstanceFornecedor.clear();
     }
@@ -593,7 +681,6 @@ function initProdutosScript() {
     if (modal) modal.classList.add('hidden');
     ProdutosScript_resetarFormSubproduto();
     
-    // Limpa a instância do Tom Select
     if (ProdutosScript_tomSelectInstanceFornecedor) {
       ProdutosScript_tomSelectInstanceFornecedor.destroy();
       ProdutosScript_tomSelectInstanceFornecedor = null;
@@ -641,7 +728,7 @@ function initProdutosScript() {
         const li = document.createElement('li');
         li.className = 'flex justify-between items-center p-2 border rounded-md bg-white hover:bg-gray-50 text-sm';
         const spanInfo = document.createElement('span');
-        let infoText = `${sp.SubProduto || 'Subproduto sem nome'} (ID: ${sp.ID_SubProduto || sp.ID || 'N/A'})`;
+        let infoText = `${sp.SubProduto || sp.nome || 'Subproduto sem nome'} (ID: ${sp.ID_SubProduto || sp.ID || sp.id || 'N/A'})`;
         if (sp.Fornecedor) infoText += ` - Forn: ${sp.Fornecedor}`;
         spanInfo.textContent = infoText;
         li.appendChild(spanInfo);
@@ -654,14 +741,14 @@ function initProdutosScript() {
         btnEditarSub.className = "text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 transition-colors";
         btnEditarSub.title = "Editar Subproduto";
         btnEditarSub.type = 'button';
-        btnEditarSub.onclick = function() { ProdutosScript_carregarSubProdutoParaEdicao(sp.ID_SubProduto || sp.ID); };
+        btnEditarSub.onclick = function() { ProdutosScript_carregarSubProdutoParaEdicao(sp.ID_SubProduto || sp.ID || sp.id); };
         botoesDiv.appendChild(btnEditarSub);
 
         const btnExcluirSub = document.createElement('button');
         btnExcluirSub.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>';
         btnExcluirSub.className = "text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-100 transition-colors";
         btnExcluirSub.title = "Excluir Subproduto";
-        btnExcluirSub.onclick = function() { ProdutosScript_confirmarExcluirSubproduto(sp.ID_SubProduto || sp.ID, sp.SubProduto); };
+        btnExcluirSub.onclick = function() { ProdutosScript_confirmarExcluirSubproduto(sp.ID_SubProduto || sp.ID || sp.id, sp.SubProduto || sp.nome); };
         botoesDiv.appendChild(btnExcluirSub);
         
         li.appendChild(botoesDiv);
@@ -685,21 +772,23 @@ function initProdutosScript() {
             if (response.success) {
                 ProdutosScript_exibirFeedbackGlobal(response.message || 'Subproduto excluído!', false);
                 if (ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome) {
-                    // Recarrega a lista de subprodutos no modal
                     ProdutosScript_apiCall('/api/produtos/obterSubProdutos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ nomeProduto: ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome })
                     }).then(res => {
                         if(res.success) ProdutosScript_renderizarListaSubprodutosAtuais(res.dados);
-                    });
+                    }).catch(err => console.error("Erro ao recarregar subprodutos:", err));
                 }
             } else {
                 ProdutosScript_exibirFeedbackGlobal(response.message || 'Falha ao excluir subproduto.', true);
             }
+        }).catch(error => {
+            ProdutosScript_exibirFeedbackGlobal(`Erro ao excluir subproduto: ${error.message}`, true);
         });
     }
   }
+
 
   function ProdutosScript_carregarSubProdutoParaEdicao(subProdutoId) {
     const subProdutoParaEditar = ProdutosScript_subProdutosCarregadosNoModal.find(sp => String(sp.ID_SubProduto || sp.ID) === String(subProdutoId));
@@ -713,11 +802,15 @@ function initProdutosScript() {
              body: JSON.stringify({ itemId: subProdutoId })
         }).then(response => {
             if (response.success && response.dados) {
-                ProdutosScript_subProdutosCarregadosNoModal.push(response.dados);
+                if(!ProdutosScript_subProdutosCarregadosNoModal.find(sp => sp.ID === response.dados.ID)) {
+                  ProdutosScript_subProdutosCarregadosNoModal.push(response.dados);
+                }
                 ProdutosScript_preencherFormSubprodutoParaEdicao(response.dados);
             } else {
-                ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, response.message || 'Subproduto não encontrado no servidor.', true);
+                 ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, response.message || 'Subproduto não encontrado no servidor.', true);
             }
+        }).catch(error => {
+             ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, "Erro ao buscar detalhes do subproduto: " + error.message, true);
         });
     }
   }
@@ -725,9 +818,11 @@ function initProdutosScript() {
   function ProdutosScript_preencherFormSubprodutoParaEdicao(subProdutoData) {
     ProdutosScript_modoFormSubproduto = 'editar';
     ProdutosScript_idSubprodutoEmEdicao = subProdutoData.ID_SubProduto || subProdutoData.ID;
+
     const form = document.getElementById(ProdutosScript_ID_FORM_ADICIONAR_SUBPRODUTO);
     if (!form) return;
     form.reset();
+
     const tituloForm = document.getElementById(ProdutosScript_ID_TITULO_FORM_SUBPRODUTO);
     if (tituloForm) tituloForm.textContent = 'Editar Subproduto';
 
@@ -746,7 +841,7 @@ function initProdutosScript() {
         const nomeFornecedor = subProdutoData['Fornecedor'];
         const fornecedorOpcao = ProdutosScript_listaFornecedoresCache.find(f => f.nome === nomeFornecedor);
         if (fornecedorOpcao) {
-            ProdutosScript_tomSelectInstanceFornecedor.setValue(fornecedorOpcao.id, true); // true = silent
+            ProdutosScript_tomSelectInstanceFornecedor.setValue(fornecedorOpcao.id, true);
         } else {
             ProdutosScript_tomSelectInstanceFornecedor.clear();
         }
@@ -767,6 +862,7 @@ function initProdutosScript() {
     ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, '', false);
     if (form.elements["SubProduto"]) form.elements["SubProduto"].focus();
   }
+
 
   function ProdutosScript_abrirModalGerenciarSubprodutos() {
     if (!ProdutosScript_produtoSelecionadoId || !ProdutosScript_produtoSelecionadoNome) {
@@ -794,7 +890,6 @@ function initProdutosScript() {
       if (iconeToggle) iconeToggle.classList.remove('rotate-180');
     }
 
-    // Busca os subprodutos
     ProdutosScript_apiCall('/api/produtos/obterSubProdutos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -805,12 +900,17 @@ function initProdutosScript() {
         } else {
             if (listaSubprodutosAtuaisEl) listaSubprodutosAtuaisEl.innerHTML = `<p class="text-red-500 text-sm">Erro: ${response.message}</p>`;
         }
+    }).catch(error => {
+        if (listaSubprodutosAtuaisEl) listaSubprodutosAtuaisEl.innerHTML = `<p class="text-red-500 text-sm">Erro: ${error.message}</p>`;
     });
     
     const modal = document.getElementById(ProdutosScript_ID_MODAL_GERENCIAR_SUBPRODUTOS);
     if (modal) modal.classList.remove('hidden');
   }
 
+  // ##################################################################
+  // # ESTA É A FUNÇÃO-CHAVE QUE FOI CORRIGIDA
+  // ##################################################################
   function ProdutosScript_salvarNovoSubprodutoVinculadoHandler(event) {
     event.preventDefault();
     const btnSalvar = document.getElementById(ProdutosScript_ID_BTN_SALVAR_NOVO_SUBPRODUTO);
@@ -825,6 +925,34 @@ function initProdutosScript() {
       dadosSubProduto[key] = value;
     }
     
+    // Garante que 'Produto Vinculado' (nome do produto pai) está nos dados
+    if (!dadosSubProduto['Produto Vinculado'] && ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome) {
+        dadosSubProduto['Produto Vinculado'] = ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome;
+    }
+
+    // ====================== INÍCIO DA CORREÇÃO ======================
+    // O formulário envia o ID do fornecedor. Precisamos do NOME.
+    if (ProdutosScript_tomSelectInstanceFornecedor) {
+        const selectedFornecedorId = dadosSubProduto["Fornecedor"]; // Este é o ID (ex: "123")
+        if (selectedFornecedorId && selectedFornecedorId.trim() !== "") {
+            // Busca o TEXTO (nome) do fornecedor selecionado no TomSelect
+            const fornecedorOpcao = ProdutosScript_tomSelectInstanceFornecedor.getOption(selectedFornecedorId);
+            const fornecedorNome = fornecedorOpcao ? fornecedorOpcao.text : null;
+            
+            if (fornecedorNome) {
+                console.log(`Convertendo ID de Fornecedor "${selectedFornecedorId}" para Nome "${fornecedorNome}"`);
+                dadosSubProduto["Fornecedor"] = fornecedorNome; // Substitui o ID ("123") pelo Nome ("Fornecedor ABC")
+            } else {
+                console.warn(`Não foi possível encontrar o nome do fornecedor para o ID: ${selectedFornecedorId}. O ID será salvo como nome.`);
+                // Se não achar o nome (improvável), mantém o ID para o usuário ver o erro.
+            }
+        } else {
+             // Se o ID for "" (string vazia), garante que o backend receba "" e não "null" ou "undefined"
+             dadosSubProduto["Fornecedor"] = "";
+        }
+    }
+    // ======================= FIM DA CORREÇÃO ========================
+
     let endpoint = '';
     if (ProdutosScript_modoFormSubproduto === 'criar') {
       endpoint = '/api/produtos/adicionarSubProduto';
@@ -839,29 +967,30 @@ function initProdutosScript() {
     }).then(response => {
         ProdutosScript_restaurarBotao(btnSalvar);
         if (response.success) {
-            const msgSucesso = ProdutosScript_modoFormSubproduto === 'criar' ? (response.message || "Subproduto adicionado!") : (response.message || "Subproduto atualizado!");
-            ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, msgSucesso, false);
-            ProdutosScript_resetarFormSubproduto();
+          const msgSucesso = ProdutosScript_modoFormSubproduto === 'criar' ? (response.message || "Subproduto adicionado!") : (response.message || "Subproduto atualizado!");
+          ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, msgSucesso, false);
+          ProdutosScript_resetarFormSubproduto();
 
-            if (ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome) {
-                // Recarrega a lista
-                ProdutosScript_apiCall('/api/produtos/obterSubProdutos', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nomeProduto: ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome })
-                }).then(res => {
-                    if(res.success) ProdutosScript_renderizarListaSubprodutosAtuais(res.dados);
-                });
-            }
-            setTimeout(() => ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, '', false), 4000);
+          if (ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome) {
+            ProdutosScript_apiCall('/api/produtos/obterSubProdutos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nomeProduto: ProdutosScript_produtoParaGerenciarSubprodutosTemp.nome })
+            }).then(res => {
+                if(res.success) ProdutosScript_renderizarListaSubprodutosAtuais(res.dados);
+            }).catch(err => console.error("Erro ao recarregar subprodutos:", err));
+          }
+          setTimeout(() => ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, '', false), 4000);
         } else {
-            ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, response.message || "Falha na operação.", true);
+          ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, response.message || "Falha na operação.", true);
         }
+    }).catch(error => {
+        ProdutosScript_restaurarBotao(btnSalvar);
+        ProdutosScript_exibirMensagemEmModal(ProdutosScript_ID_MENSAGEM_ERRO_MODAL_ADICIONAR_SUBPRODUTO, "Erro de comunicação: " + error.message, true);
     });
   }
 
   // --- Funções de Renderização da Tabela e Paginação ---
-  // (Nenhuma alteração, são manipulação de DOM)
   function ProdutosScript_renderizarTabela(dadosObjetos, cabecalhosExibicao) {
     const tabela = document.getElementById(ProdutosScript_ID_TABELA_PRODUTOS);
     if (!tabela) { console.error("Elemento da tabela não encontrado: " + ProdutosScript_ID_TABELA_PRODUTOS); return; }
@@ -1022,65 +1151,13 @@ function initProdutosScript() {
     ProdutosScript_configurarListenersModalProduto();
     ProdutosScript_configurarListenersModaisExclusao();
     ProdutosScript_configurarListenersModalGerenciarSubprodutos();
-    
-    // Configura listeners globais (busca, botões de ação)
-    const campoBuscaEl = document.getElementById(ProdutosScript_ID_CAMPO_BUSCA);
-    if (campoBuscaEl && !campoBuscaEl.dataset.listenerAttached) {
-      campoBuscaEl.addEventListener('input', function() {
-        clearTimeout(ProdutosScript_debounceTimerBusca);
-        const termo = this.value;
-        ProdutosScript_debounceTimerBusca = setTimeout(() => {
-          ProdutosScript_termoBuscaAtual = termo;
-          ProdutosScript_carregarListaProdutos(1, termo);
-        }, 500);
-      });
-      campoBuscaEl.dataset.listenerAttached = 'true';
-    }
-    const btnNovoGlobal = document.getElementById(ProdutosScript_ID_BTN_NOVO_PRODUTO_GLOBAL);
-    if (btnNovoGlobal && !btnNovoGlobal.dataset.listenerAttached) {
-      btnNovoGlobal.onclick = ProdutosScript_abrirModalParaCriarProduto;
-      btnNovoGlobal.dataset.listenerAttached = 'true';
-    }
-    const btnEditarGlobal = document.getElementById(ProdutosScript_ID_BTN_EDITAR_GLOBAL);
-    if (btnEditarGlobal && !btnEditarGlobal.dataset.listenerAttached) {
-      btnEditarGlobal.onclick = () => {
-        if (ProdutosScript_produtoSelecionadoId && ProdutosScript_produtoSelecionadoObjeto) {
-          ProdutosScript_abrirModalParaEditarProduto(ProdutosScript_produtoSelecionadoId, ProdutosScript_produtoSelecionadoObjeto);
-        } else {
-          ProdutosScript_exibirFeedbackGlobal("Nenhum produto selecionado para editar.", true);
-        }
-      };
-      btnEditarGlobal.dataset.listenerAttached = 'true';
-    }
-    const btnExcluirGlobal = document.getElementById(ProdutosScript_ID_BTN_EXCLUIR_GLOBAL);
-    if (btnExcluirGlobal && !btnExcluirGlobal.dataset.listenerAttached) {
-      btnExcluirGlobal.onclick = () => {
-         if (ProdutosScript_produtoSelecionadoId && ProdutosScript_produtoSelecionadoNome) {
-            ProdutosScript_iniciarConfirmacaoExclusaoProduto(ProdutosScript_produtoSelecionadoId, ProdutosScript_produtoSelecionadoNome);
-         } else {
-            ProdutosScript_exibirFeedbackGlobal("Nenhum produto selecionado para excluir.", true);
-         }
-      };
-      btnExcluirGlobal.dataset.listenerAttached = 'true';
-    }
-    const btnSubprodutosGlobal = document.getElementById(ProdutosScript_ID_BTN_SUBPRODUTOS_GLOBAL);
-    if (btnSubprodutosGlobal && !btnSubprodutosGlobal.dataset.listenerAttached) {
-      btnSubprodutosGlobal.onclick = () => {
-        if (ProdutosScript_produtoSelecionadoId && ProdutosScript_produtoSelecionadoNome) {
-            ProdutosScript_abrirModalGerenciarSubprodutos(ProdutosScript_produtoSelecionadoId, ProdutosScript_produtoSelecionadoNome);
-        } else {
-            ProdutosScript_exibirFeedbackGlobal("Nenhum produto selecionado para gerenciar subprodutos.", true);
-        }
-      };
-      btnSubprodutosGlobal.dataset.listenerAttached = 'true';
-    }
   }
 
   function ProdutosScript_falhaCarregarProdutos(error) {
     console.error("Falha ao carregar produtos:", error);
     let mensagemErro = "Ocorreu um erro ao carregar os dados.";
     if (error && error.message) {
-      mensagemErro = String(error.message).includes("Exception:") ? String(error.message).split("Exception:")[1].trim() : String(error.message);
+      mensagemErro = String(error.message);
     }
     const tabela = document.getElementById(ProdutosScript_ID_TABELA_PRODUTOS);
     if (tabela) {
@@ -1135,12 +1212,66 @@ function initProdutosScript() {
     }).then(resultadoServidor => {
         ProdutosScript_popularTabelaInicial(resultadoServidor);
     }).catch(error => {
-        // O apiCall já formata o erro
         ProdutosScript_falhaCarregarProdutos(error);
     });
   }
 
-  // --- Inicialização ---
+  // --- Inicialização e Listeners Globais ---
+  const campoBuscaProdutosEl = document.getElementById(ProdutosScript_ID_CAMPO_BUSCA);
+  if (campoBuscaProdutosEl && !campoBuscaProdutosEl.dataset.listenerAttached) {
+    campoBuscaProdutosEl.addEventListener('input', function() {
+      clearTimeout(ProdutosScript_debounceTimerBusca);
+      const termo = this.value;
+      ProdutosScript_debounceTimerBusca = setTimeout(() => { 
+        ProdutosScript_termoBuscaAtual = termo;
+        ProdutosScript_carregarListaProdutos(1, termo); 
+      }, 500);
+    });
+    campoBuscaProdutosEl.dataset.listenerAttached = 'true';
+  }
+
+  const btnNovoGlobal = document.getElementById(ProdutosScript_ID_BTN_NOVO_PRODUTO_GLOBAL);
+  if (btnNovoGlobal && !btnNovoGlobal.dataset.listenerAttached) {
+    btnNovoGlobal.onclick = ProdutosScript_abrirModalParaCriarProduto;
+    btnNovoGlobal.dataset.listenerAttached = 'true';
+  }
+
+  const btnEditarGlobal = document.getElementById(ProdutosScript_ID_BTN_EDITAR_GLOBAL);
+  if (btnEditarGlobal && !btnEditarGlobal.dataset.listenerAttached) {
+    btnEditarGlobal.onclick = () => {
+      if (ProdutosScript_produtoSelecionadoId && ProdutosScript_produtoSelecionadoObjeto) {
+        ProdutosScript_abrirModalParaEditarProduto(ProdutosScript_produtoSelecionadoId, ProdutosScript_produtoSelecionadoObjeto);
+      } else {
+        ProdutosScript_exibirFeedbackGlobal("Nenhum produto selecionado para editar.", true);
+      }
+    };
+    btnEditarGlobal.dataset.listenerAttached = 'true';
+  }
+
+  const btnExcluirGlobal = document.getElementById(ProdutosScript_ID_BTN_EXCLUIR_GLOBAL);
+  if (btnExcluirGlobal && !btnExcluirGlobal.dataset.listenerAttached) {
+    btnExcluirGlobal.onclick = () => {
+      if (ProdutosScript_produtoSelecionadoId && ProdutosScript_produtoSelecionadoNome) {
+        ProdutosScript_iniciarConfirmacaoExclusaoProduto();
+      } else {
+        ProdutosScript_exibirFeedbackGlobal("Nenhum produto selecionado para excluir.", true);
+      }
+    };
+    btnExcluirGlobal.dataset.listenerAttached = 'true';
+  }
+
+  const btnSubprodutosGlobal = document.getElementById(ProdutosScript_ID_BTN_SUBPRODUTOS_GLOBAL);
+  if (btnSubprodutosGlobal && !btnSubprodutosGlobal.dataset.listenerAttached) {
+    btnSubprodutosGlobal.onclick = () => {
+      if (ProdutosScript_produtoSelecionadoId && ProdutosScript_produtoSelecionadoNome) {
+        ProdutosScript_abrirModalGerenciarSubprodutos(ProdutosScript_produtoSelecionadoId, ProdutosScript_produtoSelecionadoNome);
+      } else {
+        ProdutosScript_exibirFeedbackGlobal("Nenhum produto selecionado para gerenciar subprodutos.", true);
+      }
+    };
+    btnSubprodutosGlobal.dataset.listenerAttached = 'true';
+  }
+
   // Pré-carrega os dados dos fornecedores para os dropdowns (SubProdutos)
   ProdutosScript_apiCall('/api/produtos/getTodosFornecedores', { method: 'POST' })
     .then(response => {
@@ -1149,7 +1280,17 @@ function initProdutosScript() {
       } else {
         console.warn('Não foi possível pré-carregar a lista de fornecedores.');
       }
-    });
+    }).catch(err => console.error('Falha ao pré-carregar fornecedores:', err));
+
+  // Pré-carrega os dados dos PRODUTOS para os dropdowns (SubProdutos)
+  ProdutosScript_apiCall('/api/produtos/listarNomesIds', { method: 'GET' })
+    .then(response => {
+      if (response.success) {
+        ProdutosScript_listaProdutosCache = response.dados || [];
+      } else {
+        console.warn('Não foi possível pré-carregar a lista de produtos.');
+      }
+    }).catch(err => console.error('Falha ao pré-carregar produtos:', err));
 
   // Carregamento inicial da tabela
   ProdutosScript_carregarListaProdutos(1);

@@ -3,7 +3,8 @@
 
 // Importa as funções CRUD
 const ProdutosCRUD = require('./ProdutosCRUD');
-const SubProdutosCRUD = require('./SubProdutosCRUD'); 
+const SubProdutosCRUD = require('./SubProdutosCRUD');
+const FornecedoresCRUD = require('./FornecedoresCRUD'); // Mantém a importação
 
 // Importa as constantes
 const {
@@ -203,6 +204,8 @@ async function atualizarProduto(req, res) {
 /**
  * Obtém subprodutos de um produto.
  * (Migrado de ProdutosCRUD_obterSubProdutosPorProduto)
+ *
+ * *** ESTA É A FUNÇÃO CORRIGIDA ***
  */
 async function obterSubProdutos(req, res) {
   try {
@@ -210,7 +213,16 @@ async function obterSubProdutos(req, res) {
     if (!nomeProduto) {
       return res.status(400).json({ success: false, message: "Nome do produto não fornecido." });
     }
-    const dados = await ProdutosCRUD.obterSubProdutosPorProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeProduto);
+    
+    // CORREÇÃO: Chama SubProdutosCRUD.getSubProdutosPorPai diretamente,
+    // quebrando a dependência circular que causava o erro.
+    const dados = await SubProdutosCRUD.getSubProdutosPorPai(
+      req.sheets, 
+      req.ID_PLANILHA_PRINCIPAL, 
+      nomeProduto, 
+      'PRODUTO' // Define o tipo de busca
+    );
+    
     res.json({ success: true, dados: dados });
   } catch (e) {
     console.error("ERRO em obterSubProdutos:", e);
@@ -270,7 +282,7 @@ async function excluirProduto(req, res) {
       const cabecalhosSub = dadosSub[0].map(String);
       const idxSubId = cabecalhosSub.indexOf(CABECALHOS_SUBPRODUTOS[1]); // "ID"
       const idxSubProdVinc = cabecalhosSub.indexOf(CABECALHOS_SUBPRODUTOS[3]); // "Produto Vinculado"
-      const nomeProdNorm = normalizarTextoComparacao(nomeProdutoOriginal);
+      const nomeProdNorm = ProdutosCRUD.normalizarTextoComparacao(nomeProdutoOriginal);
       
       const mapaRealocacao = (realocacoesSubprodutos || []).reduce((map, r) => {
         map[r.subProdutoId] = r.novoProdutoVinculadoNome;
@@ -278,7 +290,7 @@ async function excluirProduto(req, res) {
       }, {});
 
       for (let i = 1; i < dadosSub.length; i++) {
-        if (normalizarTextoComparacao(dadosSub[i][idxSubProdVinc]) === nomeProdNorm) {
+        if (ProdutosCRUD.normalizarTextoComparacao(dadosSub[i][idxSubProdVinc]) === nomeProdNorm) {
           const subId = dadosSub[i][idxSubId];
           if (deletarSubprodutosVinculados) {
             subprodutosParaExcluirIndices.push(i); // 0-based index
@@ -293,6 +305,7 @@ async function excluirProduto(req, res) {
     }
     
     // 3. Executar o Batch Update
+    // (Esta função em ProdutosCRUD precisa ser corrigida para não depender de SubProdutosCRUD)
     await ProdutosCRUD.batchExcluirProdutoEAtualizarSubprodutos(
       req.sheets,
       idPlanilha,
@@ -316,7 +329,9 @@ async function excluirProduto(req, res) {
  */
 async function getTodosFornecedores(req, res) {
    try {
-    const dados = await ProdutosCRUD.getTodosFornecedores(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+     // CORREÇÃO: Chama a função que realmente existe no FornecedoresCRUD
+    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    const dados = FornecedoresCRUD.getOutrosFornecedores(todosDados, null); // null para pegar todos
     res.json({ success: true, dados: dados });
   } catch (e) {
     console.error("ERRO em getTodosFornecedores (ProdutosController):", e);
