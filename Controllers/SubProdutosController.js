@@ -15,7 +15,7 @@ const {
 
 // Define as colunas que queremos exibir na tabela principal
 const COLUNAS_EXIBICAO_NOMES = [
-  "SubProduto", 
+  "SubProduto",
   "Produto Vinculado",
   "Fornecedor",
   "Categoria",
@@ -33,12 +33,9 @@ function normalizarTextoComparacao(texto) {
 /**
  * Busca o NOME de um produto pelo seu ID.
  * (Função auxiliar necessária para conversão)
- *
- * *** ESTA É A FUNÇÃO QUE FOI CORRIGIDA ***
  */
 async function getNomeProdutoPorId(sheets, spreadsheetId, produtoId) {
     if (!produtoId || String(produtoId).trim() === "") return "";
-    // Reutiliza a função de ProdutosCRUD para pegar todos os produtos
     const todosProdutos = await ProdutosCRUD.getProdutosPlanilha(sheets, spreadsheetId);
     if (todosProdutos.length < 2) return "";
     
@@ -50,14 +47,11 @@ async function getNomeProdutoPorId(sheets, spreadsheetId, produtoId) {
         throw new Error("Colunas 'ID' ou 'Produto' não encontradas na aba Produtos.");
     }
 
-    // *** CORREÇÃO APLICADA AQUI ***
-    // Trocado "todosDados" por "todosProdutos"
-    for (let i = 1; i < todosProdutos.length; i++) { 
-        if (String(todosProdutos[i][idxId]) === String(produtoId)) { 
-            return String(todosProdutos[i][idxNome]); 
+    for (let i = 1; i < todosProdutos.length; i++) {
+        if (String(todosProdutos[i][idxId]) === String(produtoId)) {
+            return String(todosProdutos[i][idxNome]);
         }
     }
-    // *** FIM DA CORREÇÃO ***
     
     throw new Error(`Produto Vinculado com ID '${produtoId}' não encontrado.`);
 }
@@ -68,7 +62,6 @@ async function getNomeProdutoPorId(sheets, spreadsheetId, produtoId) {
  */
 async function getNomeFornecedorPorId(sheets, spreadsheetId, fornecedorId) {
     if (!fornecedorId || String(fornecedorId).trim() === "") return "";
-    // Reutiliza a função de FornecedoresCRUD para pegar todos os fornecedores
     const todosFornecedores = await FornecedoresCRUD.getFornecedoresPlanilha(sheets, spreadsheetId);
     if (todosFornecedores.length < 2) return "";
 
@@ -85,7 +78,6 @@ async function getNomeFornecedorPorId(sheets, spreadsheetId, fornecedorId) {
             return String(todosFornecedores[i][idxNome]);
         }
     }
-    // Não lança erro, pois fornecedor é opcional
     console.warn(`Fornecedor com ID '${fornecedorId}' não encontrado.`);
     return "";
 }
@@ -95,7 +87,6 @@ async function getNomeFornecedorPorId(sheets, spreadsheetId, fornecedorId) {
 
 /**
  * Rota: /api/subprodutos/listar
- * (Migrado de SubProdutosController_obterListaSubProdutosPaginada)
  */
 async function obterListaSubProdutosPaginada(req, res) {
   try {
@@ -103,10 +94,9 @@ async function obterListaSubProdutosPaginada(req, res) {
     const termoBuscaNorm = termoBusca ? normalizarTextoComparacao(termoBusca) : null;
     const idPlanilha = req.ID_PLANILHA_PRINCIPAL;
 
-    // 1. Busca TODOS os dados
     const todosDados = await SubProdutosCRUD.getSubProdutosPlanilha(req.sheets, idPlanilha);
     
-    if (todosDados.length <= 1) { // Apenas cabeçalho
+    if (todosDados.length <= 1) { 
       return res.json({ 
         success: true,
         cabecalhosParaExibicao: COLUNAS_EXIBICAO_NOMES,
@@ -114,10 +104,8 @@ async function obterListaSubProdutosPaginada(req, res) {
       });
     }
 
-    // 2. Converte para objetos (reutilizando a função do FornecedoresCRUD)
     let todosSubProdutosObj = FornecedoresCRUD.sheetDataToObjects(todosDados, CABECALHOS_SUBPRODUTOS);
 
-    // 3. Aplica filtro de busca
     let subProdutosFiltrados = todosSubProdutosObj;
     if (termoBuscaNorm) {
       subProdutosFiltrados = todosSubProdutosObj.filter(subProduto => {
@@ -131,14 +119,12 @@ async function obterListaSubProdutosPaginada(req, res) {
       });
     }
     
-    // 4. Aplica paginação
     const totalItens = subProdutosFiltrados.length;
     const totalPaginas = Math.ceil(totalItens / itensPorPagina) || 1;
     const paginaAjustada = Math.min(Math.max(1, pagina), totalPaginas);
     const offset = (paginaAjustada - 1) * itensPorPagina;
     const subProdutosPaginados = subProdutosFiltrados.slice(offset, offset + itensPorPagina);
     
-    // 5. Retorna os dados paginados
     res.json({
       success: true,
       cabecalhosParaExibicao: COLUNAS_EXIBICAO_NOMES,
@@ -158,21 +144,37 @@ async function obterListaSubProdutosPaginada(req, res) {
  * Rota: /api/subprodutos/criar
  * (Migrado de SubProdutosCRUD_criarNovoSubProduto)
  * Converte IDs de Produto/Fornecedor em Nomes antes de salvar.
+ *
+ * *** FUNÇÃO CORRIGIDA ***
  */
 async function criarNovoSubProduto(req, res) {
   try {
     const dadosItem = req.body;
     const idPlanilha = req.ID_PLANILHA_PRINCIPAL;
 
-    // 1. Converte ID do Produto Vinculado para NOME
-    const idProdutoVinculado = dadosItem["Produto Vinculado"];
-    const nomeProdutoParaSalvar = await getNomeProdutoPorId(req.sheets, idPlanilha, idProdutoVinculado);
-    dadosItem["Produto Vinculado"] = nomeProdutoParaSalvar; // Substitui o ID pelo Nome
+    // --- INÍCIO DA CORREÇÃO ---
+    // Verifica se o valor recebido é um ID (numérico) ou um NOME (texto)
+    const valorProduto = dadosItem["Produto Vinculado"];
+    let nomeProdutoParaSalvar;
+    // Se o valor for numérico, é um ID. Busque o nome.
+    if (valorProduto && !isNaN(parseInt(valorProduto))) {
+        nomeProdutoParaSalvar = await getNomeProdutoPorId(req.sheets, idPlanilha, valorProduto);
+    } else {
+        // Se não for numérico (ou vazio), é o NOME (ou vazio). Use-o diretamente.
+        nomeProdutoParaSalvar = valorProduto;
+    }
+    dadosItem["Produto Vinculado"] = nomeProdutoParaSalvar;
 
-    // 2. Converte ID do Fornecedor para NOME
-    const idFornecedor = dadosItem["Fornecedor"];
-    const nomeFornecedorParaSalvar = await getNomeFornecedorPorId(req.sheets, idPlanilha, idFornecedor);
-    dadosItem["Fornecedor"] = nomeFornecedorParaSalvar; // Substitui o ID pelo Nome
+    // Faz o mesmo para Fornecedor
+    const valorFornecedor = dadosItem["Fornecedor"];
+    let nomeFornecedorParaSalvar;
+    if (valorFornecedor && !isNaN(parseInt(valorFornecedor))) {
+        nomeFornecedorParaSalvar = await getNomeFornecedorPorId(req.sheets, idPlanilha, valorFornecedor);
+    } else {
+        nomeFornecedorParaSalvar = valorFornecedor;
+    }
+    dadosItem["Fornecedor"] = nomeFornecedorParaSalvar;
+    // --- FIM DA CORREÇÃO ---
 
     // 3. Chama o CRUD com os dados tratados
     const resultado = await SubProdutosCRUD.criarNovoSubProduto(req.sheets, idPlanilha, dadosItem);
@@ -189,21 +191,37 @@ async function criarNovoSubProduto(req, res) {
  * Rota: /api/subprodutos/atualizar
  * (Migrado de SubProdutosCRUD_atualizarSubProduto)
  * Converte IDs de Produto/Fornecedor em Nomes antes de salvar.
+ *
+ * *** FUNÇÃO CORRIGIDA ***
  */
 async function atualizarSubProduto(req, res) {
   try {
     const dadosItem = req.body;
     const idPlanilha = req.ID_PLANILHA_PRINCIPAL;
     
-    // 1. Converte ID do Produto Vinculado para NOME
-    const idProdutoVinculado = dadosItem["Produto Vinculado"];
-    const nomeProdutoParaSalvar = await getNomeProdutoPorId(req.sheets, idPlanilha, idProdutoVinculado);
+    // --- INÍCIO DA CORREÇÃO ---
+    // Verifica se o valor recebido é um ID (numérico) ou um NOME (texto)
+    const valorProduto = dadosItem["Produto Vinculado"];
+    let nomeProdutoParaSalvar;
+    // Se o valor for numérico, é um ID. Busque o nome.
+    if (valorProduto && !isNaN(parseInt(valorProduto))) {
+        nomeProdutoParaSalvar = await getNomeProdutoPorId(req.sheets, idPlanilha, valorProduto);
+    } else {
+        // Se não for numérico (ou vazio), é o NOME (ou vazio). Use-o diretamente.
+        nomeProdutoParaSalvar = valorProduto;
+    }
     dadosItem["Produto Vinculado"] = nomeProdutoParaSalvar;
 
-    // 2. Converte ID do Fornecedor para NOME
-    const idFornecedor = dadosItem["Fornecedor"];
-    const nomeFornecedorParaSalvar = await getNomeFornecedorPorId(req.sheets, idPlanilha, idFornecedor);
+    // Faz o mesmo para Fornecedor
+    const valorFornecedor = dadosItem["Fornecedor"];
+    let nomeFornecedorParaSalvar;
+    if (valorFornecedor && !isNaN(parseInt(valorFornecedor))) {
+        nomeFornecedorParaSalvar = await getNomeFornecedorPorId(req.sheets, idPlanilha, valorFornecedor);
+    } else {
+        nomeFornecedorParaSalvar = valorFornecedor;
+    }
     dadosItem["Fornecedor"] = nomeFornecedorParaSalvar;
+    // --- FIM DA CORREÇÃO ---
 
     // 3. Chama o CRUD com os dados tratados
     const resultado = await SubProdutosCRUD.atualizarSubProduto(req.sheets, idPlanilha, dadosItem);
@@ -217,7 +235,6 @@ async function atualizarSubProduto(req, res) {
 
 /**
  * Rota: /api/subprodutos/excluir
- * (Migrado de SubProdutosCRUD_excluirSubProduto)
  */
 async function excluirSubProduto(req, res) {
   try {
@@ -233,7 +250,6 @@ async function excluirSubProduto(req, res) {
 
 /**
  * Rota: /api/subprodutos/obterDetalhes
- * (Migrado de SubProdutosCRUD_obterDetalhesSubProdutoPorId)
  */
 async function obterDetalhesSubProdutoPorId(req, res) {
   try {
@@ -253,7 +269,7 @@ async function obterDetalhesSubProdutoPorId(req, res) {
 
 /**
  * Rota: /api/subprodutos/criarMultiplos
- * (Migrado de SubProdutosCRUD_cadastrarMultiplosSubProdutos)
+ * (Esta função só é chamada pela nova UI, então ela SEMPRE espera IDs)
  */
 async function cadastrarMultiplosSubProdutos(req, res) {
   try {
@@ -263,31 +279,42 @@ async function cadastrarMultiplosSubProdutos(req, res) {
     // 1. Converte o ID do Fornecedor Global em NOME
     const nomeFornecedorGlobal = await getNomeFornecedorPorId(req.sheets, idPlanilha, fornecedorId);
     
-    // 2. Converte o ID do Produto Vinculado de cada item em NOME
     const subProdutosComNomes = [];
+    const resultadosDetalhados = []; // Para rastrear falhas
+
+    // 2. Converte o ID do Produto Vinculado de cada item em NOME
     for (const item of subProdutos) {
         // O frontend envia o ID do produto como 'Produto Vinculado'
         const idProdutoVinculado = item["Produto Vinculado"];
-        const nomeProduto = await getNomeProdutoPorId(req.sheets, idPlanilha, idProdutoVinculado);
         
-        if (!nomeProduto) {
-            // Se o produto não for encontrado, marca como falha e não tenta salvar
+        try {
+            const nomeProduto = await getNomeProdutoPorId(req.sheets, idPlanilha, idProdutoVinculado);
+            // Substitui o ID pelo Nome
+            item["Produto Vinculado"] = nomeProduto;
+            subProdutosComNomes.push(item);
+
+        } catch (e) {
+             // Se o produto não for encontrado, marca como falha e não tenta salvar
+            console.error(`Falha ao buscar produto ID ${idProdutoVinculado}: ${e.message}`);
             resultadosDetalhados.push({ nome: item["SubProduto"] || "Item sem nome", status: "Falha", erro: `Produto Vinculado com ID '${idProdutoVinculado}' não encontrado.` });
-            continue;
         }
-        
-        // Substitui o ID pelo Nome
-        item["Produto Vinculado"] = nomeProduto;
-        subProdutosComNomes.push(item);
     }
     
     const dadosLoteTratados = {
         fornecedorGlobalNome: nomeFornecedorGlobal,
-        subProdutos: subProdutosComNomes
+        subProdutos: subProdutosComNomes // Somente os que tiveram o produto encontrado
     };
 
     // 3. Chama o CRUD com os dados tratados
     const resultado = await SubProdutosCRUD.cadastrarMultiplosSubProdutos(req.sheets, idPlanilha, dadosLoteTratados);
+    
+    // Combina os resultados do CRUD (que já podem ter falhas) com as falhas de lookup que encontramos
+    if (resultadosDetalhados.length > 0) {
+        resultado.detalhes = (resultado.detalhes || []).concat(resultadosDetalhados);
+        resultado.message = `Processado com ${resultado.detalhes.length} alertas/erros.`;
+        resultado.success = false; // Força o frontend a ver a mensagem
+    }
+
     res.json(resultado);
     
   } catch (e) {
@@ -298,8 +325,7 @@ async function cadastrarMultiplosSubProdutos(req, res) {
 
 /**
  * Rota: /api/subprodutos/listarPorPai
- * (Migrado de SubProdutosCRUD_obterSubProdutosPorPai_NOVO)
- * Rota legada usada por FornecedoresScript e ProdutosScript.
+ * (Rota legada usada por FornecedoresScript e ProdutosScript)
  */
 async function obterSubProdutosPorPai(req, res) {
   try {
