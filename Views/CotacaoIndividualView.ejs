@@ -1968,29 +1968,23 @@
         </div>
     </div>
     <script>
-        // Estas variáveis globais serão lidas pelo CotacaoIndividualScript
-        const EJS_ID_COTACAO = '<%- typeof idCotacao !== "undefined" ? idCotacao : null %>';
-        const EJS_MODO = '<%- typeof modo !== "undefined" ? modo : "editar" %>';
-    </script>
-    
-        <%- include('CotacaoIndividualScript') %>
+    // Estas variáveis globais serão lidas pelo CotacaoIndividualScript
+    const EJS_ID_COTACAO = '<%- typeof idCotacao !== "undefined" ? idCotacao : null %>';
+    const EJS_MODO = '<%- typeof modo !== "undefined" ? modo : "editar" %>';
+  </script>
+
+  <%- include('CotacaoIndividualScript') %>
+  <%- include('EtapasScript') %>
 
 </body>
 <script>
-    // Script de inicialização final (será executado após o EJS ser renderizado)
-    setTimeout(() => {
-        if (typeof initCotacaoIndividualScript === 'function') {
-            initCotacaoIndividualScript();
-        } else {
-            console.error("Falha ao inicializar CotacaoIndividualScript.");
-            const feedbackDiv = document.getElementById('CotacaoIndividualScript_mensagemFeedback');
-            if (feedbackDiv) {
-                feedbackDiv.textContent = "Erro crítico: Falha ao carregar o script principal da página.";
-                feedbackDiv.className = 'feedback-message feedback-error';
-                feedbackDiv.classList.remove('hidden');
-            }
-        }
-    }, 300); 
+  // Script de inicialização final (será executado após o EJS ser renderizado)
+  setTimeout(() => {
+    if (typeof initCotacaoIndividualScript === 'function') {
+      initCotacaoIndividualScript(); 
+    } else {
+      console.error("Falha ao inicializar CotacaoIndividualScript.");
+    }
+  }, 300); 
 </script>
-
 </html>
