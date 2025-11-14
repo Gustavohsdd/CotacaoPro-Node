@@ -11,7 +11,7 @@ const SubProdutosCRUD = require('../Controllers/SubProdutosCRUD');
 router.post('/listarPorPai', async (req, res) => {
   try {
     const { nomePai, tipoPai } = req.body;
-    // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL ***
+    // Usa a ID_PLANILHA_PRINCIPAL ***
     const itens = await SubProdutosCRUD.getSubProdutosPorPai(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomePai, tipoPai);
     res.json({ success: true, dados: itens });
   } catch (e) {
@@ -27,7 +27,7 @@ router.post('/listarPorPai', async (req, res) => {
 router.post('/obterDetalhes', async (req, res) => {
   try {
     const { itemId } = req.body;
-    // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL ***
+    // Usa a ID_PLANILHA_PRINCIPAL ***
     const item = await SubProdutosCRUD.getDetalhesSubProdutoPorId(req.sheets, req.ID_PLANILHA_PRINCIPAL, itemId);
     if (item) {
       res.json({ success: true, dados: item });
@@ -47,7 +47,7 @@ router.post('/obterDetalhes', async (req, res) => {
 router.post('/criar', async (req, res) => {
     try {
         const dadosItem = req.body;
-        // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL ***
+        // Usa a ID_PLANILHA_PRINCIPAL ***
         const resultado = await SubProdutosCRUD.criarNovoSubProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosItem);
         res.json(resultado);
     } catch (e) {
@@ -63,7 +63,7 @@ router.post('/criar', async (req, res) => {
 router.post('/atualizar', async (req, res) => {
     try {
         const dadosItem = req.body;
-        // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL ***
+        // Usa a ID_PLANILHA_PRINCIPAL ***
         const resultado = await SubProdutosCRUD.atualizarSubProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosItem);
         res.json(resultado);
     } catch (e) {
@@ -79,7 +79,7 @@ router.post('/atualizar', async (req, res) => {
 router.post('/excluir', async (req, res) => {
     try {
         const { itemId } = req.body;
-        // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL ***
+        // Usa a ID_PLANILHA_PRINCIPAL ***
         const resultado = await SubProdutosCRUD.excluirSubProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, itemId);
         res.json(resultado);
     } catch (e) {
