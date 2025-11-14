@@ -13,6 +13,8 @@ const constants = require('./config/constants');
 const fornecedoresRouterApi = require('./Routes/fornecedores');
 const produtosRouterApi = require('./Routes/produtos');
 const subprodutosRouterApi = require('./Routes/subprodutos');
+const cotacoesRouterApi = require('./Routes/cotacoes');
+
 // (Você importará os outros, como subprodutosRouterApi, aqui)
 
 
@@ -165,6 +167,7 @@ app.get('/view/:viewName', async (req, res) => {
 app.use('/api/fornecedores', fornecedoresRouterApi);
 app.use('/api/produtos', produtosRouterApi);
 app.use('/api/subprodutos', subprodutosRouterApi);
+app.use('/api/cotacoes', cotacoesRouterApi);
 // (Você adicionará os outros aqui, ex: app.use('/api/subprodutos', subprodutosRouterApi);)
 
 
