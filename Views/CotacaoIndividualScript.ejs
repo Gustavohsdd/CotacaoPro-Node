@@ -1,0 +1,1411 @@
+<script>
+    //####################################################################################################
+    // MÓDULO: COTACAO INDIVIDUAL (CLIENT-SIDE PRINCIPAL) - CotacaoIndividualScript.ejs
+    // Funções principais da página de Cotação Individual, migradas para API Fetch.
+    //####################################################################################################
+
+    //----------------------------------------------------------------------------------------------------
+    // DECLARAÇÕES GLOBAIS (IDs e Variáveis de Estado)
+    //----------------------------------------------------------------------------------------------------
+
+    const CotacaoIndividualScript_ID_SEARCH_INPUT_TOP = 'CotacaoIndividualScript_searchInput_Top';
+    const CotacaoIndividualScript_ID_TITULO_PAGINA = 'CotacaoIndividualScript_tituloPagina';
+    const CotacaoIndividualScript_ID_COTACAO_EXIBIDO = 'CotacaoIndividualScript_idCotacaoExibido';
+    const CotacaoIndividualScript_ID_DATA_ABERTURA_EXIBIDA = 'CotacaoIndividualScript_dataAberturaExibida';
+    const CotacaoIndividualScript_ID_MENSAGEM_FEEDBACK = 'CotacaoIndividualScript_mensagemFeedback';
+    const CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO_CONTAINER = 'CotacaoIndividualScript_tableContainer';
+    const CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO = 'CotacaoIndividualScript_tabelaProdutosCotacao';
+    const CotacaoIndividualScript_ID_TABELA_LOADING_MSG_CELL = 'CotacaoIndividualScript_tabelaLoadingMsg';
+    const CotacaoIndividualScript_ID_PAGE_LOADING_OVERLAY = 'CotacaoIndividualScript_pageLoadingOverlay';
+    const CotacaoIndividualScript_ID_RETIRAR_PRODUTOS_CONTAINER = 'CotacaoIndividualScript_retirarProdutosContainer';
+    const CotacaoIndividualScript_ID_ACORDEAO_CRIT1 = 'CotacaoIndividualScript_acordeaoCrit1';
+    const CotacaoIndividualScript_ID_ACORDEAO_CRIT2 = 'CotacaoIndividualScript_acordeaoCrit2';
+    const CotacaoIndividualScript_ID_ACORDEAO_CRIT3 = 'CotacaoIndividualScript_acordeaoCrit3';
+    const CotacaoIndividualScript_ID_BTN_EXCLUIR_SELECIONADOS_RETIRAR = 'CotacaoIndividualScript_btnExcluirSelecionados';
+    const CotacaoIndividualScript_ID_BTN_SALVAR_CONTAGEM_ESTOQUE = 'EtapasScript_btnSalvarContagemEstoque';
+    const CotacaoIndividualScript_ID_MENU_ETAPAS_BTN = 'CotacaoIndividualScript_menuEtapasBtn';
+    const CotacaoIndividualScript_ID_MENU_ETAPAS_DROPDOWN = 'CotacaoIndividualScript_menuEtapasDropdown';
+    const CotacaoIndividualScript_ID_MENU_RELATORIOS_BTN = 'CotacaoIndividualScript_menuRelatoriosBtn';
+    const CotacaoIndividualScript_ID_MENU_RELATORIOS_DROPDOWN = 'CotacaoIndividualScript_menuRelatoriosDropdown';
+    const CotacaoIndividualScript_ID_MENU_FUNCOES_BTN = 'CotacaoIndividualScript_menuFuncoesBtn';
+    const CotacaoIndividualScript_ID_MENU_FUNCOES_DROPDOWN = 'CotacaoIndividualScript_menuFuncoesDropdown';
+    const CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_CONTAINER = 'CotacaoIndividualScript_gerenciarCotacoesPortalContainer';
+    const CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_BODY = 'CotacaoIndividualScript_gerenciarCotacoesPortalBody';
+
+    let CotacaoIndividualScript_cotacaoIdAtual = null;
+    let CotacaoIndividualScript_modoPagina = 'editar';
+    let CotacaoIndividualScript_cabecalhosVisiveis = [];
+    let CABECALHOS_COTACOES_TODOS = [];
+    window.CotacaoIndividualScript_dadosOriginaisCotacao = [];
+    let CotacaoIndividualScript_modoEtapaAtual = null;
+    let CotacaoIndividualScript_abaAtiva = 'categoria';
+
+    const CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO = [
+        "SubProduto", "Fornecedor", "Tamanho", "UN", "Fator",
+        "Preço", "Preço por Fator", "Comprar", "Valor Total"
+    ];
+    let CotacaoIndividualScript_COLUNAS_PARA_ABA_SUBPRODUTOS_CLIENTE = [];
+    const CotacaoIndividualScript_MAPA_CORES_COLUNAS = {
+        "SubProduto": "bg-col-amarelo", "Categoria": "bg-col-amarelo", "Fornecedor": "bg-col-amarelo",
+        "Tamanho": "bg-col-laranja", "UN": "bg-col-laranja", "Fator": "bg-col-laranja",
+        "Preço": "bg-col-azul-cot", "Preço por Fator": "bg-col-azul-cot",
+        "Comprar": "bg-col-verde", "Valor Total": "bg-col-verde", "Economia em Cotação": "bg-col-verde",
+        "Empresa Faturada": "bg-col-roxo-leve", "Condição de Pagamento": "bg-col-roxo-leve"
+    };
+
+    //----------------------------------------------------------------------------------------------------
+    // NOVA FUNÇÃO: HELPER DE API FETCH
+    //----------------------------------------------------------------------------------------------------
+
+    /**
+     * Função genérica para tratar chamadas de API (fetch) para o backend Node.js
+     */
+    async function CotacaoIndividualScript_apiCall(endpoint, options = {}) {
+        // Garante que 'fetch' está sendo usado
+        if (typeof fetch !== 'function') {
+            console.error('Fetch API not available.');
+            CotacaoIndividualScript_exibirFeedback('Erro de navegador. A função fetch não está disponível.', true, 0);
+            return Promise.reject(new Error('Fetch not available'));
+        }
+
+        try {
+            const response = await fetch(endpoint, options);
+
+            // Tenta parsear como JSON, mesmo em caso de erro, pois o servidor pode enviar um { message: '...' }
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                // Se o corpo não for JSON (ex: erro 500 com HTML), lança um erro genérico
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+                // Se a resposta era OK mas o JSON falhou (improvável), relança
+                throw jsonError;
+            }
+
+
+            if (!response.ok) {
+                // Se a resposta não for OK (ex: 404, 500), usa a mensagem de erro do servidor
+                throw new Error(data.message || `Erro ${response.status}: ${response.statusText}`);
+            }
+
+            // Se a resposta for OK, mas o *servidor* indicar uma falha (ex: success: false)
+            if (data.success === false) {
+                throw new Error(data.message || "Ocorreu um erro no servidor.");
+            }
+
+            return data; // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
+
+        } catch (error) {
+            console.error(`Erro na chamada da API para ${endpoint}:`, error);
+            // Re-lança o erro para que o .catch() no local da chamada possa tratá-lo
+            return Promise.reject(error);
+        }
+    }
+
+
+    //----------------------------------------------------------------------------------------------------
+    // FUNÇÕES UTILITÁRIAS GLOBAIS DA PÁGINA (Sem alterações, exceto formatação)
+    //----------------------------------------------------------------------------------------------------
+    window.CotacaoIndividualScript_getClasseCorColuna = function (nomeCabecalho) {
+        return CotacaoIndividualScript_MAPA_CORES_COLUNAS[nomeCabecalho] || "";
+    }
+
+    function CotacaoIndividualScript_parseNumeroPtBr(valor) {
+        if (valor === null || valor === undefined) return NaN;
+        if (typeof valor === 'number') return Number(valor);
+        const s = String(valor).trim();
+        if (!s) return NaN;
+        const normalizado = s.replace(/\s+/g, '').replace(/\.(?=\d{3}(?:,|\.|$))/g, '').replace(',', '.');
+        const n = Number(normalizado);
+        return Number.isFinite(n) ? n : NaN;
+    }
+
+    window.CotacaoIndividualScript_formatarPreco = function (n) { // Exposta globalmente
+        const v = Number(n || 0);
+        return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function CotacaoIndividualScript_getPrecoPorFatorFromItem(item) {
+        if (!item) return null;
+        if (item.hasOwnProperty("Preço por Fator")) {
+            const precoFatorExistente = CotacaoIndividualScript_parseNumeroPtBr(item["Preço por Fator"]);
+            if (!isNaN(precoFatorExistente)) {
+                return precoFatorExistente;
+            }
+        }
+        if (item.hasOwnProperty("Preço") && item.hasOwnProperty("Fator")) {
+            const preco = CotacaoIndividualScript_parseNumeroPtBr(item["Preço"]);
+            const fator = CotacaoIndividualScript_parseNumeroPtBr(item["Fator"]);
+            if (!isNaN(preco) && !isNaN(fator) && fator > 0) {
+                return preco / fator;
+            }
+        }
+        return null;
+    }
+
+    window.CotacaoIndividualScript_calcularMetricasNegociacao = function (grupo) { // Exposta globalmente
+        const resultado = {
+            oportunidadeReais: 0,
+            spreadPercent: 0,
+            P1: null,
+            P2: null,
+            Pmediana: null,
+            Q: 0
+        };
+        if (!grupo || !grupo.subProdutos || grupo.subProdutos.length === 0) {
+            return resultado;
+        }
+        const precosPorFatorValidos = grupo.subProdutos
+            .map(sub => CotacaoIndividualScript_getPrecoPorFatorFromItem(sub))
+            .filter(p => p !== null && p > 0)
+            .sort((a, b) => a - b);
+        if (precosPorFatorValidos.length < 2) {
+            return resultado;
+        }
+        resultado.P1 = precosPorFatorValidos[0];
+        resultado.P2 = precosPorFatorValidos[1];
+        const mid = Math.floor(precosPorFatorValidos.length / 2);
+        if (precosPorFatorValidos.length % 2 === 0) {
+            resultado.Pmediana = (precosPorFatorValidos[mid - 1] + precosPorFatorValidos[mid]) / 2;
+        } else {
+            resultado.Pmediana = precosPorFatorValidos[mid];
+        }
+        let quantidadeBase = 0;
+        if (grupo.hasOwnProperty("demandaMediaProdutoPrincipal") && grupo.demandaMediaProdutoPrincipal !== null) {
+            quantidadeBase = CotacaoIndividualScript_parseNumeroPtBr(grupo.demandaMediaProdutoPrincipal);
+        } else if (grupo.hasOwnProperty("estoqueMinimoProdutoPrincipal") && grupo.estoqueMinimoProdutoPrincipal !== null) {
+            quantidadeBase = CotacaoIndividualScript_parseNumeroPtBr(grupo.estoqueMinimoProdutoPrincipal);
+        }
+        resultado.Q = isNaN(quantidadeBase) ? 0 : quantidadeBase;
+        if (resultado.Q > 0 && resultado.Pmediana > resultado.P1) {
+            resultado.oportunidadeReais = (resultado.Pmediana - resultado.P1) * resultado.Q;
+        }
+        if (resultado.P1 > 0 && resultado.P2) {
+            resultado.spreadPercent = ((resultado.P2 - resultado.P1) / resultado.P1) * 100;
+        }
+        return resultado;
+    }
+
+    window.CotacaoIndividualScript_mostrarLoadingOverlay = function (mostrar = true, mensagem = "Processando...") {
+        const overlay = document.getElementById(CotacaoIndividualScript_ID_PAGE_LOADING_OVERLAY);
+        if (overlay) {
+            overlay.classList.toggle('hidden', !mostrar);
+            const msgElement = overlay.querySelector('.loading-message-text');
+            if (msgElement) msgElement.textContent = mensagem;
+        }
+    }
+
+    window.CotacaoIndividualScript_exibirFeedback = function (mensagem, isError = false, duracao = 5000) {
+        const feedbackDiv = document.getElementById(CotacaoIndividualScript_ID_MENSAGEM_FEEDBACK);
+        if (feedbackDiv) {
+            feedbackDiv.textContent = mensagem;
+            feedbackDiv.className = `feedback-message ${isError ? 'feedback-error' : 'feedback-success'}`;
+            feedbackDiv.classList.remove('hidden');
+            if (duracao > 0) {
+                setTimeout(() => {
+                    if (feedbackDiv.textContent === mensagem) {
+                        feedbackDiv.classList.add('hidden');
+                        feedbackDiv.textContent = '';
+                    }
+                }, duracao);
+            }
+        }
+    }
+
+    window.CotacaoIndividualScript_ocultarFeedback = function () {
+        const feedbackDiv = document.getElementById(CotacaoIndividualScript_ID_MENSAGEM_FEEDBACK);
+        if (feedbackDiv) {
+            feedbackDiv.classList.add('hidden');
+            feedbackDiv.textContent = '';
+        }
+    }
+
+    // Esta função não é mais necessária, pois lemos as vars EJS_...
+    // window.CotacaoIndividualScript_obterParametrosUrl = function () { ... }
+
+    window.CotacaoIndividualScript_parsearStringEstoqueComprar = function (textoEstoqueComprar) {
+        const resultado = { estoqueAtual: null, comprar: null };
+        const texto = String(textoEstoqueComprar || '').trim();
+        if (!texto) return resultado;
+
+        const matchEstoque = texto.match(/Estoque Atual:\s*([0-9.,]+(?:[.,]\d+)?|N\/A)/i);
+        const matchComprar = texto.match(/Comprar:\s*([0-9.,]+(?:[.,]\d+)?|N\/A)/i);
+
+        if (matchEstoque && matchEstoque[1] && matchEstoque[1].toUpperCase() !== 'N/A') {
+            resultado.estoqueAtual = parseFloat(String(matchEstoque[1]).replace(",", "."));
+        }
+        if (matchComprar && matchComprar[1] && matchComprar[1].toUpperCase() !== 'N/A') {
+            resultado.comprar = parseFloat(String(matchComprar[1]).replace(",", "."));
+        }
+
+        if (matchEstoque === null && matchComprar === null) {
+            const num = parseFloat(texto.replace(",", "."));
+            if (!isNaN(num)) {
+                resultado.estoqueAtual = num;
+            }
+        }
+        return resultado;
+    }
+
+    function CotacaoIndividualScript_removerAcentos(text) {
+        if (text === null || text === undefined) return "";
+        return text.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function CotacaoIndividualScript_transformarCelulaEmSelect(event, opcoes) {
+        // (Esta função permanece idêntica à do Apps Script)
+        const td = event.currentTarget;
+        if (td.querySelector('select')) return;
+        const valorOriginal = td.dataset.valorOriginal || '';
+        const select = document.createElement('select');
+        select.className = 'inline-edit-input';
+        const optionVazia = document.createElement('option');
+        optionVazia.value = "";
+        optionVazia.textContent = "Selecione...";
+        select.appendChild(optionVazia);
+        opcoes.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            if (opt === valorOriginal) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        td.innerHTML = '';
+        td.appendChild(select);
+        select.style.width = '98%';
+        select.style.boxSizing = 'border-box';
+        select.focus();
+        const salvarAlteracao = () => {
+            if (!document.body.contains(select)) return;
+            CotacaoIndividualScript_salvarEdicaoInline(select);
+        };
+        select.addEventListener('blur', salvarAlteracao);
+        select.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                select.removeEventListener('blur', salvarAlteracao);
+                td.textContent = valorOriginal;
+                td.focus();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                const parentTd = select.closest('td');
+                select.blur();
+                setTimeout(() => {
+                    if (e.key === 'Tab') {
+                        CotacaoIndividualScript_focusNextCell(parentTd, e.shiftKey);
+                    } else {
+                        const currentRow = parentTd.parentElement;
+                        const cellIndex = Array.from(currentRow.children).indexOf(parentTd);
+                        let nextRow = currentRow.nextElementSibling;
+                        while (nextRow && !nextRow.matches('.sub-produto-row, .etapa5-content-row')) {
+                            nextRow = nextRow.nextElementSibling;
+                        }
+                        if (nextRow) {
+                            const nextCell = nextRow.children[cellIndex];
+                            if (nextCell && nextCell.matches('.editable-price-cell, .editable-select-cell')) {
+                                nextCell.focus();
+                            }
+                        }
+                    }
+                }, 50);
+            }
+        });
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // LÓGICA DE EDIÇÃO INLINE, CÁLCULOS E RENDERIZAÇÃO (MIGRAÇÃO DA API)
+    //----------------------------------------------------------------------------------------------------
+    function CotacaoIndividualScript_transformarCelulaEmInput(event) {
+        // (Esta função permanece idêntica à do Apps Script)
+        const td = event.currentTarget;
+        if (td.querySelector('input')) return;
+        const valorOriginal = td.dataset.valorOriginal || '';
+        const coluna = td.dataset.coluna;
+        const tipoInput = ["Fator", "Preço", "Comprar"].includes(coluna) ? 'number' : 'text';
+        td.innerHTML = `<input type="${tipoInput}" step="any" class="inline-edit-input" value="${valorOriginal}" />`;
+        const input = td.querySelector('input');
+        input.style.width = '95%';
+        input.style.boxSizing = 'border-box';
+        input.focus();
+        input.select();
+        input.addEventListener('blur', () => CotacaoIndividualScript_salvarEdicaoInline(input));
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const tdCell = input.parentElement;
+                tdCell.textContent = tdCell.dataset.valorOriginal || '';
+            }
+        });
+    }
+
+    /**
+     * FUNÇÃO ATUALIZADA: Salva a edição inline usando a API Fetch.
+     */
+    function CotacaoIndividualScript_salvarEdicaoInline(element) {
+        const td = element.parentElement;
+        let novoValorStr = element.value;
+        const valorOriginalStr = td.dataset.valorOriginal || '';
+        const coluna = td.dataset.coluna;
+
+        const camposNumericos = ["Fator", "Preço", "Comprar"];
+        if (camposNumericos.includes(coluna)) {
+            novoValorStr = novoValorStr.replace(',', '.');
+        }
+
+        if (novoValorStr === valorOriginalStr.replace(',', '.')) {
+            td.textContent = valorOriginalStr;
+            return;
+        }
+
+        const tr = td.closest('tr');
+        const identificadores = {
+            Produto: tr.dataset.produto,
+            SubProdutoChave: tr.dataset.subprodutoOriginalPersistido, // Chave original
+            Fornecedor: tr.dataset.fornecedor
+        };
+
+        // Formata o valor para exibição (Display)
+        let valorDisplay = novoValorStr;
+        if (camposNumericos.includes(coluna) && !isNaN(parseFloat(novoValorStr))) {
+            const fractionDigits = { 'Preço': 2, 'Comprar': 2, 'Fator': 4 };
+            valorDisplay = parseFloat(novoValorStr).toLocaleString('pt-BR', {
+                minimumFractionDigits: fractionDigits[coluna] || 2,
+                maximumFractionDigits: fractionDigits[coluna] || 2,
+            });
+        }
+
+        td.textContent = valorDisplay;
+        td.dataset.valorOriginal = valorDisplay;
+
+        // Atualiza cálculos do cliente imediatamente
+        if (["Fator", "Preço", "Comprar"].includes(coluna)) {
+            CotacaoIndividualScript_atualizarGrupoDeCalculosCliente(tr);
+        }
+        if (CotacaoIndividualScript_modoEtapaAtual === 'definir_empresa') {
+            if (typeof EtapasScript_atualizarDashboardFornecedor === 'function') {
+                EtapasScript_atualizarDashboardFornecedor(tr.dataset.fornecedor);
+            }
+            if (typeof EtapasScript_atualizarDashboardGlobal === 'function') {
+                EtapasScript_atualizarDashboardGlobal();
+            }
+        }
+
+        // Prepara o valor para o backend
+        let valorParaBackend = novoValorStr;
+        if (camposNumericos.includes(coluna)) {
+            const num = parseFloat(novoValorStr);
+            valorParaBackend = isNaN(num) ? null : num;
+        }
+
+        // Chama a API
+        CotacaoIndividualScript_apiCall('/api/cotacaoIndividual/salvarCelula', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                idCotacao: CotacaoIndividualScript_cotacaoIdAtual,
+                identificadoresLinha: identificadores,
+                colunaAlterada: coluna,
+                novoValor: valorParaBackend // Envia o valor numérico ou string
+            })
+        })
+            .then(response => {
+                if (response.success) {
+                    console.log(`Salvo no servidor: ${coluna} = ${valorParaBackend}`);
+
+                    // Atualiza o estado local (dadosOriginais)
+                    const itemOriginal = CotacaoIndividualScript_dadosOriginaisCotacao.find(item =>
+                        item.Produto === identificadores.Produto &&
+                        item._subProdutoOriginalPersistido === identificadores.SubProdutoChave &&
+                        item.Fornecedor === identificadores.Fornecedor
+                    );
+
+                    if (itemOriginal) {
+                        itemOriginal[coluna] = valorParaBackend; // Salva o valor numérico
+                    }
+
+                    // Se o nome do SubProduto mudou, atualiza a chave
+                    if (response.novoSubProdutoNomeSeAlterado) {
+                        tr.dataset.subprodutoOriginalPersistido = response.novoSubProdutoNomeSeAlterado;
+                        if (itemOriginal) {
+                            itemOriginal._subProdutoOriginalPersistido = response.novoSubProdutoNomeSeAlterado;
+                            itemOriginal.SubProduto = response.novoSubProdutoNomeSeAlterado;
+                        }
+                    }
+
+                    // Atualiza os valores calculados vindos do servidor (garante consistência)
+                    if (response.valoresCalculados) {
+                        const celulaValorTotal = tr.querySelector('td[data-coluna="Valor Total"]');
+                        if (celulaValorTotal) {
+                            celulaValorTotal.textContent = response.valoresCalculados.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            if (itemOriginal) itemOriginal['Valor Total'] = response.valoresCalculados.valorTotal;
+                        }
+                        const celulaPrecoFator = tr.querySelector('td[data-coluna="Preço por Fator"]');
+                        if (celulaPrecoFator) {
+                            celulaPrecoFator.textContent = response.valoresCalculados.precoPorFator.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+                            if (itemOriginal) itemOriginal['Preço por Fator'] = response.valoresCalculados.precoPorFator;
+                        }
+                    }
+                } else {
+                    throw new Error(response.message); // Cai no .catch()
+                }
+            })
+            .catch(err => {
+                console.error("Falha ao salvar no servidor:", err.message);
+                td.textContent = valorOriginalStr; // Reverte
+                td.dataset.valorOriginal = valorOriginalStr;
+                td.classList.add('bg-col-vermelho-leve');
+                setTimeout(() => td.classList.remove('bg-col-vermelho-leve'), 2000);
+            });
+    }
+
+    function CotacaoIndividualScript_atualizarGrupoDeCalculosCliente(trEditada) {
+        // (Esta função permanece idêntica à do Apps Script)
+        const nomeProdutoPrincipal = trEditada.dataset.produto;
+        if (!nomeProdutoPrincipal) return;
+
+        const tbody = trEditada.parentElement;
+        const todasLinhasDoGrupo = tbody.querySelectorAll(`tr.sub-produto-row[data-produto="${nomeProdutoPrincipal}"]`);
+
+        const lerValorDaLinha = (tr, coluna) => {
+            const cell = tr.querySelector(`td[data-coluna="${coluna}"]`);
+            const valorTexto = cell.querySelector('input')?.value || cell?.dataset.valorOriginal || cell?.textContent || '0';
+            return parseFloat(String(valorTexto).replace(/\./g, '').replace(',', '.')) || 0;
+        };
+
+        const escreverValorNaLinha = (tr, coluna, valor, casasDecimais = 2) => {
+            const cell = tr.querySelector(`td[data-coluna="${coluna}"]`);
+            if (cell) {
+                const valorFormatado = valor.toLocaleString('pt-BR', {
+                    minimumFractionDigits: casasDecimais,
+                    maximumFractionDigits: casasDecimais
+                });
+                cell.textContent = valorFormatado;
+                cell.dataset.valorOriginal = valorFormatado;
+            }
+        };
+
+        let maxPrecoPorFator = 0;
+        todasLinhasDoGrupo.forEach(tr => {
+            const preco = lerValorDaLinha(tr, "Preço");
+            const fator = lerValorDaLinha(tr, "Fator");
+            const precoPorFator = fator > 0 ? (preco / fator) : 0;
+            if (precoPorFator > maxPrecoPorFator) {
+                maxPrecoPorFator = precoPorFator;
+            }
+        });
+
+        todasLinhasDoGrupo.forEach(tr => {
+            const preco = lerValorDaLinha(tr, "Preço");
+            const fator = lerValorDaLinha(tr, "Fator");
+            const comprar = lerValorDaLinha(tr, "Comprar");
+            const precoPorFator = fator > 0 ? (preco / fator) : 0;
+            escreverValorNaLinha(tr, "Preço por Fator", precoPorFator, 4);
+            const valorTotal = preco * comprar;
+            escreverValorNaLinha(tr, "Valor Total", valorTotal, 2);
+            let economia = 0;
+            if (comprar > 0 && maxPrecoPorFator > 0 && todasLinhasDoGrupo.length > 1) {
+                economia = (maxPrecoPorFator * fator * comprar) - (preco * comprar);
+            }
+            escreverValorNaLinha(tr, "Economia em Cotação", economia, 2);
+        });
+
+        const sepRow = tbody.querySelector(`tr.produto-group-separator-row[data-produto-nome="${nomeProdutoPrincipal}"]`);
+        if (sepRow) {
+            const metricasSpan = sepRow.querySelector('.indicador-oportunidade');
+            if (metricasSpan) {
+                const grupoDoDom = {
+                    subProdutos: [],
+                    demandaMediaProdutoPrincipal: CotacaoIndividualScript_parseNumeroPtBr(trEditada.dataset.demandaMedia) || 0
+                };
+                todasLinhasDoGrupo.forEach(tr => {
+                    const precoCell = tr.querySelector('td[data-coluna="Preço"]');
+                    const fatorCell = tr.querySelector('td[data-coluna="Fator"]');
+                    const precoPorFatorCell = tr.querySelector('td[data-coluna="Preço por Fator"]');
+                    grupoDoDom.subProdutos.push({
+                        "Preço": precoCell ? precoCell.textContent : '0',
+                        "Fator": fatorCell ? fatorCell.textContent : '0',
+                        "Preço por Fator": precoPorFatorCell ? precoPorFatorCell.textContent : '0'
+                    });
+                });
+                const metricas = CotacaoIndividualScript_calcularMetricasNegociacao(grupoDoDom);
+                const oportunidadeFormatada = CotacaoIndividualScript_formatarPreco(metricas.oportunidadeReais);
+                const spreadFormatado = metricas.spreadPercent.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) + '%';
+                metricasSpan.textContent = `Oportunidade: ${oportunidadeFormatada} | Spread: ${spreadFormatado}`;
+            }
+        }
+    }
+
+    function CotacaoIndividualScript_forcarRecalculoTotalUI() {
+        // (Esta função permanece idêntica à do Apps Script)
+        console.log("Forçando recálculo total da UI...");
+        CotacaoIndividualScript_mostrarLoadingOverlay(true, "Recalculando valores...");
+        const tbody = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO)?.querySelector('tbody');
+        if (!tbody) {
+            console.error("Tbody não encontrado para o recálculo.");
+            CotacaoIndividualScript_mostrarLoadingOverlay(false);
+            return;
+        }
+        const todosOsGruposDeProdutos = new Set();
+        tbody.querySelectorAll('tr.sub-produto-row[data-produto]').forEach(row => {
+            todosOsGruposDeProdutos.add(row.dataset.produto);
+        });
+        todosOsGruposDeProdutos.forEach(nomeProduto => {
+            const umaLinhaDoGrupo = tbody.querySelector(`tr.sub-produto-row[data-produto="${nomeProduto}"]`);
+            if (umaLinhaDoGrupo) {
+                CotacaoIndividualScript_atualizarGrupoDeCalculosCliente(umaLinhaDoGrupo);
+            }
+        });
+        setTimeout(() => {
+            CotacaoIndividualScript_mostrarLoadingOverlay(false);
+            CotacaoIndividualScript_exibirFeedback('Cálculos da tela atualizados com sucesso!', false, 3000);
+        }, 250);
+    }
+
+    function CotacaoIndividualScript_filtrarTabelaPrincipal() {
+        // (Esta função permanece idêntica à do Apps Script)
+        const termoBusca = document.getElementById(CotacaoIndividualScript_ID_SEARCH_INPUT_TOP).value;
+        const termoNormalizado = CotacaoIndividualScript_removerAcentos(termoBusca.toLowerCase());
+        const tbody = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO)?.querySelector('tbody');
+        if (!tbody) return;
+        const todasLinhasSubProduto = Array.from(tbody.querySelectorAll('.sub-produto-row'));
+        todasLinhasSubProduto.forEach(row => {
+            if (row.classList.contains('hidden-by-etapa')) {
+                row.classList.remove('hidden-by-search');
+                return;
+            }
+            let textoLinha = "";
+            CotacaoIndividualScript_cabecalhosVisiveis.forEach(cabecalho => {
+                const cell = row.querySelector(`td[data-coluna="${cabecalho}"]`);
+                if (cell) textoLinha += (cell.textContent || "") + " ";
+            });
+            textoLinha += (row.dataset.produto || "") + " ";
+            textoLinha += (row.dataset.categoria || "") + " ";
+            textoLinha += (row.dataset.fornecedor || "") + " ";
+            const textoLinhaNormalizado = CotacaoIndividualScript_removerAcentos(textoLinha.toLowerCase());
+            const deveEsconder = !(termoNormalizado === "" || textoLinhaNormalizado.includes(termoNormalizado));
+            row.classList.toggle('hidden-by-search', deveEsconder);
+        });
+        const cabecalhosDeGrupo = Array.from(tbody.querySelectorAll('.categoria-accordion-header-row'));
+        cabecalhosDeGrupo.forEach(linhaGrupo => {
+            const grupoTargetClass = linhaGrupo.dataset.targetClass;
+            const subProdutosVisiveisNesteGrupo = todasLinhasSubProduto.some(subRow =>
+                subRow.classList.contains(grupoTargetClass) &&
+                !subRow.classList.contains('hidden-by-search')
+            );
+            let deveEsconderGrupo = !subProdutosVisiveisNesteGrupo;
+            if (CotacaoIndividualScript_abaAtiva === 'categoria') {
+                const produtosPrincipaisDoGrupo = tbody.querySelectorAll(`.produto-group-separator-row.${grupoTargetClass}`);
+                let algumProdutoPrincipalVisivel = false;
+                produtosPrincipaisDoGrupo.forEach(linhaProdutoPrincipal => {
+                    const nomeProduto = linhaProdutoPrincipal.dataset.produtoNome;
+                    const subProdutosVisiveisDestePrincipal = todasLinhasSubProduto.some(subRow =>
+                        subRow.dataset.produto === nomeProduto &&
+                        !subRow.classList.contains('hidden-by-search')
+                    );
+                    const deveEsconderProdutoPrincipal = !subProdutosVisiveisDestePrincipal;
+                    linhaProdutoPrincipal.classList.toggle('hidden-by-search', deveEsconderProdutoPrincipal);
+                    if (!deveEsconderProdutoPrincipal) {
+                        algumProdutoPrincipalVisivel = true;
+                    }
+                });
+                deveEsconderGrupo = !algumProdutoPrincipalVisivel;
+            }
+            linhaGrupo.classList.toggle('hidden-by-search', deveEsconderGrupo);
+            const icon = linhaGrupo.querySelector('.categoria-accordion-icon');
+            if (termoNormalizado !== "" && !deveEsconderGrupo && !linhaGrupo.classList.contains('expanded')) {
+                linhaGrupo.classList.add('expanded');
+                if (icon) icon.style.transform = 'rotate(90deg)';
+                tbody.querySelectorAll(`.${grupoTargetClass}`).forEach(itemRow => {
+                    if (!itemRow.classList.contains('hidden-by-search')) {
+                        itemRow.classList.remove('hidden');
+                    }
+                });
+            }
+        });
+    }
+
+    function renderizarCabecalhoTabelaPrincipalInterno() {
+        // (Esta função permanece idêntica à do Apps Script)
+        const tabela = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO);
+        if (!tabela) { console.error("Tabela principal não encontrada."); return; }
+        const thead = tabela.querySelector('thead');
+        if (!thead) { console.error("Thead da tabela principal não encontrado."); return; }
+        thead.innerHTML = '';
+        if (!CotacaoIndividualScript_cabecalhosVisiveis || CotacaoIndividualScript_cabecalhosVisiveis.length === 0) {
+            const tr = thead.insertRow();
+            const th = tr.insertCell();
+            th.textContent = "Nenhuma coluna para exibir";
+            return;
+        }
+        const tr = thead.insertRow();
+        CotacaoIndividualScript_cabecalhosVisiveis.forEach(textoCabecalho => {
+            const th = document.createElement('th');
+            th.textContent = textoCabecalho;
+            tr.appendChild(th);
+        });
+    }
+
+    function agruparEClassificarProdutosInterno(todosOsProdutosDaCotacao) {
+        // (Esta função permanece idêntica à do Apps Script)
+        if (!todosOsProdutosDaCotacao || todosOsProdutosDaCotacao.length === 0) return [];
+        const gruposTemp = {};
+        todosOsProdutosDaCotacao.forEach(linhaProduto => {
+            const nomeProdutoPrincipal = linhaProduto["Produto"];
+            const categoriaProduto = linhaProduto["Categoria"] || "Sem Categoria";
+            const chaveGrupo = `${categoriaProduto}|${nomeProdutoPrincipal}`;
+            if (!gruposTemp[chaveGrupo]) {
+                gruposTemp[chaveGrupo] = {
+                    produtoNome: nomeProdutoPrincipal,
+                    categoria: categoriaProduto,
+                    subProdutos: [],
+                    estoqueMinimoProdutoPrincipal: linhaProduto.hasOwnProperty("EstoqueMinimoProdutoPrincipal") ? linhaProduto["EstoqueMinimoProdutoPrincipal"] : null
+                };
+            }
+            gruposTemp[chaveGrupo].subProdutos.push(linhaProduto);
+        });
+        let arrayDeGrupos = Object.values(gruposTemp);
+        arrayDeGrupos.sort((a, b) => {
+            const catA = String(a.categoria).toLowerCase(); const catB = String(b.categoria).toLowerCase();
+            if (catA < catB) return -1; if (catA > catB) return 1;
+            const nomeA = String(a.produtoNome).toLowerCase(); const nomeB = String(b.produtoNome).toLowerCase();
+            if (nomeA < nomeB) return -1; if (nomeA > nomeB) return 1;
+            return 0;
+        });
+        arrayDeGrupos.forEach(grupo => {
+            grupo.subProdutos.sort((a, b) => {
+                const subNomeAOriginal = String(a["_subProdutoOriginalPersistido"] || a["SubProduto"] || "").toLowerCase();
+                const subNomeBOriginal = String(b["_subProdutoOriginalPersistido"] || b["SubProduto"] || "").toLowerCase();
+                if (subNomeAOriginal < subNomeBOriginal) return -1;
+                if (subNomeAOriginal > subNomeBOriginal) return 1;
+                return 0;
+            });
+        });
+        return arrayDeGrupos;
+    }
+
+    function renderizarGruposDeProdutosInterno(gruposDeProdutos) {
+        // (Esta função permanece idêntica à do Apps Script)
+        const tabela = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO);
+        if (!tabela) { console.error("Tabela não encontrada."); return; }
+        const tbody = tabela.querySelector('tbody');
+        if (!tbody) { console.error("Tbody não encontrado."); return; }
+        tbody.innerHTML = '';
+        if (!gruposDeProdutos || gruposDeProdutos.length === 0) {
+            const tr = tbody.insertRow();
+            const td = tr.insertCell();
+            td.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+            td.className = 'text-center p-8 text-gray-500';
+            td.textContent = 'Nenhum produto agrupado para esta cotação.';
+            return;
+        }
+        let categoriaAtualRenderizada = null;
+        const colunasEditaveis = ["SubProduto", "Tamanho", "UN", "Fator", "Preço", "Comprar"];
+        gruposDeProdutos.forEach(grupo => {
+            const catSanit = String(grupo.categoria).replace(/[^a-zA-Z0-9-_]/g, '').toLowerCase() || 'sem-categoria';
+            const catClass = `content-for-category-${catSanit}`;
+            if (grupo.categoria !== categoriaAtualRenderizada) {
+                const catRow = tbody.insertRow();
+                catRow.className = 'categoria-accordion-header-row';
+                catRow.dataset.targetClass = catClass;
+                catRow.dataset.categoriaNome = grupo.categoria;
+                const catCell = catRow.insertCell();
+                catCell.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'categoria-header-content';
+                const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                icon.setAttribute("class", "categoria-accordion-icon");
+                icon.setAttribute("viewBox", "0 0 20 20");
+                icon.setAttribute("fill", "currentColor");
+                icon.innerHTML = `<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>`;
+                headerDiv.appendChild(icon);
+                const span = document.createElement('span');
+                span.textContent = `Categoria: ${grupo.categoria}`;
+                headerDiv.appendChild(span);
+                catCell.appendChild(headerDiv);
+                catRow.addEventListener('click', function () {
+                    this.classList.toggle('expanded');
+                    const exp = this.classList.contains('expanded');
+                    if (icon) icon.style.transform = exp ? 'rotate(90deg)' : 'rotate(0deg)';
+                    tbody.querySelectorAll(`.${this.dataset.targetClass}`).forEach(r => {
+                        if (!r.classList.contains('hidden-by-search') && !r.classList.contains('hidden-by-etapa')) {
+                            r.classList.toggle('hidden', !exp);
+                        }
+                    });
+                });
+                categoriaAtualRenderizada = grupo.categoria;
+            }
+            const sepRow = tbody.insertRow();
+            sepRow.className = `produto-group-separator-row category-content-row ${catClass} hidden`;
+            sepRow.dataset.produtoNome = grupo.produtoNome;
+            sepRow.dataset.categoria = grupo.categoria;
+            const sepCell = sepRow.insertCell();
+            sepCell.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+            if (CotacaoIndividualScript_modoEtapaAtual !== 'contagem_estoque') {
+                const wrap = document.createElement('div');
+                wrap.style.display = 'flex';
+                wrap.style.justifyContent = 'space-between';
+                wrap.style.alignItems = 'center';
+                wrap.className = 'contagem-container-principal';
+                const info = document.createElement('div');
+                info.className = 'produto-principal-info';
+                info.style.display = 'flex';
+                info.style.alignItems = 'center';
+                info.style.gap = '0.75rem';
+                const nomeProdutoSpan = document.createElement('span');
+                nomeProdutoSpan.textContent = `Produto: ${grupo.produtoNome}`;
+                info.appendChild(nomeProdutoSpan);
+                const demandaMedia = (grupo.subProdutos && grupo.subProdutos[0] && grupo.subProdutos[0]['DemandaMediaProdutoPrincipal'] != null)
+                    ? parseFloat(grupo.subProdutos[0]['DemandaMediaProdutoPrincipal']).toFixed(2)
+                    : 'N/A';
+                const demandaBadge = document.createElement('span');
+                demandaBadge.className = 'info-badge';
+                demandaBadge.textContent = `Demanda Média: ${demandaMedia}`;
+                info.appendChild(demandaBadge);
+                const valorEstoqueBruto = (grupo.subProdutos && grupo.subProdutos[0]) ? grupo.subProdutos[0]["Estoque Atual"] : '';
+                const estoqueParaExibir = (valorEstoqueBruto !== null && valorEstoqueBruto !== undefined && valorEstoqueBruto !== "") ? valorEstoqueBruto : 'N/A';
+                const estoqueBadge = document.createElement('span');
+                estoqueBadge.className = 'info-badge';
+                estoqueBadge.textContent = estoqueParaExibir;
+                info.appendChild(estoqueBadge);
+                const actions = document.createElement('div');
+                actions.className = 'contagem-fields-container';
+                const btnNeg = document.createElement('button');
+                btnNeg.type = 'button';
+                btnNeg.title = 'Negociação';
+                btnNeg.className = 'info-badge clickable';
+                btnNeg.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style="width: 1em; height: 1em;"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm1 5h2v8h-2V8zm-4 0h2v8H9V8z"/></svg><span>Negociação</span>`;
+                btnNeg.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const produto = sepRow.dataset.produtoNome || '';
+                    const subprodutos = CotacaoIndividualScript_obterSubprodutosDoProduto(produto);
+                    CotacaoIndividualScript_abrirModalNegociacao(produto, subprodutos);
+                });
+                actions.appendChild(btnNeg);
+                const grupoComDemanda = { ...grupo, demandaMediaProdutoPrincipal: (grupo.subProdutos[0] ? grupo.subProdutos[0].DemandaMediaProdutoPrincipal : 0) };
+                const metricas = CotacaoIndividualScript_calcularMetricasNegociacao(grupoComDemanda);
+                const oportunidadeFormatada = CotacaoIndividualScript_formatarPreco(metricas.oportunidadeReais);
+                const spreadFormatado = metricas.spreadPercent.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) + '%';
+                let metricasSpan = document.createElement('span');
+                metricasSpan.className = 'info-badge indicador-oportunidade';
+                metricasSpan.textContent = `Oportunidade: ${oportunidadeFormatada} | Spread: ${spreadFormatado}`;
+                actions.appendChild(metricasSpan);
+                wrap.appendChild(info);
+                wrap.appendChild(actions);
+                sepCell.appendChild(wrap);
+            }
+            if (grupo.subProdutos && grupo.subProdutos.length > 0) {
+                grupo.subProdutos.forEach(sub => {
+                    const subRow = tbody.insertRow();
+                    subRow.className = `sub-produto-row category-content-row ${catClass} hidden`;
+                    if (CotacaoIndividualScript_modoEtapaAtual === 'contagem_estoque') {
+                        subRow.classList.add('hidden-by-etapa');
+                    }
+                    subRow.dataset.subprodutoOriginalPersistido = sub["_subProdutoOriginalPersistido"] || sub["SubProduto"];
+                    subRow.dataset.produto = sub['Produto'];
+                    subRow.dataset.fornecedor = sub['Fornecedor'];
+                    subRow.dataset.subprodutoAtual = sub['SubProduto'];
+                    subRow.dataset.categoria = sub['Categoria'] || 'Sem Categoria';
+                    subRow.dataset.demandaMedia = sub['DemandaMediaProdutoPrincipal'] || '0';
+                    CotacaoIndividualScript_cabecalhosVisiveis.forEach(header => {
+                        const td = subRow.insertCell();
+                        const cor = CotacaoIndividualScript_getClasseCorColuna(header);
+                        if (cor) td.classList.add(cor);
+                        let val = sub[header];
+                        let fmt;
+                        const camposNumericos = ["Fator", "Preço", "Preço por Fator", "Comprar", "Valor Total", "Economia em Cotação"];
+                        if (camposNumericos.includes(header) && typeof val === 'number') {
+                            const fractionDigits = { 'Fator': 4, 'Preço por Fator': 4, 'Preço': 2, 'Comprar': 2, 'Valor Total': 2, 'Economia em Cotação': 2 };
+                            fmt = val.toLocaleString('pt-BR', { minimumFractionDigits: fractionDigits[header] || 2, maximumFractionDigits: fractionDigits[header] || 2 });
+                        } else {
+                            fmt = val == null ? "" : String(val);
+                        }
+                        td.textContent = fmt;
+                        td.dataset.coluna = header;
+                        td.dataset.valorOriginal = fmt;
+                        if (colunasEditaveis.includes(header)) {
+                            td.classList.add('editable-price-cell');
+                            td.tabIndex = 0;
+                            td.addEventListener('click', CotacaoIndividualScript_transformarCelulaEmInput);
+                        }
+                    });
+                });
+            }
+        });
+    }
+
+    /**
+     * FUNÇÃO ATUALIZADA: Configura os menus dropdown e suas ações.
+     */
+    function initDropdownsInterno() {
+        // (Esta função permanece idêntica à do Apps Script)
+        const dropdowns = [
+            { btnId: CotacaoIndividualScript_ID_MENU_ETAPAS_BTN, contentId: CotacaoIndividualScript_ID_MENU_ETAPAS_DROPDOWN },
+            { btnId: CotacaoIndividualScript_ID_MENU_RELATORIOS_BTN, contentId: CotacaoIndividualScript_ID_MENU_RELATORIOS_DROPDOWN },
+            { btnId: CotacaoIndividualScript_ID_MENU_FUNCOES_BTN, contentId: CotacaoIndividualScript_ID_MENU_FUNCOES_DROPDOWN }
+        ];
+        dropdowns.forEach(ddInfo => {
+            const btn = document.getElementById(ddInfo.btnId);
+            const content = document.getElementById(ddInfo.contentId);
+            if (btn && content) {
+                btn.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    document.querySelectorAll('.dropdown-menu-content.show').forEach(openDropdown => {
+                        if (openDropdown !== content) {
+                            openDropdown.classList.remove('show');
+                            const otherBtnId = openDropdown.id.replace('Dropdown', 'Btn');
+                            const otherBtn = document.getElementById(otherBtnId);
+                            if (otherBtn) otherBtn.classList.remove('open');
+                        }
+                    });
+                    content.classList.toggle('show');
+                    btn.classList.toggle('open');
+                    const icon = btn.querySelector('.dropdown-arrow');
+                    if (icon) icon.style.transform = content.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+                });
+                content.querySelectorAll('a').forEach(item => {
+                    item.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const action = this.dataset.action;
+                        console.log("Menu item clicado:", action, "ID da Cotação:", CotacaoIndividualScript_cotacaoIdAtual);
+                        content.classList.remove('show');
+                        btn.classList.remove('open');
+                        const icon = btn.querySelector('.dropdown-arrow');
+                        if (icon) icon.style.transform = 'rotate(0deg)';
+                        const modoAnterior = CotacaoIndividualScript_modoEtapaAtual;
+                        const novoModoPotencial = action.startsWith('etapa_') ? action.substring(6) : (action.startsWith('funcao_') ? action.substring(7) : (action.startsWith('relatorio_') ? action.substring(10) : null));
+                        if (modoAnterior && !action.startsWith('relatorio_')) {
+                            if (novoModoPotencial && modoAnterior !== novoModoPotencial || !novoModoPotencial) {
+                                if (modoAnterior === 'contagem_estoque' && typeof EtapasScript_fecharModalContagemEstoque === 'function') EtapasScript_fecharModalContagemEstoque();
+                                else if (modoAnterior === 'retirar_produtos' && typeof EtapasScript_fecharModalRetirarProdutos === 'function') EtapasScript_fecharModalRetirarProdutos();
+                                else if (modoAnterior === 'gerenciar_cotacoes_portal' && typeof FuncoesScript_fecharModalGerenciarCotacoes === 'function') FuncoesScript_fecharModalGerenciarCotacoes();
+                                else if (modoAnterior === 'realizar_cotacao' && typeof EtapasScript_desativarModoRealizarCotacao === 'function') EtapasScript_desativarModoRealizarCotacao();
+                                else if (modoAnterior === 'definir_empresa' && typeof EtapasScript_fecharModalDefinirEmpresa === 'function') EtapasScript_fecharModalDefinirEmpresa();
+                                else if (modoAnterior === 'definir_condicoes_pagamento' && typeof EtapasScript_fecharModalCondicoesPagamento === 'function') EtapasScript_fecharModalCondicoesPagamento();
+                            }
+                        }
+                        // O switch-case permanece o mesmo, ele chama as funções
+                        // que estarão disponíveis nos outros scripts incluídos (EtapasScript, FuncoesScript, etc.)
+                        switch (action) {
+                            case 'etapa_contagem_estoque': if (typeof EtapasScript_ativarModoContagemEstoque === 'function') EtapasScript_ativarModoContagemEstoque(); break;
+                            case 'etapa_retirar_produtos': if (typeof EtapasScript_ativarModoRetirarProdutos === 'function') EtapasScript_ativarModoRetirarProdutos(); break;
+                            case 'etapa_enviar_fornecedores': if (typeof EtapasScript_iniciarEnvioParaFornecedores === 'function') EtapasScript_iniciarEnvioParaFornecedores(); break;
+                            case 'etapa_realizar_cotacao': if (typeof EtapasScript_ativarModoRealizarCotacao === 'function') EtapasScript_ativarModoRealizarCotacao(); break;
+                            case 'etapa_definir_empresa': if (typeof EtapasScript_ativarModoDefinirEmpresa === 'function') EtapasScript_ativarModoDefinirEmpresa(); break;
+                            case 'etapa_definir_condicoes_pagamento': if (typeof EtapasScript_ativarModoDefinirCondicoesPagamento === 'function') EtapasScript_ativarModoDefinirCondicoesPagamento(); break;
+                            case 'etapa_imprimir_pedidos': if (typeof EtapasScript_abrirPaginaImpressao === 'function') EtapasScript_abrirPaginaImpressao(); break;
+                            case 'funcao_gerenciar_cotacoes': if (typeof FuncoesScript_ativarModoGerenciarCotacoesPortal === 'function') FuncoesScript_ativarModoGerenciarCotacoesPortal(); break;
+                            case 'funcao_melhores_oportunidades': if (typeof FuncoesScript_abrirSidebarOportunidades === 'function') FuncoesScript_abrirSidebarOportunidades(); break;
+                            case 'funcao_acrescentar_itens': if (typeof FuncoesScript_ativarModoAcrescentarItens === 'function') FuncoesScript_ativarModoAcrescentarItens(); break;
+                            case 'funcao_preencher_precos': if (typeof FuncoesScript_iniciarPreenchimentoUltimosPrecos === 'function') { FuncoesScript_iniciarPreenchimentoUltimosPrecos(); } else { console.error("Função FuncoesScript_iniciarPreenchimentoUltimosPrecos não definida."); } break;
+                            case 'relatorio_analise_compra': if (typeof RelatoriosScript_abrirRelatorioAnaliseCompra === 'function') { RelatoriosScript_abrirRelatorioAnaliseCompra(CotacaoIndividualScript_cotacaoIdAtual); } else { console.error("Função RelatoriosScript_abrirRelatorioAnaliseCompra não definida."); } break;
+                            default:
+                                if (!action.startsWith('relatorio_')) {
+                                    CotacaoIndividualScript_renderizarVisualizacaoCategoria();
+                                    CotacaoIndividualScript_modoEtapaAtual = null;
+                                }
+                                CotacaoIndividualScript_exibirFeedback(`Ação do menu: ${this.textContent} (ID: ${action}) selecionada. Implementação pendente.`, false, 4000);
+                        }
+                    });
+                });
+            }
+        });
+        window.addEventListener('click', function () {
+            document.querySelectorAll('.dropdown-menu-content.show').forEach(openDropdown => {
+                openDropdown.classList.remove('show');
+                const btnId = openDropdown.id.replace('Dropdown', 'Btn');
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.classList.remove('open');
+                    const icon = btn.querySelector('.dropdown-arrow');
+                    if (icon) icon.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+    }
+
+    /**
+     * FUNÇÃO ATUALIZADA: Ponto de entrada principal do script.
+     * Lê as variáveis EJS injetadas em vez de chamar google.script.url.
+     */
+    async function inicializarPaginaPrincipal() {
+        console.log("CotacaoIndividualScript: Iniciando lógica principal da página (Node.js)...");
+        CotacaoIndividualScript_ocultarFeedback();
+
+        // Configura listeners da UI (busca, abas, etc.)
+        const searchInputTop = document.getElementById(CotacaoIndividualScript_ID_SEARCH_INPUT_TOP);
+        if (searchInputTop) searchInputTop.addEventListener('input', CotacaoIndividualScript_filtrarTabelaPrincipal);
+
+        const btnRecalcular = document.getElementById('CotacaoIndividualScript_btnRecalcularUI');
+        if (btnRecalcular) btnRecalcular.addEventListener('click', CotacaoIndividualScript_forcarRecalculoTotalUI);
+
+        const tabela = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO);
+        if (tabela) {
+            const tbody = tabela.querySelector('tbody');
+            if (tbody) tbody.addEventListener('keydown', CotacaoIndividualScript_handleTableNavigation);
+        }
+
+        const btnAbaCategoria = document.getElementById('CotacaoIndividualScript_btnAbaCategoria');
+        if (btnAbaCategoria) btnAbaCategoria.addEventListener('click', CotacaoIndividualScript_renderizarVisualizacaoCategoria);
+
+        const btnAbaFornecedor = document.getElementById('CotacaoIndividualScript_btnAbaFornecedor');
+        if (btnAbaFornecedor) btnAbaFornecedor.addEventListener('click', CotacaoIndividualScript_renderizarVisualizacaoFornecedor);
+
+        // **AQUI ESTÁ A MUDANÇA**
+        // Lê as variáveis globais injetadas pelo EJS em CotacaoIndividualView.ejs
+        try {
+            CotacaoIndividualScript_cotacaoIdAtual = (typeof EJS_ID_COTACAO !== 'undefined' && EJS_ID_COTACAO !== 'null') ? EJS_ID_COTACAO : null;
+            CotacaoIndividualScript_modoPagina = (typeof EJS_MODO !== 'undefined') ? EJS_MODO : 'editar';
+        } catch (e) {
+            console.error("Erro ao ler variáveis EJS. Elas foram injetadas no CotacaoIndividualView.ejs?", e);
+            CotacaoIndividualScript_exibirFeedback("Erro crítico ao carregar parâmetros da página.", true, 0);
+            return;
+        }
+        // Fim da mudança
+
+        const spanIdCotacao = document.getElementById(CotacaoIndividualScript_ID_COTACAO_EXIBIDO);
+        renderizarCabecalhoTabelaPrincipalInterno();
+
+        if (CotacaoIndividualScript_modoPagina === 'novo') {
+            if (spanIdCotacao) spanIdCotacao.textContent = "Nova Cotação";
+            document.title = "Nova Cotação - CotaçãoPRO";
+            const tbody = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO)?.querySelector('tbody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-gray-500">Adicione produtos à nova cotação. (Funcionalidade pendente)</td></tr>`;
+            CotacaoIndividualScript_exibirFeedback("Modo 'Nova Cotação'. Adição de produtos pendente.", false, 6000);
+
+        } else if (CotacaoIndividualScript_cotacaoIdAtual) {
+            if (spanIdCotacao) spanIdCotacao.textContent = CotacaoIndividualScript_cotacaoIdAtual;
+            document.title = `Cotação: ${CotacaoIndividualScript_cotacaoIdAtual}`;
+            // MUDANÇA: O 'await' foi movido para cá para garantir que o ID seja válido
+            await window.CotacaoIndividualScript_carregarDadosCotacao(CotacaoIndividualScript_cotacaoIdAtual);
+            CotacaoIndividualScript_renderizarVisualizacaoCategoria();
+
+        } else {
+            if (spanIdCotacao) spanIdCotacao.textContent = "Inválida";
+            document.title = "Cotação Inválida - CotaçãoPRO";
+            CotacaoIndividualScript_exibirFeedback("ID da Cotação não fornecido ou inválido.", true, 0);
+            const tbody = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO)?.querySelector('tbody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-red-500">Erro: ID da Cotação não fornecido.</td></tr>`;
+        }
+
+        // Configura listeners dos modais (lógica movida de CotacaoIndividualScript_inicializar)
+        const btnFecharModalItens = document.getElementById('CotacaoIndividualScript_btnFecharModalAcrescentarItens');
+        const btnCancelarModalItens = document.getElementById('CotacaoIndividualScript_btnCancelarModalAcrescentarItens');
+        const btnAcrescentarModal = document.getElementById('CotacaoIndividualScript_btnAcrescentarItensModal');
+        const selectTipoCriacaoItens = document.getElementById('CotacaoIndividualScript_selectTipoCriacaoItens');
+        const modalOverlayItens = document.getElementById('CotacaoIndividualScript_modalAcrescentarItensOverlay');
+        const buscaFornecedorInputItens = document.getElementById('CotacaoIndividualScript_inputBuscaFornecedorItens');
+        const buscaProdutoInputItens = document.getElementById('CotacaoIndividualScript_inputBuscaProdutoItens');
+
+        // ====================== INÍCIO DA CORREÇÃO ======================
+        // Comentamos as funções que dependem de FuncoesScript.html
+        if (btnFecharModalItens) {
+            // btnFecharModalItens.addEventListener('click', FuncoesScript_fecharModalAcrescentarItens);
+            console.warn("Listener para 'btnFecharModalAcrescentarItens' desativado (aguardando FuncoesScript).");
+        }
+        if (btnCancelarModalItens) {
+            // btnCancelarModalItens.addEventListener('click', FuncoesScript_fecharModalAcrescentarItens);
+            console.warn("Listener para 'btnCancelarModalItens' desativado (aguardando FuncoesScript).");
+        }
+        if (btnAcrescentarModal) {
+            // btnAcrescentarModal.addEventListener('click', FuncoesScript_lidarComAcrescentarItens);
+            console.warn("Listener para 'btnAcrescentarModal' desativado (aguardando FuncoesScript).");
+        }
+        // ======================= FIM DA CORREÇÃO ========================
+
+        if (selectTipoCriacaoItens) {
+            selectTipoCriacaoItens.addEventListener('change', function () {
+                if (typeof FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens === 'function') {
+                    FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens(this.value);
+                }
+            });
+        }
+        if (modalOverlayItens) {
+            modalOverlayItens.addEventListener('click', function (event) {
+                if (event.target === modalOverlayItens) {
+                    // FuncoesScript_fecharModalAcrescentarItens();
+                }
+            });
+        }
+        if (buscaFornecedorInputItens) {
+            buscaFornecedorInputItens.addEventListener('keyup', function () {
+                if (typeof FuncoesScript_filtrarCheckboxesItens === 'function') {
+                    FuncoesScript_filtrarCheckboxesItens('CotacaoIndividualScript_checkboxContainerFornecedoresItens', this.value);
+                }
+            });
+        }
+        if (buscaProdutoInputItens) {
+            buscaProdutoInputItens.addEventListener('keyup', function () {
+                if (typeof FuncoesScript_filtrarCheckboxesItens === 'function') {
+                    FuncoesScript_filtrarCheckboxesItens('CotacaoIndividualScript_checkboxContainerProdutosItens', this.value);
+                }
+            });
+        }
+
+        initDropdownsInterno();
+    }
+
+    // (As funções de navegação da tabela permanecem idênticas)
+    function CotacaoIndividualScript_getNavegaveis() {
+        return Array.from(document.querySelectorAll('#' + CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO + ' .editable-price-cell, #' + CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO + ' .editable-select-cell'))
+            .filter(cell => cell.offsetParent !== null);
+    }
+    function CotacaoIndividualScript_focusNextCell(currentCell, isPrevious = false) {
+        const navegaveis = CotacaoIndividualScript_getNavegaveis();
+        if (navegaveis.length === 0) return;
+        const currentIndex = navegaveis.indexOf(currentCell);
+        if (currentIndex === -1) {
+            navegaveis[0].focus();
+            return;
+        }
+        let nextIndex;
+        if (isPrevious) {
+            nextIndex = (currentIndex - 1 + navegaveis.length) % navegaveis.length;
+        } else {
+            nextIndex = (currentIndex + 1) % navegaveis.length;
+        }
+        navegaveis[nextIndex].focus();
+    }
+    function CotacaoIndividualScript_handleTableNavigation(e) {
+        const activeElement = document.activeElement;
+        if (!activeElement || !activeElement.matches('td, input, select')) return;
+        const currentCell = activeElement.closest('td');
+        if (!currentCell) return;
+        const isInEditMode = activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT';
+        if (isInEditMode) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                activeElement.blur();
+                setTimeout(() => {
+                    const currentRow = currentCell.parentElement;
+                    const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+                    let nextRow = currentRow.nextElementSibling;
+                    while (nextRow && !nextRow.matches('.sub-produto-row, .etapa5-content-row')) {
+                        nextRow = nextRow.nextElementSibling;
+                    }
+                    if (nextRow) {
+                        const nextCell = nextRow.children[cellIndex];
+                        if (nextCell) nextCell.focus();
+                    }
+                }, 50);
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                activeElement.blur();
+                setTimeout(() => CotacaoIndividualScript_focusNextCell(currentCell, e.shiftKey), 50);
+            }
+            return;
+        }
+        if (!isInEditMode) {
+            switch (e.key) {
+                case 'Enter':
+                    e.preventDefault();
+                    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+                    currentCell.dispatchEvent(clickEvent);
+                    break;
+                case 'Tab':
+                    e.preventDefault();
+                    CotacaoIndividualScript_focusNextCell(currentCell, e.shiftKey);
+                    break;
+                case 'ArrowRight': {
+                    e.preventDefault();
+                    let next = currentCell.nextElementSibling;
+                    while (next && !next.matches('.editable-price-cell, .editable-select-cell')) {
+                        next = next.nextElementSibling;
+                    }
+                    if (next) next.focus();
+                    break;
+                }
+                case 'ArrowLeft': {
+                    e.preventDefault();
+                    let prev = currentCell.previousElementSibling;
+                    while (prev && !prev.matches('.editable-price-cell, .editable-select-cell')) {
+                        prev = prev.previousElementSibling;
+                    }
+                    if (prev) prev.focus();
+                    break;
+                }
+                case 'ArrowDown': {
+                    e.preventDefault();
+                    const currentRow = currentCell.parentElement;
+                    const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+                    let nextRow = currentRow.nextElementSibling;
+                    while (nextRow && !nextRow.matches('.sub-produto-row, .etapa5-content-row')) {
+                        nextRow = nextRow.nextElementSibling;
+                    }
+                    if (nextRow) {
+                        const nextCell = nextRow.children[cellIndex];
+                        if (nextCell) nextCell.focus();
+                    }
+                    break;
+                }
+                case 'ArrowUp': {
+                    e.preventDefault();
+                    const currentRow = currentCell.parentElement;
+                    const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+                    let prevRow = currentRow.previousElementSibling;
+                    while (prevRow && !prevRow.matches('.sub-produto-row, .etapa5-content-row')) {
+                        prevRow = prevRow.previousElementSibling;
+                    }
+                    if (prevRow) {
+                        const prevCell = prevRow.children[cellIndex];
+                        if (prevCell) prevCell.focus();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // (As funções de renderização permanecem idênticas)
+    function CotacaoIndividualScript_renderizarVisualizacaoCategoria() {
+        console.log("Renderizando visualização por Categoria.");
+        CotacaoIndividualScript_abaAtiva = 'categoria';
+        document.getElementById('CotacaoIndividualScript_btnAbaCategoria').classList.add('active');
+        document.getElementById('CotacaoIndividualScript_btnAbaFornecedor').classList.remove('active');
+        document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO_CONTAINER).classList.remove('hidden');
+        document.getElementById(CotacaoIndividualScript_ID_RETIRAR_PRODUTOS_CONTAINER).classList.add('hidden');
+        document.getElementById(CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_CONTAINER).classList.add('hidden');
+        CotacaoIndividualScript_cabecalhosVisiveis = CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO;
+        renderizarCabecalhoTabelaPrincipalInterno();
+        const gruposDeProdutos = agruparEClassificarProdutosInterno(CotacaoIndividualScript_dadosOriginaisCotacao);
+        renderizarGruposDeProdutosInterno(gruposDeProdutos);
+        CotacaoIndividualScript_filtrarTabelaPrincipal();
+    }
+    function CotacaoIndividualScript_renderizarVisualizacaoFornecedor() {
+        console.log("Renderizando visualização por Fornecedor.");
+        CotacaoIndividualScript_abaAtiva = 'fornecedor';
+        document.getElementById('CotacaoIndividualScript_btnAbaFornecedor').classList.add('active');
+        document.getElementById('CotacaoIndividualScript_btnAbaCategoria').classList.remove('active');
+        document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO_CONTAINER).classList.remove('hidden');
+        document.getElementById(CotacaoIndividualScript_ID_RETIRAR_PRODUTOS_CONTAINER).classList.add('hidden');
+        document.getElementById(CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_CONTAINER).classList.add('hidden');
+        if (typeof FuncoesScript_renderizarVisualizacaoFornecedor === 'function') {
+            FuncoesScript_renderizarVisualizacaoFornecedor();
+        } else {
+            console.error("A função FuncoesScript_renderizarVisualizacaoFornecedor não foi encontrada.");
+            CotacaoIndividualScript_exibirFeedback("Erro: Falha ao carregar o modo de visualização por fornecedor.", true);
+        }
+    }
+    window.CotacaoIndividualScript_restaurarVisualizacaoPadrao = function (forcarRenderizacao = false) {
+        // (Esta função permanece idêntica à do Apps Script)
+        CotacaoIndividualScript_modoEtapaAtual = null;
+        CotacaoIndividualScript_cabecalhosVisiveis = CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO;
+        renderizarCabecalhoTabelaPrincipalInterno();
+        document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO_CONTAINER).classList.remove('hidden');
+        document.getElementById(CotacaoIndividualScript_ID_RETIRAR_PRODUTOS_CONTAINER).classList.add('hidden');
+        document.getElementById(CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_CONTAINER).classList.add('hidden');
+        if (document.getElementById('EtapasScript_realizarCotacaoContainer')) {
+            document.getElementById('EtapasScript_realizarCotacaoContainer').classList.add('hidden');
+        }
+        if (document.getElementById('EtapasScript_definirCondicoesPagamentoContainer')) {
+            document.getElementById('EtapasScript_definirCondicoesPagamentoContainer').classList.add('hidden');
+        }
+        const btnSalvarContagem = document.getElementById(CotacaoIndividualScript_ID_BTN_SALVAR_CONTAGEM_ESTOQUE);
+        if (btnSalvarContagem) btnSalvarContagem.classList.add('hidden');
+        const searchInputTop = document.getElementById(CotacaoIndividualScript_ID_SEARCH_INPUT_TOP);
+        if (searchInputTop && searchInputTop.value !== "") {
+            searchInputTop.value = "";
+        }
+        const gruposDeProdutos = agruparEClassificarProdutosInterno(CotacaoIndividualScript_dadosOriginaisCotacao);
+        renderizarGruposDeProdutosInterno(gruposDeProdutos);
+        CotacaoIndividualScript_filtrarTabelaPrincipal();
+    }
+
+    /**
+     * FUNÇÃO ATUALIZADA: Carrega os dados da cotação usando a API Fetch.
+     */
+    window.CotacaoIndividualScript_carregarDadosCotacao = async function (idCotacao) {
+        const tbody = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO)?.querySelector('tbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td id="${CotacaoIndividualScript_ID_TABELA_LOADING_MSG_CELL}" colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-gray-500">
+                                <div class="flex justify-center items-center">
+                                    <svg class="custom-spinner" viewBox="0 0 50 50" style="width: 32px; height: 32px;"><circle cx="25" cy="25" r="20" fill="none" stroke="#D1D5DB" stroke-width="5"></circle><circle cx="25" cy="25" r="20" fill="none" stroke="#1D4ED8" stroke-width="5" stroke-linecap="round" stroke-dasharray="31.41592653589793, 125.66370614359172" stroke-dashoffset="0"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 25 25;360 25 25" keyTimes="0;1"></animateTransform></circle></svg>
+                                    <span class="ml-3 text-gray-700">Carregando dados da cotação...</span>
+                                </div></td></tr>`;
+        }
+
+        return new Promise((resolve, reject) => {
+            CotacaoIndividualScript_apiCall('/api/cotacaoIndividual/obterDetalhes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idCotacao: idCotacao })
+            })
+                .then(resposta => {
+                    if (resposta && resposta.success) {
+                        CABECALHOS_COTACOES_TODOS = resposta.cabecalhos || [];
+                        CotacaoIndividualScript_dadosOriginaisCotacao = (resposta.dados || []).map(item => {
+                            item._subProdutoOriginalPersistido = item.SubProduto;
+                            return item;
+                        });
+                        const gruposDeProdutos = agruparEClassificarProdutosInterno(CotacaoIndividualScript_dadosOriginaisCotacao);
+                        renderizarGruposDeProdutosInterno(gruposDeProdutos);
+
+                        const spanIdCotacao = document.getElementById(CotacaoIndividualScript_ID_COTACAO_EXIBIDO);
+                        if (spanIdCotacao) spanIdCotacao.textContent = idCotacao;
+
+                        const dataAberturaContainer = document.getElementById(CotacaoIndividualScript_ID_DATA_ABERTURA_EXIBIDA);
+                        if (dataAberturaContainer && CotacaoIndividualScript_dadosOriginaisCotacao.length > 0) {
+                            const primeiraLinha = CotacaoIndividualScript_dadosOriginaisCotacao[0];
+                            if (primeiraLinha && primeiraLinha['Data Abertura']) {
+                                // A data já vem formatada (ou como string) do nosso CRUD
+                                dataAberturaContainer.textContent = `Data de Abertura: ${primeiraLinha['Data Abertura']}`;
+                            } else {
+                                dataAberturaContainer.textContent = '';
+                            }
+                        }
+                        resolve();
+                    } else {
+                        const msgErro = (resposta && resposta.message) ? resposta.message : "Falha ao carregar dados da cotação.";
+                        CotacaoIndividualScript_exibirFeedback(msgErro, true);
+                        if (tbody) tbody.innerHTML = `<tr><td colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-red-500">${msgErro}</td></tr>`;
+                        reject(new Error(msgErro));
+                    }
+                })
+                .catch(error => {
+                    CotacaoIndividualScript_exibirFeedback("Erro de comunicação ao carregar cotação: " + error.message, true);
+                    if (tbody) tbody.innerHTML = `<tr><td colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-red-500">Erro de comunicação.</td></tr>`;
+                    reject(error);
+                });
+        });
+    }
+
+    // (As funções de Negociação permanecem idênticas, pois são 100% client-side)
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_OVERLAY = 'CotacaoIndividualScript_modalNegociacaoOverlay';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_TITULO = 'CotacaoIndividualScript_modalNegociacao_titulo';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_FECHAR = 'CotacaoIndividualScript_btnFecharModalNegociacao';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_CANCELAR = 'CotacaoIndividualScript_btnCancelarModalNegociacao';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_SELECT_SUBPRODUTO = 'CotacaoIndividualScript_selectSubproduto';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INFO_SUBPRODUTO = 'CotacaoIndividualScript_infoSubproduto';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INPUT_PERCENTUAL = 'CotacaoIndividualScript_inputPercentual';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INPUT_PRECO_NOVO = 'CotacaoIndividualScript_inputPrecoNovo';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_TEXTAREA_MENSAGEM = 'CotacaoIndividualScript_textareaMensagem';
+    const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_COPIAR = 'CotacaoIndividualScript_btnCopiarTextoNegociacao';
+
+    function CotacaoIndividualScript_aplicarDesconto(precoBase, percentual) {
+        const p = Number(precoBase) || 0;
+        const d = Number(percentual) || 0;
+        return Math.max(0, p * (100 - d) / 100);
+    }
+    function CotacaoIndividualScript_obterSubprodutosDoProduto(produto) {
+        const tabela = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO);
+        const tbody = tabela ? tabela.querySelector('tbody') : null;
+        if (!tbody) return [];
+        const linhas = Array.from(tbody.querySelectorAll('tr.sub-produto-row[data-produto="' + CSS.escape(produto) + '"]'));
+        const lista = [];
+        linhas.forEach(tr => {
+            const fornecedor = tr.dataset.fornecedor || '';
+            const tdSub = tr.querySelector('td[data-coluna="SubProduto"]');
+            const tdPreco = tr.querySelector('td[data-coluna="Preço"]');
+            const nome = tdSub ? tdSub.textContent.trim() : (tr.dataset.subprodutoAtual || tr.dataset.subprodutoOriginalPersistido || '');
+            const precoT = tdPreco ? tdPreco.textContent.trim() : '';
+            const precoN = CotacaoIndividualScript_parseNumeroPtBr(precoT);
+            lista.push({ fornecedor, subproduto: nome, preco: Number.isFinite(precoN) ? precoN : null });
+        });
+        lista.sort((a, b) => {
+            if (a.preco === null && b.preco === null) return 0;
+            if (a.preco === null) return 1;
+            if (b.preco === null) return -1;
+            return a.preco - b.preco;
+        });
+        return lista;
+    }
+    function CotacaoIndividualScript_gerarMensagemNegociacao(nomeProduto, novoPrecoNumero) {
+        const precoFmt = CotacaoIndividualScript_formatarPreco(novoPrecoNumero);
+        const linhas = [
+            `Produto: ${nomeProduto}`,
+            `Melhor preço obtido: ${precoFmt}`,
+            `...`
+        ];
+        return linhas.join('\n');
+    }
+    function CotacaoIndividualScript_abrirModalNegociacao(produto, subprodutos) {
+        const modal = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_OVERLAY);
+        const tituloModal = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_TITULO);
+        const select = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_SELECT_SUBPRODUTO);
+        const info = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INFO_SUBPRODUTO);
+        const inpPerc = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INPUT_PERCENTUAL);
+        const inpNovo = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INPUT_PRECO_NOVO);
+        const txt = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_TEXTAREA_MENSAGEM);
+        const btnCopiar = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_COPIAR);
+        const btnFechar = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_FECHAR);
+        const btnCancelar = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_CANCELAR);
+
+        if (!modal) { console.error('Modal de Negociação não encontrado no DOM.'); return; }
+
+        tituloModal.textContent = `Negociação: ${produto}`;
+        select.innerHTML = '';
+        subprodutos.forEach((sp, idx) => {
+            const opt = document.createElement('option');
+            const precoFmt = sp.preco === null ? '—' : CotacaoIndividualScript_formatarPreco(sp.preco);
+            opt.value = String(idx);
+            opt.textContent = `${sp.subproduto} — ${sp.fornecedor} — ${precoFmt}`;
+            select.appendChild(opt);
+        });
+        if (subprodutos.length > 0) select.value = '0';
+
+        const atualizar = () => {
+            const sp = subprodutos[Number(select.value)];
+            if (!sp) return;
+            info.textContent = `Base: ${sp.subproduto} — ${sp.fornecedor} — ${CotacaoIndividualScript_formatarPreco(sp.preco)}`;
+            const perc = Number(inpPerc.value || 0);
+            const novo = CotacaoIndividualScript_aplicarDesconto(sp.preco, perc);
+            inpNovo.value = CotacaoIndividualScript_formatarPreco(novo);
+            txt.value = CotacaoIndividualScript_gerarMensagemNegociacao(produto, novo);
+        };
+        select.onchange = atualizar;
+        inpPerc.oninput = atualizar;
+        const fechar = () => {
+            modal.classList.remove('active');
+            select.onchange = null;
+            inpPerc.oninput = null;
+        };
+        btnCopiar.onclick = () => {
+            txt.select();
+            txt.setSelectionRange(0, 99999);
+            // Use o novo Clipboard API se disponível (mais seguro)
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(txt.value).then(() => {
+                    CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000);
+                }).catch(err => {
+                    console.error('Falha ao copiar com Clipboard API:', err);
+                    try { document.execCommand('copy'); CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000); } catch (e) { console.error('Falha ao copiar com execCommand:', e); }
+                });
+            } else {
+                try { document.execCommand('copy'); CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000); } catch (e) { console.error('Falha ao copiar com execCommand:', e); }
+            }
+        };
+        btnFechar.onclick = fechar;
+        btnCancelar.onclick = fechar;
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) fechar();
+        });
+        atualizar();
+        modal.classList.add('active');
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // FUNÇÃO DE INICIALIZAÇÃO PRINCIPAL
+    //----------------------------------------------------------------------------------------------------
+    function initCotacaoIndividualScript() {
+        console.log("initCotacaoIndividualScript: Iniciando configuração da página (Node.js).");
+        // Chama a função de inicialização que agora lê as variáveis EJS
+        inicializarPaginaPrincipal();
+
+        // ====================== INÍCIO DA CORREÇÃO ======================
+        // Comentamos a chamada da função que ainda não existe.
+        // if (typeof FuncoesScript_initSidebarOportunidades === 'function') {
+        //     FuncoesScript_initSidebarOportunidades();
+        // } else {
+        //     console.warn("FuncoesScript_initSidebarOportunidades não foi encontrada. O sidebar de Oportunidades pode não funcionar.");
+        // }
+        // ======================= FIM DA CORREÇÃO ========================
+    }
+</script>

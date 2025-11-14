@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Cotação</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6;
+            overflow-x: hidden;
+        }
+
+        .cotacao-individual-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .top-menu-bar {
+            background-color: #1D4ED8;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .title-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-right: auto;
+            /* Empurra os outros itens para a direita */
+        }
+
+        .top-menu-bar .title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .data-abertura-info {
+            font-size: 0.8rem;
+            color: #e0e0e0;
+            margin-top: 0.15rem;
+        }
+
+        .top-menu-bar .actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            /* Espaço entre os itens de ação */
+        }
+
+        /* Ajuste para o campo de busca no menu */
+        .top-menu-search-container {
+            display: flex;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.15);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            min-width: 200px;
+            /* Largura mínima */
+            flex-grow: 1;
+            /* Permite crescer se houver espaço */
+            max-width: 350px;
+            /* Largura máxima */
+            margin-right: 1rem;
+            /* Espaço antes dos botões dropdown */
+        }
+
+        .top-menu-search-container input[type="text"] {
+            width: 100%;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid transparent;
+            /* Borda transparente para integrar melhor */
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            background-color: transparent;
+            color: white;
+            box-shadow: none;
+        }
+
+        .top-menu-search-container input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .top-menu-search-container input[type="text"]:focus {
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.25);
+            /* Leve destaque no foco */
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn-menu-superior {
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.15s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            color: white;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+
+        .btn-menu-superior:hover {
+            opacity: 0.9;
+        }
+
+        .btn-menu-salvar {
+            background-color: #16a34a;
+        }
+
+        .btn-menu-salvar:hover {
+            background-color: #15803d;
+        }
+
+        .btn-menu-superior svg {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .dropdown-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-menu-button {
+            background-color: #235fc2;
+        }
+
+        .dropdown-menu-button:hover {
+            background-color: #1a3561;
+        }
+
+        .dropdown-menu-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 250px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 1050;
+            border-radius: 0.375rem;
+            right: 0;
+            border: 1px solid #e2e8f0;
+            margin-top: 0.25rem;
+        }
+
+        .dropdown-menu-content.show {
+            display: block;
+        }
+
+        .dropdown-menu-content a {
+            color: #1f2937;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            display: block;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .dropdown-menu-content a:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-menu-content a:hover {
+            background-color: #f4f7f6;
+            color: #1D4ED8;
+        }
+
+        .dropdown-arrow {
+            width: 1em;
+            height: 1em;
+            margin-left: 0.5rem;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .dropdown-menu-button.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .main-content-area {
+            flex-grow: 1;
+            padding: 0.75rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-container,
+        .retirar-produtos-container,
+        .gerenciar-cotacoes-portal-container {
+            flex-grow: 1;
+            overflow: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .table-container.hidden,
+        .retirar-produtos-container.hidden,
+        .gerenciar-cotacoes-portal-container.hidden {
+            display: none !important;
+        }
+
+
+        /* Muda detalhes do cabeçalho */
+        .sticky-header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sticky-header-table thead th {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            background-color: #1D4ED8 !important;
+            color: white !important;
+            padding: 0.5rem 1rem;
+            text-align: left;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #1e3a8a;
+            z-index: 10;
+            border-left: 1px solid #425B9A;
+        }
+
+        .sticky-header-table thead th:first-child {
+            border-left: none;
+            border-top-left-radius: 0.375rem;
+        }
+
+        .sticky-header-table thead th:last-child {
+            border-top-right-radius: 0.375rem;
+        }
+
+        /* Muda detalhes do corpo onde ficam os produtos */
+        .sticky-header-table tbody td {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.775rem;
+            color: #334155;
+            white-space: nowrap;
+            border-left: 1px solid #e2e8f0;
+            cursor: default;
+        }
+
+        .sticky-header-table tbody td.editable-price-cell {
+            /* Usado para todas as células editáveis */
+            cursor: cell;
+            position: relative;
+        }
+
+        .sticky-header-table tbody td.editable-price-cell:hover::after {
+            content: '✎';
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7em;
+            color: #666;
+        }
+
+        .sticky-header-table tbody td:first-child {
+            border-left: none;
+        }
+
+        .sticky-header-table thead th:first-child,
+        .sticky-header-table tbody tr td:first-child {
+            position: -webkit-sticky;
+            position: sticky;
+            left: 0;
+            z-index: 3;
+        }
+
+        .sticky-header-table tbody tr td:first-child {
+            background-color: inherit;
+        }
+
+        .sticky-header-table thead th:first-child {
+            z-index: 11;
+        }
+
+        .categoria-accordion-header-row td:first-child {
+            background-color: #e5e7eb;
+        }
+
+        .produto-group-separator-row td:first-child {
+            background-color: #add8e6;
+        }
+
+        .sticky-header-table tbody tr:hover td:first-child {
+            background-color: #dbeafe !important;
+        }
+
+        .sticky-header-table tbody tr:hover td {
+            background-color: #dbeafe !important;
+        }
+
+        .categoria-accordion-header-row {
+            background-color: #e5e7eb;
+            cursor: pointer;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .categoria-accordion-header-row:hover {
+            background-color: #d1d5db;
+        }
+
+        .categoria-accordion-header-row td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #56badb;
+        }
+
+        .categoria-header-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .categoria-accordion-icon {
+            transition: transform 0.2s ease-in-out;
+            width: 1.25rem;
+            height: 1.25rem;
+            color: #4b5563;
+        }
+
+        .categoria-accordion-header-row.expanded .categoria-accordion-icon {
+            transform: rotate(90deg);
+        }
+
+        .category-content-row.hidden,
+        .sub-produto-row.hidden-by-etapa,
+        .sub-produto-row.hidden-by-search {
+            display: none !important;
+        }
+
+        .produto-group-separator-row.hidden-by-search,
+        .categoria-accordion-header-row.hidden-by-search {
+            display: none !important;
+        }
+
+        .produto-group-separator-row td {
+            background-color: #add8e6;
+            padding: 0.6rem 1rem;
+            font-weight: 600;
+            color: #020742;
+            border-bottom: 1px solid #38bdf8;
+            white-space: normal;
+        }
+
+        .produto-group-separator-row td .contagem-container-principal {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .produto-group-separator-row td .produto-principal-info {
+            font-weight: 600;
+            margin-right: 15px;
+            white-space: nowrap;
+        }
+
+        .produto-group-separator-row td .contagem-fields-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 15px;
+        }
+
+        .produto-group-separator-row td .contagem-field-block {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .produto-group-separator-row td .campo-contagem-label {
+            font-weight: normal;
+            color: #1f2937;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .produto-group-separator-row td input[type="number"].input-contagem {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #9ca3af;
+            border-radius: 0.375rem;
+            width: 75px;
+            font-size: 0.875rem;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.075);
+        }
+
+        .sub-produto-row {
+            background-color: #F9FAFB;
+        }
+
+        .sub-produto-row td {
+            padding-left: 1.75rem;
+        }
+
+        .sticky-header-table tbody td.bg-col-amarelo {
+            background-color: #ffe599 !important;
+        }
+
+        .sticky-header-table tbody td.bg-col-laranja {
+            background-color: #f9cb9c !important;
+        }
+
+        .sticky-header-table tbody td.bg-col-azul-cot {
+            background-color: #9fc5e8 !important;
+        }
+
+        .sticky-header-table tbody td.bg-col-verde {
+            background-color: #b6d7a8 !important;
+        }
+
+        .sticky-header-table tbody td.bg-col-vermelho-leve {
+            background-color: #FECACA !important;
+        }
+
+        .sticky-header-table tbody td.bg-col-roxo-leve {
+            background-color: #E9D5FF !important;
+        }
+
+        .feedback-message {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .feedback-message.hidden {
+            display: none;
+        }
+
+        .feedback-success {
+            background-color: #D1FAE5;
+            color: #065F46;
+            border: 1px solid #6EE7B7;
+        }
+
+        .feedback-error {
+            background-color: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(230, 230, 230, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .loading-overlay .global-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #D1D5DB;
+            border-top-color: #1D4ED8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .retirar-produtos-container h3,
+        .gerenciar-cotacoes-portal-container h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1D4ED8;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #BFDBFE;
+            padding-bottom: 0.5rem;
+        }
+
+        .retirar-accordion-header {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 0.75rem;
+            margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .retirar-accordion-header:hover {
+            background-color: #BFDBFE;
+        }
+
+        .retirar-accordion-icon {
+            transition: transform 0.2s ease-in-out;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .retirar-accordion-header.expanded .retirar-accordion-icon {
+            transform: rotate(90deg);
+        }
+
+        .retirar-accordion-content {
+            padding: 0.5rem 0 0.5rem 1rem;
+            display: none;
+            border-left: 3px solid #BFDBFE;
+            margin-left: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .retirar-accordion-content.expanded {
+            display: block;
+        }
+
+        .retirar-produto-grupo {
+            margin-bottom: 0.5rem;
+            padding-top: 0.25rem;
+        }
+
+        .retirar-produto-principal-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.25rem;
+            padding: 0.35rem 0.5rem;
+            background-color: #f9fafb;
+            border-radius: 0.25rem;
+        }
+
+        .retirar-subproduto-item {
+            display: flex;
+            align-items: center;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .retirar-subproduto-item input[type="checkbox"] {
+            margin-right: 0.75rem;
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .btn-confirmar-remocao {
+            background-color: #EF4444;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 1rem;
+            border: none;
+        }
+
+        .btn-confirmar-remocao:hover {
+            background-color: #DC2626;
+        }
+
+        .btn-salvar-contagem {
+            background-color: #16a34a;
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 1rem;
+            border: none;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-salvar-contagem:hover {
+            background-color: #15803d;
+        }
+
+        .btn-salvar-contagem.hidden {
+            display: none !important;
+        }
+
+        .gerenciar-cotacoes-portal-container .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .gerenciar-cotacoes-accordion-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            background-color: #f9fafb;
+        }
+
+        .gerenciar-cotacoes-accordion-header {
+            background-color: #eff6ff;
+            color: #1e3a8a;
+            padding: 0.75rem 1.25rem;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+
+        .gerenciar-cotacoes-accordion-header:hover {
+            background-color: #dbeafe;
+        }
+
+        .gerenciar-cotacoes-accordion-header .accordion-title-text {
+            flex-grow: 1;
+        }
+
+        .gerenciar-cotacoes-accordion-header .accordion-percentage {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-left: 1rem;
+            background-color: #e0e7ff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        .gerenciar-cotacoes-accordion-icon {
+            transition: transform 0.2s ease-in-out;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .gerenciar-cotacoes-accordion-header.expanded .gerenciar-cotacoes-accordion-icon {
+            transform: rotate(90deg);
+        }
+
+        .gerenciar-cotacoes-accordion-content {
+            padding: 1rem 1.25rem;
+            display: none;
+            border-top: 1px solid #e2e8f0;
+            background-color: white;
+        }
+
+        .gerenciar-cotacoes-accordion-content.expanded {
+            display: block;
+        }
+
+        .gerenciar-cotacoes-texto-global-cotacao {
+            margin-bottom: 1rem;
+        }
+
+        .gerenciar-cotacoes-texto-global-cotacao label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .gerenciar-cotacoes-texto-global-cotacao textarea {
+            width: calc(100% - 16px);
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            min-height: 80px;
+            margin-bottom: 0.5rem;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .gerenciar-cotacoes-texto-global-cotacao button {
+            background-color: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .gerenciar-cotacoes-texto-global-cotacao button:hover {
+            background-color: #059669;
+        }
+
+        .gerenciar-cotacoes-fornecedor-lista-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .gerenciar-cotacoes-fornecedor-lista-header h5 {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .btn-excluir-fornecedores-selecionados-cotacao {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-excluir-fornecedores-selecionados-cotacao:hover {
+            background-color: #dc2626;
+        }
+
+        .gerenciar-cotacoes-fornecedor-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .gerenciar-cotacoes-fornecedor-item:last-child {
+            border-bottom: none;
+        }
+
+        .gerenciar-cotacoes-fornecedor-item input[type="checkbox"] {
+            margin-right: 0.75rem;
+            width: 1rem;
+            height: 1rem;
+            accent-color: #1D4ED8;
+        }
+
+        .gerenciar-cotacoes-fornecedor-info {
+            flex-grow: 1;
+        }
+
+        .gerenciar-cotacoes-fornecedor-info .fornecedor-nome {
+            font-weight: 500;
+            color: #1f2937;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .gerenciar-cotacoes-fornecedor-info .link-display {
+            font-size: 0.8rem;
+            color: #6b7280;
+            word-break: break-all;
+            background-color: #f9fafb;
+            padding: 0.25rem 0.4rem;
+            border-radius: 0.25rem;
+            display: inline-block;
+        }
+
+        .gerenciar-cotacoes-fornecedor-actions-item button {
+            font-size: 0.8rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            margin-left: 0.5rem;
+        }
+
+        .btn-copiar-msg-link-fornecedor {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-copiar-msg-link-fornecedor:hover {
+            background-color: #2563eb;
+        }
+
+        /* INÍCIO - ESTILOS PARA ETAPA 6 (VERSÃO COMPACTA) */
+        .etapa6-dialog-container {
+            display: flex;
+            flex-direction: row;
+            gap: 15px;
+            height: calc(100vh - 220px);
+            /* Altura aumentada ligeiramente para compensar títulos menores */
+            overflow: hidden;
+        }
+
+        .etapa6-pedidos-column {
+            flex: 0 0 60%;
+            overflow-y: auto;
+            padding-right: 15px;
+        }
+
+        .etapa6-fluxo-column {
+            flex: 1 1 40%;
+        }
+
+        .etapa6-pedido-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            /* 6px */
+            padding: 0.75rem;
+            /* 12px */
+            margin-bottom: 0.75rem;
+            /* 12px */
+            background-color: #f9fafb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .etapa6-pedido-header {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: #1e3a8a;
+            font-size: 0.9rem;
+            /* Reduzido */
+        }
+
+        .etapa6-fluxo-preview-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            /* Reduzido */
+            background-color: #f8f9fa;
+            position: -webkit-sticky;
+            position: sticky;
+            top: 10px;
+            height: calc(100vh - 240px);
+            /* Altura ajustada */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .etapa6-fluxo-preview-container h4 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            /* Reduzido */
+            font-size: 1.1rem;
+            /* Reduzido */
+        }
+
+        .etapa6-fluxo-preview-table-container {
+            font-size: 0.8rem;
+            /* Reduzido */
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .etapa6-fluxo-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .etapa6-fluxo-preview-table th,
+        .etapa6-fluxo-preview-table td {
+            padding: 0.4rem;
+            /* Reduzido */
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .etapa6-fluxo-preview-table th {
+            background-color: #eef2ff;
+            font-weight: 600;
+        }
+
+        .etapa6-fluxo-preview-table td:last-child {
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .etapa6-form-group label {
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+            display: block;
+            font-size: 0.8rem;
+            /* Reduzido */
+            color: #374151;
+        }
+
+        .etapa6-pagamento-input {
+            width: calc(100% - 1rem);
+            /* Ajuste para o padding */
+            padding: 0.4rem;
+            /* Reduzido */
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-weight: bold;
+            color: #1D4ED8;
+            font-size: 0.875rem;
+            /* Reduzido */
+        }
+
+        /* FIM - ESTILOS PARA ETAPA 6 (VERSÃO COMPACTA) */
+
+        /* Estilos para o Modal Acrescentar Itens (Copiado de CotacoesView) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.01rem 0;
+            margin-bottom: 0.01rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .modal-body .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-body .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-body select,
+        .modal-body input[type="text"] {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .modal-body input[type="text"].input-busca {
+            /* Estilo para campos de busca */
+            margin-bottom: 0.75rem;
+            /* Espaço abaixo do campo de busca */
+        }
+
+        .modal-body .checkbox-group {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            background-color: #f9fafb;
+        }
+
+        .modal-body .checkbox-group label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-weight: normal;
+            color: #374151;
+        }
+
+        .modal-body .checkbox-group input[type="checkbox"] {
+            margin-right: 0.5rem;
+            width: auto;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .btn-painel-acao {
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: background-color 0.15s ease-in-out, opacity 0.15s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            color: white;
+            min-width: 100px;
+        }
+
+        .btn-modal-primary {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .btn-modal-primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-modal-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-modal-secondary:hover {
+            background-color: #d1d5db;
+        }
+
+        .CotacoesScript_secaoOpcoesCriacao {
+            /* Classe genérica para seções */
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #d1d5db;
+        }
+
+        .CotacoesScript_secaoOpcoesCriacao.active {
+            display: block;
+        }
+
+        /* Estilos para o Novo Dashboard Global de Totais */
+        .global-dashboard-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            /* 8px */
+            background-color: #f8fafc;
+            padding: 1rem;
+            /* 16px */
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .dashboard-title {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            /* 12px */
+            font-size: 1rem;
+            /* 16px */
+            font-weight: 600;
+            color: #1e3a8a;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            /* 8px */
+        }
+
+        .dashboard-items-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            /* 8px */
+        }
+
+        .global-total-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+            /* 14px */
+            color: #374151;
+        }
+
+        .global-total-item strong {
+            font-weight: 600;
+            color: #1f2937;
+            background-color: #eef2ff;
+            padding: 0.125rem 0.5rem;
+            /* 2px 8px */
+            border-radius: 0.25rem;
+            /* 4px */
+        }
+
+        .dashboard-empty-state {
+            color: #6b7280;
+            font-size: 0.875rem;
+            padding: 0.5rem 0;
+            text-align: center;
+        }
+
+        .dashboard-grand-total {
+            margin-top: 0.75rem;
+            /* 12px */
+            padding-top: 0.75rem;
+            /* 12px */
+            border-top: 2px solid #dbeafe;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+            /* 16px */
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+
+        .dashboard-grand-total strong {
+            color: #166534;
+            /* Verde escuro para destaque */
+        }
+
+        /* CotacaoIndividualView_estilosNegociacao */
+        .negociacao-metrics {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 0.75rem;
+            /* 12px */
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            /* 14px */
+            font-weight: 500;
+            color: #1e3a8a;
+            /* Azul escuro */
+            background-color: #eef2ff;
+            /* Azul bem claro */
+            border-radius: 0.375rem;
+            /* 6px */
+            border: 1px solid #dbeafe;
+            /* Borda azul clara */
+        }
+
+        /* ========================= INÍCIO: ESTILOS SIDEBAR OPORTUNIDADES ========================= */
+        .sidebar-oportunidades {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 400px;
+            max-width: 90vw;
+            height: 100%;
+            background-color: #1D4ED8;
+            /* Azul do sistema */
+            color: white;
+            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.2);
+            z-index: 1500;
+            /* Acima do conteúdo, abaixo de modais */
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-oportunidades.active {
+            transform: translateX(0);
+        }
+
+        .sidebar-oportunidades-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.25rem;
+            background-color: #1e40af;
+            /* Tom de azul mais escuro */
+            flex-shrink: 0;
+        }
+
+        .sidebar-oportunidades-title {
+            font-size: 1.125rem;
+            /* 18px */
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .sidebar-oportunidades-close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.75rem;
+            /* 28px */
+            cursor: pointer;
+            opacity: 0.8;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .sidebar-oportunidades-close-btn:hover {
+            opacity: 1;
+        }
+
+        .sidebar-oportunidades-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            /* 8px */
+            padding: 0.75rem 1.25rem;
+            background-color: #2563eb;
+            flex-shrink: 0;
+        }
+
+        .sidebar-oportunidades-controls label {
+            font-size: 0.875rem;
+            /* 14px */
+            font-weight: 500;
+        }
+
+        .sidebar-oportunidades-sort-btn {
+            padding: 0.375rem 0.75rem;
+            /* 6px 12px */
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            background-color: transparent;
+            color: white;
+            border-radius: 0.375rem;
+            /* 6px */
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-oportunidades-sort-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-oportunidades-sort-btn.active {
+            background-color: white;
+            color: #1D4ED8;
+            font-weight: 600;
+        }
+
+        .sidebar-oportunidades-lista {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+        }
+
+        .sidebar-oportunidades-item {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-radius: 0.375rem;
+            /* 6px */
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            /* 8px */
+        }
+
+        .sidebar-oportunidades-item-produto {
+            font-weight: 600;
+            color: #eff6ff;
+            margin-bottom: 0.375rem;
+            /* 6px */
+            display: block;
+        }
+
+        .sidebar-oportunidades-item-metricas {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            /* 14px */
+            color: #dbeafe;
+        }
+
+        .sidebar-oportunidades-item-metricas strong {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .sidebar-oportunidades-empty-state {
+            text-align: center;
+            padding-top: 2rem;
+            color: #dbeafe;
+        }
+
+        /* Adiciona estilo para a barra de rolagem customizada */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e40af;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #60a5fa;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #93c5fd;
+        }
+
+        /* ========================= FIM: ESTILOS SIDEBAR OPORTUNIDADES ========================= */
+
+        /* ========================= INÍCIO: AJUSTE DE LAYOUT PARA SIDEBAR ATIVO ========================= */
+        body.sidebar-active .cotacao-individual-container {
+            width: calc(100% - 400px);
+            /* Largura da sidebar */
+            transition: width 0.3s ease-in-out;
+        }
+
+        .cotacao-individual-container {
+            transition: width 0.3s ease-in-out;
+        }
+
+        /* ========================= FIM: AJUSTE DE LAYOUT PARA SIDEBAR ATIVO ========================= */
+
+        /* Adicione este novo estilo para os indicadores */
+        .info-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            /* 14px */
+            font-weight: 500;
+            color: #1e3a8a;
+            /* Azul escuro */
+            background-color: #eef2ff;
+            /* Azul bem claro */
+            border-radius: 0.375rem;
+            /* 6px */
+            border: 1px solid #dbeafe;
+            /* Borda azul clara */
+            gap: 0.375rem;
+        }
+
+        .info-badge.clickable {
+            cursor: pointer;
+            background-color: #2563eb;
+            /* Azul um pouco mais escuro para indicar ação */
+            color: white;
+            border-color: #1d4ed8;
+        }
+
+        .info-badge.clickable:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cotacao-individual-container">
+        <div class="top-menu-bar">
+            <div class="title-container">
+                <div class="title" id="CotacaoIndividualScript_tituloPagina">
+                    Cotação ID: <span id="CotacaoIndividualScript_idCotacaoExibido">Carregando...</span>
+                </div>
+                <div id="CotacaoIndividualScript_dataAberturaExibida" class="data-abertura-info"></div>
+            </div>
+
+            <div class="actions">
+                <div class="top-menu-search-container" id="CotacaoIndividualScript_searchContainer_Top">
+                    <input type="text" id="CotacaoIndividualScript_searchInput_Top" placeholder="Buscar na cotação...">
+                </div>
+
+                <button id="CotacaoIndividualScript_btnRecalcularUI" class="btn-menu-superior"
+                    title="Forçar recálculo de totais na tela"
+                    style="background-color: transparent; border: 1px solid #93c5fd; margin-right: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                        style="width: 1.25rem; height: 1.25rem;">
+                        <path fill-rule="evenodd"
+                            d="M15.312 11.424a5.5 5.5 0 01-9.205 4.013l-.56-1.12a3.5 3.5 0 005.88-2.553H9.5V10h6V4h-1.5v5.576a5.525 5.525 0 01-1.688 1.848zM4.688 8.576a5.5 5.5 0 019.205-4.013l.56 1.12A3.5 3.5 0 008.57 8.233H10.5V10H4.5V4h1.5v3.576a5.525 5.525 0 011.688-1.848z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </button>
+
+                <div class="dropdown-menu">
+                    <button id="CotacaoIndividualScript_menuEtapasBtn"
+                        class="btn-menu-superior dropdown-menu-button">Etapas <svg class="dropdown-arrow"
+                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.23 8.29a.75.75 0 01.02-1.06z"
+                                clip-rule="evenodd" />
+                        </svg></button>
+                    <div id="CotacaoIndividualScript_menuEtapasDropdown" class="dropdown-menu-content">
+                        <a href="#" data-action="etapa_contagem_estoque">1. Contagem de Estoque</a>
+                        <a href="#" data-action="etapa_retirar_produtos">2. Retirar Produtos Desnecessários</a>
+                        <a href="#" data-action="etapa_enviar_fornecedores">3. Enviar para Fornecedores</a>
+                        <a href="#" data-action="etapa_realizar_cotacao">4. Realizar Cotação</a>
+                        <a href="#" data-action="etapa_definir_empresa">5. Definir Empresa para Faturamento</a>
+                        <a href="#" data-action="etapa_definir_condicoes_pagamento">6. Definir Condições de
+                            Pagamento</a>
+                        <a href="#" data-action="etapa_imprimir_pedidos">7. Imprimir Pedidos</a>
+                    </div>
+                </div>
+                <div class="dropdown-menu">
+                    <button id="CotacaoIndividualScript_menuRelatoriosBtn"
+                        class="btn-menu-superior dropdown-menu-button">Relatórios <svg class="dropdown-arrow"
+                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.23 8.29a.75.75 0 01.02-1.06z"
+                                clip-rule="evenodd" />
+                        </svg></button>
+                    <div id="CotacaoIndividualScript_menuRelatoriosDropdown" class="dropdown-menu-content">
+                        <a href="#" data-action="relatorio_analise_compra">Análise de Compra</a>
+                        <a href="#" data-action="relatorio_opcao_2">Opção Relatório 2 (Pendente)</a>
+                    </div>
+                </div>
+                <div class="dropdown-menu">
+                    <button id="CotacaoIndividualScript_menuFuncoesBtn"
+                        class="btn-menu-superior dropdown-menu-button">Funções <svg class="dropdown-arrow"
+                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.23 8.29a.75.75 0 01.02-1.06z"
+                                clip-rule="evenodd" />
+                        </svg></button>
+                    <div id="CotacaoIndividualScript_menuFuncoesDropdown" class="dropdown-menu-content">
+                        <a href="#" data-action="funcao_gerenciar_cotacoes">Gerenciar Cotações (Portal)</a>
+                        <a href="#" data-action="funcao_acrescentar_itens">Acrescentar Itens</a>
+                        <a href="#" id="ContagemEstoqueMobileLink"
+                            onclick="FuncoesScript_abrirContagemEstoqueMobile(); return false;">
+                            Contagem de Estoque (Mobile)
+                        </a>
+                        <a href="#" data-action="funcao_melhores_oportunidades">Melhores Oportunidades</a>
+                        <a href="#" data-action="funcao_preencher_precos">Preencher com Últimos Preços</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content-area">
+            <style>
+                .view-tabs-container {
+                    margin-bottom: 1rem;
+                    display: flex;
+                    gap: 0.5rem;
+                    border-bottom: 2px solid #e2e8f0;
+                    padding-bottom: 0.5rem;
+                }
+
+                .view-tab-btn {
+                    padding: 0.5rem 1.25rem;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    border: none;
+                    background-color: transparent;
+                    color: #6b7280;
+                    cursor: pointer;
+                    border-bottom: 3px solid transparent;
+                    transition: all 0.2s ease-in-out;
+                    border-radius: 0.375rem 0.375rem 0 0;
+                }
+
+                .view-tab-btn:hover {
+                    background-color: #f4f7f6;
+                    color: #1D4ED8;
+                }
+
+                .view-tab-btn.active {
+                    color: #1D4ED8;
+                    border-bottom-color: #1D4ED8;
+                }
+            </style>
+            <div class="view-tabs-container">
+                <button id="CotacaoIndividualScript_btnAbaCategoria" class="view-tab-btn active">Visualizar por
+                    Categoria</button>
+                <button id="CotacaoIndividualScript_btnAbaFornecedor" class="view-tab-btn">Visualizar por
+                    Fornecedor</button>
+            </div>
+            <div id="CotacaoIndividualScript_mensagemFeedback" class="feedback-message hidden"></div>
+            <div class="table-container" id="CotacaoIndividualScript_tableContainer">
+                <table class="sticky-header-table" id="CotacaoIndividualScript_tabelaProdutosCotacao">
+                    <thead>
+                        <tr>
+                            <th>Carregando Cabeçalhos...</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td id="CotacaoIndividualScript_tabelaLoadingMsg" colspan="25"
+                                class="text-center p-8 text-gray-500">
+                                <div class="flex justify-center items-center">
+                                    <svg class="custom-spinner" viewBox="0 0 50 50" style="width: 32px; height: 32px;">
+                                        <circle cx="25" cy="25" r="20" fill="none" stroke="#D1D5DB" stroke-width="5">
+                                        </circle>
+                                        <circle cx="25" cy="25" r="20" fill="none" stroke="#1D4ED8" stroke-width="5"
+                                            stroke-linecap="round"
+                                            stroke-dasharray="31.41592653589793, 125.66370614359172"
+                                            stroke-dashoffset="0">
+                                            <animateTransform attributeName="transform" type="rotate"
+                                                repeatCount="indefinite" dur="1s" values="0 25 25;360 25 25"
+                                                keyTimes="0;1"></animateTransform>
+                                        </circle>
+                                    </svg>
+                                    <span class="ml-3 text-gray-700">Carregando dados da cotação...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button id="EtapasScript_btnSalvarContagemEstoque" class="btn-salvar-contagem hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                        style="width: 1rem; height: 1rem; margin-right: 0.375rem;">
+                        <path
+                            d="M3 3.75C3 3.33579 3.33579 3 3.75 3H13.1893C13.353 3 13.5131 3.06585 13.6314 3.18418L16.8158 6.36861C16.9341 6.48694 17 6.64699 17 6.81073V16.25C17 16.6642 16.6642 17 16.25 17H3.75C3.33579 17 3 16.6642 3 16.25V3.75ZM5 6.25C5 5.83579 5.33579 5.5 5.75 5.5H10.25C10.6642 5.5 11 5.83579 11 6.25V9.75C11 10.1642 10.6642 10.5 10.25 10.5H5.75C5.33579 10.5 5 10.1642 5 9.75V6.25ZM12.75 11.5H14.25C14.6642 11.5 15 11.8358 15 12.25V14.25C15 14.6642 14.6642 15 14.25 15H12.75C12.3358 15 12 14.6642 12 14.25V12.25C12 11.8358 12.3358 11.5 12.75 11.5Z" />
+                    </svg>
+                    Salvar Contagem e Voltar
+                </button>
+            </div>
+            <div id="CotacaoIndividualScript_retirarProdutosContainer" class="retirar-produtos-container hidden">
+                <h3>Retirar Produtos Desnecessários da Cotação</h3>
+                <p class="text-sm text-gray-600 mb-4">Analise os produtos abaixo e marque aqueles que deseja remover
+                    desta cotação.</p>
+                <div id="CotacaoIndividualScript_acordeaoCrit1"></div>
+                <div id="CotacaoIndividualScript_acordeaoCrit2"></div>
+                <div id="CotacaoIndividualScript_acordeaoCrit3"></div>
+                <button id="CotacaoIndividualScript_btnExcluirSelecionados" class="btn-confirmar-remocao">Confirmar
+                    Remoção e Voltar</button>
+            </div>
+
+            <div id="CotacaoIndividualScript_gerenciarCotacoesPortalContainer"
+                class="gerenciar-cotacoes-portal-container hidden">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #BFDBFE; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    <h3
+                        style="margin: 0; padding: 0; border: none; font-size: 1.25rem; font-weight: 600; color: #1D4ED8;">
+                        Gerenciar Cotações (Portal)</h3>
+                    <button id="FuncoesScript_btnVoltarGerenciarCotacoes" class="btn-confirmar-remocao"
+                        style="background-color: #6b7280; margin-top: 0;">Voltar à Tela Principal</button>
+                </div>
+                <div id="CotacaoIndividualScript_gerenciarCotacoesPortalBody" class="gerenciar-cotacoes-portal-body">
+                    <div class="empty-state">Carregando dados das cotações do portal...</div>
+                </div>
+            </div>
+
+            <div id="EtapasScript_realizarCotacaoContainer" class="retirar-produtos-container hidden">
+                <h3>Realizar Cotação: Itens Sem Preço</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Abaixo estão os subprodutos com preço zerado ou não preenchido. Marque os que deseja remover da
+                    cotação antes de prosseguir com a análise final.
+                </p>
+                <div id="EtapasScript_listaSubprodutosSemPreco">
+                    <div class="p-4 text-center text-gray-500">Nenhum subproduto sem preço encontrado.</div>
+                </div>
+                <div class="mt-4 flex justify-between items-center">
+                    <button id="EtapasScript_btnVoltarEtapa4" class="btn-confirmar-remocao"
+                        style="background-color: #6b7280;">
+                        Voltar
+                    </button>
+                    <button id="EtapasScript_btnExcluirSubprodutosSemPreco" class="btn-confirmar-remocao">
+                        Excluir Selecionados e Iniciar Edição
+                    </button>
+                </div>
+            </div>
+
+            <div id="EtapasScript_definirCondicoesPagamentoContainer"
+                class="gerenciar-cotacoes-portal-container hidden">
+                <h4>Definir Condições de Pagamento</h4>
+                <div class="etapa6-dialog-container">
+                    <div class="etapa6-pedidos-column" id="etapa6-pedidos-list"></div>
+                    <div class="etapa6-fluxo-column">
+                        <div class="etapa6-fluxo-preview-container">
+                            <h4 style="margin-top:0; color: #1e40af;">Resumo do Fluxo de Caixa</h4>
+                            <div class="etapa6-fluxo-preview-table-container">
+                                <table class="etapa6-fluxo-preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data Venc.</th>
+                                            <th>Valor Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="etapa6-fluxo-preview-tbody">
+                                        <tr>
+                                            <td colspan="2" style="text-align: center; color: #6b7280;">Altere as
+                                                condições para ver a prévia.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-between items-center"
+                    style="padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                    <button id="EtapasScript_btnVoltarEtapa6" class="btn-confirmar-remocao"
+                        style="background-color: #6b7280;">
+                        Voltar
+                    </button>
+                    <button id="EtapasScript_btnSalvarCondicoesPagamento" class="btn-salvar-contagem"
+                        style="display: inline-block; margin: 0;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                            style="width: 1rem; height: 1rem; margin-right: 0.375rem;">
+                            <path
+                                d="M3 3.75C3 3.33579 3.33579 3 3.75 3H13.1893C13.353 3 13.5131 3.06585 13.6314 3.18418L16.8158 6.36861C16.9341 6.48694 17 6.64699 17 6.81073V16.25C17 16.6642 16.6642 17 16.25 17H3.75C3.33579 17 3 16.6642 3 16.25V3.75ZM5 6.25C5 5.83579 5.33579 5.5 5.75 5.5H10.25C10.6642 5.5 11 5.83579 11 6.25V9.75C11 10.1642 10.6642 10.5 10.25 10.5H5.75C5.33579 10.5 5 10.1642 5 9.75V6.25ZM12.75 11.5H14.25C14.6642 11.5 15 11.8358 15 12.25V14.25C15 14.6642 14.6642 15 14.25 15H12.75C12.3358 15 12 14.6642 12 14.25V12.25C12 11.8358 12.3358 11.5 12.75 11.5Z" />
+                        </svg>
+                        Salvar Condições
+                    </button>
+                </div>
+            </div>
+            <template id="etapa6-pedido-item-template">
+                <div class="etapa6-pedido-item">
+                    <div class="etapa6-pedido-header">
+                        Fornecedor: <span class="fornecedor-nome"></span> | Empresa: <span class="empresa-nome"></span>
+                    </div>
+                    <div><strong>Valor Total do Pedido:</strong> <span class="valor-total"
+                            style="font-weight: bold;"></span></div>
+                    <div class="etapa6-form-group" style="margin-top: 0.5rem;">
+                        <p style="margin: 0 0 4px 0; font-size: 0.75rem; color: #6b7280;">
+                            Condições Sugeridas: <span class="condicoes-sugeridas"></span>
+                        </p>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                            <label for="cond-pagto-{id}"
+                                style="flex-shrink: 0; font-size: 0.875rem; font-weight: 500; color: #374151;">Condição
+                                de Pagamento:</label>
+                            <input type="text" id="cond-pagto-{id}" class="etapa6-pagamento-input" value=""
+                                style="flex-grow: 1; width: auto;">
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+    </div>
+    <div id="CotacaoIndividualScript_pageLoadingOverlay" class="loading-overlay hidden">
+        <div class="flex flex-col items-center">
+            <div class="global-spinner"></div>
+            <span class="mt-3 text-blue-700 font-semibold text-lg loading-message-text">Processando...</span>
+        </div>
+    </div>
+    </div>
+
+    <div id="CotacaoIndividualScript_modalAcrescentarItensOverlay" class="modal-overlay">
+        <div class="modal-content custom-scrollbar">
+            <div class="modal-header">
+                <h3 class="modal-title">Acrescentar Itens à Cotação</h3>
+                <button id="CotacaoIndividualScript_btnFecharModalAcrescentarItens" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="CotacaoIndividualScript_selectTipoCriacaoItens">Acrescentar itens por:</label>
+                    <select id="CotacaoIndividualScript_selectTipoCriacaoItens">
+                        <option value="">-- Selecione o tipo --</option>
+                        <option value="categoria">Categoria</option>
+                        <option value="fornecedor">Fornecedor</option>
+                        <option value="curvaABC">Curva ABC</option>
+                        <option value="produtoEspecifico">Produto Específico</option>
+                    </select>
+                </div>
+
+                <div id="CotacaoIndividualScript_secaoOpcoesCategoriaItens" class="CotacoesScript_secaoOpcoesCriacao">
+                    <label>Selecione as Categorias:</label>
+                    <div id="CotacaoIndividualScript_checkboxContainerCategoriasItens" class="checkbox-group">
+                        <p class="text-gray-500 text-sm">Carregando categorias...</p>
+                    </div>
+                </div>
+
+                <div id="CotacaoIndividualScript_secaoOpcoesFornecedorItens" class="CotacoesScript_secaoOpcoesCriacao">
+                    <label for="CotacaoIndividualScript_inputBuscaFornecedorItens">Buscar Fornecedor:</label>
+                    <input type="text" id="CotacaoIndividualScript_inputBuscaFornecedorItens" class="input-busca"
+                        placeholder="Digite para buscar...">
+                    <label>Selecione os Fornecedores:</label>
+                    <div id="CotacaoIndividualScript_checkboxContainerFornecedoresItens" class="checkbox-group">
+                        <p class="text-gray-500 text-sm">Carregando fornecedores...</p>
+                    </div>
+                </div>
+
+                <div id="CotacaoIndividualScript_secaoOpcoesCurvaABCItens" class="CotacoesScript_secaoOpcoesCriacao">
+                    <label>Selecione a Curva ABC:</label>
+                    <div id="CotacaoIndividualScript_radioContainerCurvaABCItens">
+                        <label><input type="radio" name="curvaABCItens" value="A" class="mr-1"> Curva A</label>
+                        <label><input type="radio" name="curvaABCItens" value="B" class="mr-1"> Curva B</label>
+                        <label><input type="radio" name="curvaABCItens" value="C" class="mr-1"> Curva C</label>
+                    </div>
+                </div>
+
+                <div id="CotacaoIndividualScript_secaoOpcoesProdutoEspecificoItens"
+                    class="CotacoesScript_secaoOpcoesCriacao">
+                    <label for="CotacaoIndividualScript_inputBuscaProdutoItens">Buscar Produto:</label>
+                    <input type="text" id="CotacaoIndividualScript_inputBuscaProdutoItens" class="input-busca"
+                        placeholder="Digite para buscar...">
+                    <label>Selecione os Produtos:</label>
+                    <div id="CotacaoIndividualScript_checkboxContainerProdutosItens" class="checkbox-group">
+                        <p class="text-gray-500 text-sm">Carregando produtos...</p>
+                    </div>
+                </div>
+                <div id="CotacaoIndividualScript_feedbackModalItens" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="CotacaoIndividualScript_btnCancelarModalAcrescentarItens"
+                    class="btn-painel-acao btn-modal-secondary">Cancelar</button>
+                <button id="CotacaoIndividualScript_btnAcrescentarItensModal"
+                    class="btn-painel-acao btn-modal-primary">Acrescentar Itens</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="EtapasScript_modalContagemEstoqueOverlay" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1000px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title">Etapa 1: Contagem de Estoque</h3>
+                <button id="EtapasScript_btnFecharModalContagemEstoque" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body" id="EtapasScript_modalBodyContagemEstoque">
+                <p class="text-sm text-gray-600 mb-4">Insira o estoque mínimo do produto principal, a quantidade contada
+                    em estoque e a sugestão de compra. Os valores serão aplicados a todos os subprodutos e fornecedores
+                    dentro desta cotação.</p>
+
+                <div id="EtapasScript_feedbackModalContagem" class="mb-4"></div>
+
+                <div class="table-container" style="max-height: 55vh; overflow-y: auto;">
+                    <table class="sticky-header-table">
+                        <thead style="position: sticky; top: 0; z-index: 2;">
+                            <tr>
+                                <th style="width: 40%;">Produto Principal</th>
+                                <th>Novo Est. Mínimo</th>
+                                <th>Estoque Contado</th>
+                                <th>Comprar (Sugestão)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="EtapasScript_tbodyModalContagemEstoque">
+                            <tr>
+                                <td colspan="4" class="text-center p-4 text-gray-500">Carregando produtos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="EtapasScript_btnCancelarModalContagem"
+                    class="btn-painel-acao btn-modal-secondary">Cancelar</button>
+                <button id="EtapasScript_btnSalvarModalContagem" class="btn-painel-acao btn-modal-primary">Salvar
+                    Contagem</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="EtapasScript_modalRetirarProdutosOverlay" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1100px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title">Etapa 2: Retirar Produtos Desnecessários</h3>
+                <button id="EtapasScript_btnFecharModalRetirarProdutos" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body" id="EtapasScript_modalBodyRetirarProdutos">
+                <p class="text-sm text-gray-600 mb-4">Analise os grupos de produtos abaixo. Marque os produtos
+                    principais que você deseja remover completamente desta cotação e, em seguida, clique em "Confirmar
+                    Remoção".</p>
+
+                <div id="EtapasScript_feedbackModalRetirarProdutos" class="mb-4"></div>
+
+                <div class="retirar-produtos-container"
+                    style="max-height: 55vh; overflow-y: auto; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.375rem;">
+                    <div id="EtapasScript_acordeaoContainerCrit1_Modal"></div>
+                    <div id="EtapasScript_acordeaoContainerCrit2_Modal"></div>
+                    <div id="EtapasScript_acordeaoContainerCrit3_Modal"></div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button id="EtapasScript_btnCancelarModalRetirarProdutos"
+                    class="btn-painel-acao btn-modal-secondary">Cancelar</button>
+                <button id="EtapasScript_btnConfirmarRemocaoModal" class="btn-painel-acao btn-modal-primary"
+                    style="background-color: #EF4444;">Confirmar Remoção</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="EtapasScript_modalDefinirEmpresaOverlay" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1400px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title">Etapa 5: Definir Empresa para Faturamento</h3>
+                <button id="EtapasScript_btnFecharModalDefinirEmpresa" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body" id="EtapasScript_modalBodyDefinirEmpresa">
+                <p class="text-sm text-gray-600 mb-4">
+                    Selecione a empresa que fará o faturamento de cada item. As alterações serão aplicadas ao clicar em
+                    "Salvar e Fechar". Observe os totais por empresa no painel e o pedido mínimo de cada fornecedor para
+                    tomar as melhores decisões.
+                </p>
+
+                <div id="EtapasScript_feedbackModalDefinirEmpresa" class="mb-4"></div>
+
+                <div id="EtapasScript_controlsContainer_Modal" class="mb-4">
+                </div>
+
+                <div id="EtapasScript_tabelaContainer_Modal" class="table-container"
+                    style="max-height: 55vh; overflow-y: auto; overflow-x: auto; padding: 0.25rem;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="EtapasScript_btnConcluirModalDefinirEmpresa"
+                    class="btn-painel-acao btn-modal-secondary">Fechar</button>
+                <button id="EtapasScript_btnSalvarFaturamento" class="btn-painel-acao btn-modal-primary">Salvar e
+                    Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="EtapasScript_modalCondicoesPagamentoOverlay" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1200px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title">Etapa 6: Definir Condições de Pagamento</h3>
+                <button id="EtapasScript_btnFecharModalCondicoes" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body" id="EtapasScript_modalBodyCondicoes">
+                <p class="text-sm text-gray-600 mb-4">
+                    Para cada pedido (agrupado por fornecedor e empresa de faturamento), defina a condição de pagamento.
+                    O fluxo de caixa será atualizado em tempo real.
+                </p>
+
+                <div id="EtapasScript_feedbackModalCondicoes" class="mb-4"></div>
+
+                <div class="etapa6-dialog-container">
+                    <div class="etapa6-pedidos-column" id="etapa6-pedidos-list-modal">
+                    </div>
+                    <div class="etapa6-fluxo-column">
+                        <div class="etapa6-fluxo-preview-container" id="etapa6-fluxo-preview-container-modal">
+                            <h4 style="margin-top:0; color: #1e40af;">Resumo do Fluxo de Caixa</h4>
+                            <div class="etapa6-fluxo-preview-table-container">
+                                <table class="etapa6-fluxo-preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data Venc.</th>
+                                            <th>Valor Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="etapa6-fluxo-preview-tbody-modal">
+                                        <tr>
+                                            <td colspan="2" style="text-align: center; color: #6b7280;">Carregando...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button id="EtapasScript_btnCancelarModalCondicoes"
+                    class="btn-painel-acao btn-modal-secondary">Fechar</button>
+                <button id="EtapasScript_btnSalvarModalCondicoes" class="btn-painel-acao btn-modal-primary">Salvar
+                    Condições</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="FuncoesScript_modalGerenciarCotacoesOverlay" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1100px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title">Gerenciar Cotações (Portal)</h3>
+                <button id="FuncoesScript_btnFecharModalGerenciarCotacoes" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body" id="FuncoesScript_modalBodyGerenciarCotacoes">
+                <p class="text-sm text-gray-600 mb-4">
+                    Abaixo estão todas as cotações ativas no portal de fornecedores. Expanda uma cotação para ver os
+                    fornecedores vinculados, copiar mensagens e links, ou remover fornecedores.
+                </p>
+
+                <div id="FuncoesScript_feedbackModalGerenciarCotacoes" class="mb-4"></div>
+
+                <div id="FuncoesScript_modalContentGerenciarCotacoes" class="gerenciar-cotacoes-portal-body"
+                    style="max-height: 60vh; overflow-y: auto; padding: 0.5rem;">
+                    <div class="empty-state">Carregando dados das cotações do portal...</div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button id="FuncoesScript_btnConcluirModalGerenciarCotacoes"
+                    class="btn-painel-acao btn-modal-primary">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="CotacaoIndividualScript_modalNegociacaoOverlay" class="modal-overlay">
+        <div class="modal-content custom-scrollbar" role="dialog" aria-modal="true"
+            aria-labelledby="CotacaoIndividualScript_modalNegociacao_titulo">
+            <div class="modal-header">
+                <h3 id="CotacaoIndividualScript_modalNegociacao_titulo" class="modal-title">Negociação</h3>
+                <button id="CotacaoIndividualScript_btnFecharModalNegociacao" class="modal-close-btn"
+                    aria-label="Fechar">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="CotacaoIndividualScript_selectSubproduto">Subproduto base (normalmente o menor
+                        preço)</label>
+                    <select id="CotacaoIndividualScript_selectSubproduto"></select>
+                    <div id="CotacaoIndividualScript_infoSubproduto"
+                        style="margin-top:6px;color:#6b7280;font-size:0.85rem;"></div>
+                </div>
+
+                <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <label for="CotacaoIndividualScript_inputPercentual">Desconto sobre o preço base (%)</label>
+                        <input id="CotacaoIndividualScript_inputPercentual" type="number" step="0.01" min="0" value="2">
+                    </div>
+                    <div>
+                        <label for="CotacaoIndividualScript_inputPrecoNovo">Novo preço (automático)</label>
+                        <input id="CotacaoIndividualScript_inputPrecoNovo" type="text" readonly>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="CotacaoIndividualScript_textareaMensagem">Mensagem para enviar aos fornecedores</label>
+                    <textarea id="CotacaoIndividualScript_textareaMensagem" rows="5"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="CotacaoIndividualScript_btnCancelarModalNegociacao"
+                    class="btn-painel-acao btn-modal-secondary">Cancelar</button>
+                <button id="CotacaoIndividualScript_btnCopiarTextoNegociacao"
+                    class="btn-painel-acao btn-modal-primary">Copiar Texto</button>
+            </div>
+        </div>
+    </div>
+    <div id="FuncoesScript_sidebarOportunidades" class="sidebar-oportunidades">
+        <div class="sidebar-oportunidades-header">
+            <h3 class="sidebar-oportunidades-title">Melhores Oportunidades</h3>
+            <button id="FuncoesScript_btnFecharSidebarOportunidades" class="sidebar-oportunidades-close-btn"
+                aria-label="Fechar">&times;</button>
+        </div>
+        <div class="sidebar-oportunidades-controls">
+            <label>Classificar por:</label>
+            <button id="FuncoesScript_btnOrdenarPorOportunidade"
+                class="sidebar-oportunidades-sort-btn active">Oportunidade (R$)</button>
+            <button id="FuncoesScript_btnOrdenarPorSpread" class="sidebar-oportunidades-sort-btn">Spread (%)</button>
+        </div>
+        <div id="FuncoesScript_sidebarOportunidadesListaContainer" class="sidebar-oportunidades-lista custom-scrollbar">
+            <div class="sidebar-oportunidades-empty-state">
+                Calculando oportunidades...
+            </div>
+        </div>
+    </div>
+    <script>
+        // Estas variáveis globais serão lidas pelo CotacaoIndividualScript
+        const EJS_ID_COTACAO = '<%- typeof idCotacao !== "undefined" ? idCotacao : null %>';
+        const EJS_MODO = '<%- typeof modo !== "undefined" ? modo : "editar" %>';
+    </script>
+    
+        <%- include('CotacaoIndividualScript') %>
+
+</body>
+<script>
+    // Script de inicialização final (será executado após o EJS ser renderizado)
+    setTimeout(() => {
+        if (typeof initCotacaoIndividualScript === 'function') {
+            initCotacaoIndividualScript();
+        } else {
+            console.error("Falha ao inicializar CotacaoIndividualScript.");
+            const feedbackDiv = document.getElementById('CotacaoIndividualScript_mensagemFeedback');
+            if (feedbackDiv) {
+                feedbackDiv.textContent = "Erro crítico: Falha ao carregar o script principal da página.";
+                feedbackDiv.className = 'feedback-message feedback-error';
+                feedbackDiv.classList.remove('hidden');
+            }
+        }
+    }, 300); 
+</script>
+
+</html>

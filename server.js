@@ -14,6 +14,7 @@ const fornecedoresRouterApi = require('./Routes/fornecedores');
 const produtosRouterApi = require('./Routes/produtos');
 const subprodutosRouterApi = require('./Routes/subprodutos');
 const cotacoesRouterApi = require('./Routes/cotacoes');
+const cotacaoIndividualRouterApi = require('./Routes/cotacaoIndividual');
 
 // (Você importará os outros, como subprodutosRouterApi, aqui)
 
@@ -72,16 +73,16 @@ app.use(async (req, res, next) => {
       app.locals.googleAuthClient = await getAuthClient();
       app.locals.googleSheets = google.sheets({ version: 'v4', auth: app.locals.googleAuthClient });
       app.locals.googleDrive = google.drive({ version: 'v3', auth: app.locals.googleAuthClient });
-      
+
       // Disponibiliza os IDs das planilhas para todos os controllers
       app.locals.ID_PLANILHA_NF = process.env.ID_PLANILHA_NF;
       app.locals.ID_PLANILHA_FINANCEIRO = process.env.ID_PLANILHA_FINANCEIRO;
-      app.locals.ID_PLANILHA_PRINCIPAL = process.env.ID_PLANILHA_PRINCIPAL; 
+      app.locals.ID_PLANILHA_PRINCIPAL = process.env.ID_PLANILHA_PRINCIPAL;
       // Disponibiliza todas as constantes
       app.locals.constants = constants;
       console.log("[Auth] Autenticado e clientes prontos.");
     }
-    
+
     // Disponibiliza os clientes e IDs para a rota atual
     // Agora nossos arquivos de controller poderão acessar `req.sheets`, `req.drive`, etc.
     req.sheets = app.locals.googleSheets;
@@ -90,7 +91,7 @@ app.use(async (req, res, next) => {
     req.ID_PLANILHA_FINANCEIRO = app.locals.ID_PLANILHA_FINANCEIRO;
     req.ID_PLANILHA_PRINCIPAL = app.locals.ID_PLANILHA_PRINCIPAL;
     req.constants = app.locals.constants;
-    
+
     // Continua para a próxima rota
     next();
   } catch (error) {
@@ -115,20 +116,20 @@ app.get('/', (req, res) => {
 });
 
 /**
- * Rota para obter Views (GET /view/:viewName)
+ * Rota para obter Views(GET / view /: viewName)
  * Substitui a função App_obterView(viewName) do GAS.
  * É usada pelo JS da PaginaPrincipal para carregar o conteúdo das outras telas.
  */
 app.get('/view/:viewName', async (req, res) => {
   const viewName = req.params.viewName;
-  
+
   // Mapeamento migrado do App_VIEW_FILENAME_MAP
   const viewMap = {
     "fornecedores": "FornecedoresView",
     "produtos": "ProdutosView",
     "subprodutos": "SubProdutosView",
     "cotacoes": "CotacoesView",
-    "cotacaoIndividual": "CotacaoIndividualView",
+    "cotacaoIndividual": "CotacaoIndividualView", // Esta é a view que estamos consertando
     "contagemdeestoque": "ContagemDeEstoqueView",
     "marcarprodutos": "MarcacaoProdutosView",
     "conciliacaonf": "ConciliacaoNFView",
@@ -138,7 +139,7 @@ app.get('/view/:viewName', async (req, res) => {
   };
 
   const fileName = viewMap[viewName];
-  
+
   if (!fileName) {
     console.warn(`Tentativa de acesso a view inválida: ${viewName}`);
     return res.status(404).send(`View '${viewName}' não encontrada.`);
@@ -148,9 +149,14 @@ app.get('/view/:viewName', async (req, res) => {
     // Passamos o 'filename' para que o EJS saiba onde
     // encontrar os arquivos referenciados em <%- include(...) %>
     const filePath = path.join(__dirname, 'views', `${fileName}.ejs`);
-    const html = await ejs.renderFile(filePath, { 
-        filename: filePath 
+
+    // Precisamos passar os parâmetros da URL (req.query) para o EJS.
+    // É assim que o EJS saberá o valor de 'idCotacao' e 'modo'.
+    const html = await ejs.renderFile(filePath, {
+      filename: filePath,
+      ...req.query // <-- ESTA LINHA É A ADIÇÃO IMPORTANTE
     });
+
     // Enviamos o HTML puro como resposta
     res.send(html);
   } catch (error) {
@@ -168,6 +174,7 @@ app.use('/api/fornecedores', fornecedoresRouterApi);
 app.use('/api/produtos', produtosRouterApi);
 app.use('/api/subprodutos', subprodutosRouterApi);
 app.use('/api/cotacoes', cotacoesRouterApi);
+app.use('/api/cotacaoIndividual', cotacaoIndividualRouterApi);
 // (Você adicionará os outros aqui, ex: app.use('/api/subprodutos', subprodutosRouterApi);)
 
 
