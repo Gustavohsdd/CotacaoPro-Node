@@ -2,13 +2,13 @@
 // Migrado de src/CotacaoIndividualCRUD.js e partes de src/CotacoesCRUD.js
 
 const {
-  ABA_COTACOES,
-  CABECALHOS_COTACOES,
-  ABA_PRODUTOS,
-  CABECALHOS_PRODUTOS,
-  ABA_SUBPRODUTOS,
-  CABECALHOS_SUBPRODUTOS,
-  COLUNAS_PARA_ABA_SUBPRODUTOS // Esta constante não estava em constants.js, mas é referenciada.
+    ABA_COTACOES,
+    CABECALHOS_COTACOES,
+    ABA_PRODUTOS,
+    CABECALHOS_PRODUTOS,
+    ABA_SUBPRODUTOS,
+    CABECALHOS_SUBPRODUTOS,
+    COLUNAS_PARA_ABA_SUBPRODUTOS // Esta constante não estava em constants.js, mas é referenciada.
 } = require('../config/constants');
 
 // Status que será usado ao adicionar novos itens
@@ -21,20 +21,20 @@ const COTacoesCRUD_STATUS_NOVA_COTACAO = "Nova Cotação";
  * (Migrado de CotacaoIndividualCRUD_parseNumeroPtBr)
  */
 function _parseNumeroPtBr(valor) {
-  if (valor === null || valor === undefined) return NaN;
-  if (typeof valor === 'number') return Number(valor);
-  if (valor instanceof Date) return NaN;
+    if (valor === null || valor === undefined) return NaN;
+    if (typeof valor === 'number') return Number(valor);
+    if (valor instanceof Date) return NaN;
 
-  const s = String(valor).trim();
-  if (!s) return NaN;
+    const s = String(valor).trim();
+    if (!s) return NaN;
 
-  const normalizado = s
-    .replace(/\s+/g, '')
-    .replace(/\.(?=\d{3}(?:\D|$))/g, '') // remove "." de milhar
-    .replace(',', '.');
+    const normalizado = s
+        .replace(/\s+/g, '')
+        .replace(/\.(?=\d{3}(?:\D|$))/g, '') // remove "." de milhar
+        .replace(',', '.');
 
-  const n = Number(normalizado);
-  return Number.isFinite(n) ? n : NaN;
+    const n = Number(normalizado);
+    return Number.isFinite(n) ? n : NaN;
 }
 
 /**
@@ -45,17 +45,17 @@ function _parseNumeroPtBr(valor) {
  * @returns {Promise<Array<Array<string>>>}
  */
 async function _getRawSheetData(sheets, spreadsheetId, nomeAba) {
-  console.log(`[CRUD-Util] Lendo dados brutos da aba: ${nomeAba}`);
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: nomeAba, // Lê a aba inteira
-    });
-    return response.data.values || [];
-  } catch (e) {
-    console.error(`Erro ao ler dados brutos da aba ${nomeAba}: ${e.message}`);
-    throw new Error(`A aba "${nomeAba}" não foi encontrada ou está inacessível.`);
-  }
+    console.log(`[CRUD-Util] Lendo dados brutos da aba: ${nomeAba}`);
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: spreadsheetId,
+            range: nomeAba, // Lê a aba inteira
+        });
+        return response.data.values || [];
+    } catch (e) {
+        console.error(`Erro ao ler dados brutos da aba ${nomeAba}: ${e.message}`);
+        throw new Error(`A aba "${nomeAba}" não foi encontrada ou está inacessível.`);
+    }
 }
 
 /**
@@ -68,32 +68,32 @@ async function _getRawSheetData(sheets, spreadsheetId, nomeAba) {
  * @returns {Promise<Array<object>>}
  */
 async function _obterDadosCompletosDaAba(sheets, spreadsheetId, nomeAba, cabecalhosEsperados) {
-  console.log(`[CRUD-Util] Lendo dados e convertendo para objetos da aba: "${nomeAba}"`);
-  try {
-    const dadosRange = await _getRawSheetData(sheets, spreadsheetId, nomeAba);
-    if (dadosRange.length < 2) return []; // Vazia ou só cabeçalho
+    console.log(`[CRUD-Util] Lendo dados e convertendo para objetos da aba: "${nomeAba}"`);
+    try {
+        const dadosRange = await _getRawSheetData(sheets, spreadsheetId, nomeAba);
+        if (dadosRange.length < 2) return []; // Vazia ou só cabeçalho
 
-    const cabecalhosReais = dadosRange[0].map(String);
-    const dadosObjetos = [];
+        const cabecalhosReais = dadosRange[0].map(String);
+        const dadosObjetos = [];
 
-    for (let i = 1; i < dadosRange.length; i++) {
-      const linha = dadosRange[i];
-      const objLinha = {};
-      cabecalhosEsperados.forEach(cabecalhoConstante => {
-        const indexNaPlanilha = cabecalhosReais.indexOf(cabecalhoConstante);
-        if (indexNaPlanilha !== -1) {
-          objLinha[cabecalhoConstante] = linha[indexNaPlanilha];
-        } else {
-          objLinha[cabecalhoConstante] = undefined; // ou null, para ser consistente
+        for (let i = 1; i < dadosRange.length; i++) {
+            const linha = dadosRange[i];
+            const objLinha = {};
+            cabecalhosEsperados.forEach(cabecalhoConstante => {
+                const indexNaPlanilha = cabecalhosReais.indexOf(cabecalhoConstante);
+                if (indexNaPlanilha !== -1) {
+                    objLinha[cabecalhoConstante] = linha[indexNaPlanilha];
+                } else {
+                    objLinha[cabecalhoConstante] = undefined; // ou null, para ser consistente
+                }
+            });
+            dadosObjetos.push(objLinha);
         }
-      });
-      dadosObjetos.push(objLinha);
+        return dadosObjetos;
+    } catch (e) {
+        console.error(`Erro em _obterDadosCompletosDaAba para "${nomeAba}": ${e.message}`);
+        return null; // Retorna null em caso de falha
     }
-    return dadosObjetos;
-  } catch (e) {
-    console.error(`Erro em _obterDadosCompletosDaAba para "${nomeAba}": ${e.message}`);
-    return null; // Retorna null em caso de falha
-  }
 }
 
 /**
@@ -101,49 +101,49 @@ async function _obterDadosCompletosDaAba(sheets, spreadsheetId, nomeAba, cabecal
  * (Migrado de CotacaoIndividualCRUD_criarMapaDemandaMediaProdutos)
  */
 async function _criarMapaDemandaMediaProdutos(sheets, spreadsheetId) {
-  console.log("[CRUD] Criando mapa de demanda média...");
-  const mapaDemandas = {};
-  const valoresComprasPorProduto = {};
+    console.log("[CRUD] Criando mapa de demanda média...");
+    const mapaDemandas = {};
+    const valoresComprasPorProduto = {};
 
-  try {
-    const todosOsValores = await _getRawSheetData(sheets, spreadsheetId, ABA_COTACOES);
-    if (todosOsValores.length < 2) return mapaDemandas;
+    try {
+        const todosOsValores = await _getRawSheetData(sheets, spreadsheetId, ABA_COTACOES);
+        if (todosOsValores.length < 2) return mapaDemandas;
 
-    const cabecalhos = todosOsValores[0];
-    const indiceProduto = cabecalhos.indexOf("Produto");
-    const indiceComprar = cabecalhos.indexOf("Comprar");
+        const cabecalhos = todosOsValores[0];
+        const indiceProduto = cabecalhos.indexOf("Produto");
+        const indiceComprar = cabecalhos.indexOf("Comprar");
 
-    if (indiceProduto === -1 || indiceComprar === -1) {
-      console.error(`[CRUD] MapaDemanda: Colunas "Produto" ou "Comprar" não encontradas na aba "${ABA_COTACOES}".`);
-      return mapaDemandas;
-    }
-
-    for (let i = todosOsValores.length - 1; i >= 1; i--) { // De baixo para cima
-      const linha = todosOsValores[i];
-      const nomeProduto = String(linha[indiceProduto] || '').trim();
-
-      if (nomeProduto) {
-        if (!valoresComprasPorProduto[nomeProduto] || valoresComprasPorProduto[nomeProduto].length < 3) {
-          const quantidade = _parseNumeroPtBr(linha[indiceComprar]);
-          if (Number.isFinite(quantidade) && quantidade > 0) {
-            if (!valoresComprasPorProduto[nomeProduto]) {
-              valoresComprasPorProduto[nomeProduto] = [];
-            }
-            valoresComprasPorProduto[nomeProduto].push(quantidade);
-          }
+        if (indiceProduto === -1 || indiceComprar === -1) {
+            console.error(`[CRUD] MapaDemanda: Colunas "Produto" ou "Comprar" não encontradas na aba "${ABA_COTACOES}".`);
+            return mapaDemandas;
         }
-      }
-    }
 
-    for (const produto in valoresComprasPorProduto) {
-      const compras = valoresComprasPorProduto[produto];
-      const soma = compras.reduce((acc, val) => acc + val, 0);
-      mapaDemandas[produto] = soma / compras.length;
+        for (let i = todosOsValores.length - 1; i >= 1; i--) { // De baixo para cima
+            const linha = todosOsValores[i];
+            const nomeProduto = String(linha[indiceProduto] || '').trim();
+
+            if (nomeProduto) {
+                if (!valoresComprasPorProduto[nomeProduto] || valoresComprasPorProduto[nomeProduto].length < 3) {
+                    const quantidade = _parseNumeroPtBr(linha[indiceComprar]);
+                    if (Number.isFinite(quantidade) && quantidade > 0) {
+                        if (!valoresComprasPorProduto[nomeProduto]) {
+                            valoresComprasPorProduto[nomeProduto] = [];
+                        }
+                        valoresComprasPorProduto[nomeProduto].push(quantidade);
+                    }
+                }
+            }
+        }
+
+        for (const produto in valoresComprasPorProduto) {
+            const compras = valoresComprasPorProduto[produto];
+            const soma = compras.reduce((acc, val) => acc + val, 0);
+            mapaDemandas[produto] = soma / compras.length;
+        }
+    } catch (error) {
+        console.error("[CRUD] Erro ao criar mapa de demanda: " + error.toString());
     }
-  } catch (error) {
-    console.error("[CRUD] Erro ao criar mapa de demanda: " + error.toString());
-  }
-  return mapaDemandas;
+    return mapaDemandas;
 }
 
 /**
@@ -151,44 +151,44 @@ async function _criarMapaDemandaMediaProdutos(sheets, spreadsheetId) {
  * (Migrado de CotacaoIndividualCRUD_criarMapaEstoqueMinimoProdutos)
  */
 async function _criarMapaEstoqueMinimoProdutos(sheets, spreadsheetId) {
-  console.log("[CRUD] Criando mapa de estoque mínimo...");
-  const mapaEstoque = {};
-  try {
-    const todosOsValores = await _getRawSheetData(sheets, spreadsheetId, ABA_PRODUTOS);
-    if (todosOsValores.length < 2) return mapaEstoque;
+    console.log("[CRUD] Criando mapa de estoque mínimo...");
+    const mapaEstoque = {};
+    try {
+        const todosOsValores = await _getRawSheetData(sheets, spreadsheetId, ABA_PRODUTOS);
+        if (todosOsValores.length < 2) return mapaEstoque;
 
-    const cabecalhosPlanilhaProdutos = todosOsValores[0];
-    const indiceProduto = cabecalhosPlanilhaProdutos.indexOf("Produto");
-    const indiceEstoqueMinimo = cabecalhosPlanilhaProdutos.indexOf("Estoque Minimo");
+        const cabecalhosPlanilhaProdutos = todosOsValores[0];
+        const indiceProduto = cabecalhosPlanilhaProdutos.indexOf("Produto");
+        const indiceEstoqueMinimo = cabecalhosPlanilhaProdutos.indexOf("Estoque Minimo");
 
-    if (indiceProduto === -1) {
-      console.error(`[CRUD] MapaEstoque: Coluna "Produto" não encontrada na aba "${ABA_PRODUTOS}".`);
-      return mapaEstoque;
-    }
-    if (indiceEstoqueMinimo === -1) {
-      console.warn(`[CRUD] MapaEstoque: Coluna "Estoque Minimo" não encontrada.`);
-    }
-    
-    for (let i = 1; i < todosOsValores.length; i++) {
-      const linha = todosOsValores[i];
-      const nomeProduto = String(linha[indiceProduto] || '').trim();
-      let estoqueMinimo = null;
-
-      if (indiceEstoqueMinimo !== -1) {
-        const valorEstoque = linha[indiceEstoqueMinimo];
-        if (valorEstoque !== "" && valorEstoque !== null && valorEstoque !== undefined) {
-          const num = _parseNumeroPtBr(valorEstoque);
-          estoqueMinimo = isNaN(num) ? String(valorEstoque).trim() : num;
+        if (indiceProduto === -1) {
+            console.error(`[CRUD] MapaEstoque: Coluna "Produto" não encontrada na aba "${ABA_PRODUTOS}".`);
+            return mapaEstoque;
         }
-      }
-      if (nomeProduto) {
-        mapaEstoque[nomeProduto] = estoqueMinimo;
-      }
+        if (indiceEstoqueMinimo === -1) {
+            console.warn(`[CRUD] MapaEstoque: Coluna "Estoque Minimo" não encontrada.`);
+        }
+
+        for (let i = 1; i < todosOsValores.length; i++) {
+            const linha = todosOsValores[i];
+            const nomeProduto = String(linha[indiceProduto] || '').trim();
+            let estoqueMinimo = null;
+
+            if (indiceEstoqueMinimo !== -1) {
+                const valorEstoque = linha[indiceEstoqueMinimo];
+                if (valorEstoque !== "" && valorEstoque !== null && valorEstoque !== undefined) {
+                    const num = _parseNumeroPtBr(valorEstoque);
+                    estoqueMinimo = isNaN(num) ? String(valorEstoque).trim() : num;
+                }
+            }
+            if (nomeProduto) {
+                mapaEstoque[nomeProduto] = estoqueMinimo;
+            }
+        }
+    } catch (error) {
+        console.error("[CRUD] Erro ao criar mapa de estoque mínimo: " + error.toString());
     }
-  } catch (error) {
-    console.error("[CRUD] Erro ao criar mapa de estoque mínimo: " + error.toString());
-  }
-  return mapaEstoque;
+    return mapaEstoque;
 }
 
 // --- Funções CRUD Exportadas ---
@@ -198,122 +198,122 @@ async function _criarMapaEstoqueMinimoProdutos(sheets, spreadsheetId) {
  * (Migrado de CotacaoIndividualCRUD_buscarProdutosPorIdCotacao)
  */
 async function buscarProdutosPorIdCotacao(sheets, spreadsheetId, idCotacaoAlvo) {
-  console.log(`[CRUD] Buscando produtos para ID '${idCotacaoAlvo}'.`);
+    console.log(`[CRUD] Buscando produtos para ID '${idCotacaoAlvo}'.`);
 
-  // 1. Inicia as buscas pelos mapas em paralelo
-  const mapaEstoqueMinimoPromise = _criarMapaEstoqueMinimoProdutos(sheets, spreadsheetId);
-  const mapaDemandaMediaPromise = _criarMapaDemandaMediaProdutos(sheets, spreadsheetId);
-  
-  // 2. Busca os dados principais da cotação
-  const dadosCotacaoPromise = sheets.spreadsheets.values.batchGet({
-      spreadsheetId: spreadsheetId,
-      ranges: [ABA_COTACOES], // Busca a aba inteira
-      valueRenderOption: 'UNFORMATTED_VALUE', // Pega valores brutos (datas como números seriais)
-      dateTimeRenderOption: 'SERIAL_NUMBER'
-  });
+    // 1. Inicia as buscas pelos mapas em paralelo
+    const mapaEstoqueMinimoPromise = _criarMapaEstoqueMinimoProdutos(sheets, spreadsheetId);
+    const mapaDemandaMediaPromise = _criarMapaDemandaMediaProdutos(sheets, spreadsheetId);
 
-  const displayValuesPromise = sheets.spreadsheets.values.batchGet({
-      spreadsheetId: spreadsheetId,
-      ranges: [ABA_COTACOES],
-      // ====================== INÍCIO DA CORREÇÃO ======================
-      valueRenderOption: 'FORMATTED_VALUE' // CORRIGIDO: Era 'FORMATTED_STRING'
-      // ======================= FIM DA CORREÇÃO ========================
-  });
-
-  // 3. Aguarda todas as chamadas terminarem
-  const [
-      mapaEstoqueMinimoProdutos,
-      mapaDemandaMediaProdutos,
-      dadosCotacaoResult,
-      displayValuesResult
-  ] = await Promise.all([
-      mapaEstoqueMinimoPromise,
-      mapaDemandaMediaPromise,
-      dadosCotacaoPromise,
-      displayValuesPromise
-  ]);
-
-  // 4. Processa os resultados
-  const valores = (dadosCotacaoResult.data.valueRanges[0].values || []);
-  const displays = (displayValuesResult.data.valueRanges[0].values || []);
-
-  if (valores.length < 2) {
-    console.log(`[CRUD] Aba "${ABA_COTACOES}" vazia ou só cabeçalho.`);
-    return [];
-  }
-
-  const cabPlanilha = valores[0];
-  const cabConst = CABECALHOS_COTACOES;
-  const idxIdCotacao = cabPlanilha.indexOf('ID da Cotação');
-  if (idxIdCotacao === -1) {
-    console.error('[CRUD] Coluna "ID da Cotação" não encontrada.');
-    return null;
-  }
-  const idxProdutoPrincipal = cabPlanilha.indexOf('Produto');
-
-  const camposNumericosEsperados = [
-    'Fator', 'Estoque Mínimo', 'Preço', 'Preço por Fator',
-    'Comprar', 'Valor Total', 'Economia em Cotação'
-  ];
-
-  const itens = [];
-
-  for (let i = 1; i < valores.length; i++) {
-    const rowRaw = valores[i];
-    
-    // Garantia: se a linha de display não existir (ex: linhas em branco no final), usa a linha raw
-    const rowDisp = displays[i] || rowRaw; 
-
-    if (String(rowRaw[idxIdCotacao] || '').trim() !== String(idCotacaoAlvo).trim()) continue;
-
-    const item = {};
-    const nomeProdutoPrincipal = (idxProdutoPrincipal !== -1) ? String(rowRaw[idxProdutoPrincipal] || '').trim() : null;
-
-    if (nomeProdutoPrincipal) {
-      item['EstoqueMinimoProdutoPrincipal'] = mapaEstoqueMinimoProdutos[nomeProdutoPrincipal] ?? null;
-      item['DemandaMediaProdutoPrincipal'] = mapaDemandaMediaProdutos[nomeProdutoPrincipal] ?? null;
-    } else {
-      item['EstoqueMinimoProdutoPrincipal'] = null;
-      item['DemandaMediaProdutoPrincipal'] = null;
-    }
-
-    cabConst.forEach(nomeCol => {
-      const idx = cabPlanilha.indexOf(nomeCol);
-      if (idx === -1 || idx >= rowRaw.length) {
-        item[nomeCol] = null;
-        return;
-      }
-
-      const valorRaw = rowRaw[idx];
-      const valorDisp = (rowDisp && idx < rowDisp.length) ? rowDisp[idx] : valorRaw; // Fallback para valorDisp
-
-      if (nomeCol === 'Data Abertura') {
-          // Usa o valor formatado (display) para datas, é mais seguro que o serial
-          item[nomeCol] = valorDisp || null; 
-          return;
-      }
-
-      if (camposNumericosEsperados.includes(nomeCol)) {
-        // Tenta parsear o display value primeiro (ex: "R$ 1,23")
-        let n = _parseNumeroPtBr(valorDisp);
-        // Se falhar, tenta parsear o raw value (ex: 1.23)
-        if (!Number.isFinite(n)) n = _parseNumeroPtBr(valorRaw);
-        item[nomeCol] = Number.isFinite(n) ? n : null;
-        return;
-      }
-
-      item[nomeCol] = (valorRaw !== null && valorRaw !== undefined) ? String(valorRaw).trim() : null;
+    // 2. Busca os dados principais da cotação
+    const dadosCotacaoPromise = sheets.spreadsheets.values.batchGet({
+        spreadsheetId: spreadsheetId,
+        ranges: [ABA_COTACOES], // Busca a aba inteira
+        valueRenderOption: 'UNFORMATTED_VALUE', // Pega valores brutos (datas como números seriais)
+        dateTimeRenderOption: 'SERIAL_NUMBER'
     });
 
-    if (!item._subProdutoOriginalPersistido) {
-      item._subProdutoOriginalPersistido = item.SubProduto || null;
+    const displayValuesPromise = sheets.spreadsheets.values.batchGet({
+        spreadsheetId: spreadsheetId,
+        ranges: [ABA_COTACOES],
+        // ====================== INÍCIO DA CORREÇÃO ======================
+        valueRenderOption: 'FORMATTED_VALUE' // CORRIGIDO: Era 'FORMATTED_STRING'
+        // ======================= FIM DA CORREÇÃO ========================
+    });
+
+    // 3. Aguarda todas as chamadas terminarem
+    const [
+        mapaEstoqueMinimoProdutos,
+        mapaDemandaMediaProdutos,
+        dadosCotacaoResult,
+        displayValuesResult
+    ] = await Promise.all([
+        mapaEstoqueMinimoPromise,
+        mapaDemandaMediaPromise,
+        dadosCotacaoPromise,
+        displayValuesPromise
+    ]);
+
+    // 4. Processa os resultados
+    const valores = (dadosCotacaoResult.data.valueRanges[0].values || []);
+    const displays = (displayValuesResult.data.valueRanges[0].values || []);
+
+    if (valores.length < 2) {
+        console.log(`[CRUD] Aba "${ABA_COTACOES}" vazia ou só cabeçalho.`);
+        return [];
     }
 
-    itens.push(item);
-  }
+    const cabPlanilha = valores[0];
+    const cabConst = CABECALHOS_COTACOES;
+    const idxIdCotacao = cabPlanilha.indexOf('ID da Cotação');
+    if (idxIdCotacao === -1) {
+        console.error('[CRUD] Coluna "ID da Cotação" não encontrada.');
+        return null;
+    }
+    const idxProdutoPrincipal = cabPlanilha.indexOf('Produto');
 
-  console.log(`[CRUD] ${itens.length} produtos encontrados para ID '${idCotacaoAlvo}'.`);
-  return itens;
+    const camposNumericosEsperados = [
+        'Fator', 'Estoque Mínimo', 'Preço', 'Preço por Fator',
+        'Comprar', 'Valor Total', 'Economia em Cotação'
+    ];
+
+    const itens = [];
+
+    for (let i = 1; i < valores.length; i++) {
+        const rowRaw = valores[i];
+
+        // Garantia: se a linha de display não existir (ex: linhas em branco no final), usa a linha raw
+        const rowDisp = displays[i] || rowRaw;
+
+        if (String(rowRaw[idxIdCotacao] || '').trim() !== String(idCotacaoAlvo).trim()) continue;
+
+        const item = {};
+        const nomeProdutoPrincipal = (idxProdutoPrincipal !== -1) ? String(rowRaw[idxProdutoPrincipal] || '').trim() : null;
+
+        if (nomeProdutoPrincipal) {
+            item['EstoqueMinimoProdutoPrincipal'] = mapaEstoqueMinimoProdutos[nomeProdutoPrincipal] ?? null;
+            item['DemandaMediaProdutoPrincipal'] = mapaDemandaMediaProdutos[nomeProdutoPrincipal] ?? null;
+        } else {
+            item['EstoqueMinimoProdutoPrincipal'] = null;
+            item['DemandaMediaProdutoPrincipal'] = null;
+        }
+
+        cabConst.forEach(nomeCol => {
+            const idx = cabPlanilha.indexOf(nomeCol);
+            if (idx === -1 || idx >= rowRaw.length) {
+                item[nomeCol] = null;
+                return;
+            }
+
+            const valorRaw = rowRaw[idx];
+            const valorDisp = (rowDisp && idx < rowDisp.length) ? rowDisp[idx] : valorRaw; // Fallback para valorDisp
+
+            if (nomeCol === 'Data Abertura') {
+                // Usa o valor formatado (display) para datas, é mais seguro que o serial
+                item[nomeCol] = valorDisp || null;
+                return;
+            }
+
+            if (camposNumericosEsperados.includes(nomeCol)) {
+                // Tenta parsear o display value primeiro (ex: "R$ 1,23")
+                let n = _parseNumeroPtBr(valorDisp);
+                // Se falhar, tenta parsear o raw value (ex: 1.23)
+                if (!Number.isFinite(n)) n = _parseNumeroPtBr(valorRaw);
+                item[nomeCol] = Number.isFinite(n) ? n : null;
+                return;
+            }
+
+            item[nomeCol] = (valorRaw !== null && valorRaw !== undefined) ? String(valorRaw).trim() : null;
+        });
+
+        if (!item._subProdutoOriginalPersistido) {
+            item._subProdutoOriginalPersistido = item.SubProduto || null;
+        }
+
+        itens.push(item);
+    }
+
+    console.log(`[CRUD] ${itens.length} produtos encontrados para ID '${idCotacaoAlvo}'.`);
+    return itens;
 }
 
 /**
@@ -327,7 +327,7 @@ async function salvarEdicaoCelulaCotacao(sheets, spreadsheetId, idCotacao, ident
   const colunasTriggerCalculo = ['Preço', 'Comprar', 'Fator'];
   
   // Define colunas que sincronizam com a aba SubProdutos
-  const colunasSincronizaveis = COLUNAS_PARA_ABA_SUBPRODUTOS || ['SubProduto', 'Tamanho', 'UN', 'Fator'];
+  const colunasSincronizaveis = (typeof COLUNAS_PARA_ABA_SUBPRODUTOS !== 'undefined' ? COLUNAS_PARA_ABA_SUBPRODUTOS : []) || ['SubProduto', 'Tamanho', 'UN', 'Fator'];
 
   const resultado = {
     success: false,
@@ -407,8 +407,14 @@ async function salvarEdicaoCelulaCotacao(sheets, spreadsheetId, idCotacao, ident
       };
     }
     
-    // Adiciona a atualização da linha inteira da Cotação ao batch
-    const rangeUpdateCotacoes = `${ABA_COTACOES}!A${linhaEncontradaCot}:${String.fromCharCode(65 + cabecalhosCot.length - 1)}${linhaEncontradaCot}`;
+    // ====================== INÍCIO DA CORREÇÃO ======================
+    // Lógica robusta para calcular a última coluna (ex: Z, AA, AB, etc.)
+    const numColunasCot = cabecalhosCot.length;
+    const ultimaColunaLetraCot = String.fromCharCode(65 + (numColunasCot - 1) % 26);
+    const prefixoColunaCot = numColunasCot > 26 ? String.fromCharCode(64 + Math.floor((numColunasCot - 1) / 26)) : '';
+    const rangeUpdateCotacoes = `${ABA_COTACOES}!A${linhaEncontradaCot}:${prefixoColunaCot}${ultimaColunaLetraCot}${linhaEncontradaCot}`;
+    // ======================= FIM DA CORREÇÃO ========================
+
     updateRequests.push({
       range: rangeUpdateCotacoes,
       values: [valoresLinhaAtualizada]
@@ -481,7 +487,7 @@ async function salvarEdicaoCelulaCotacao(sheets, spreadsheetId, idCotacao, ident
 async function salvarEdicoesModalDetalhes(sheets, spreadsheetId, idCotacao, identificadoresLinha, alteracoes) {
   console.log(`[CRUD] Salvando Modal: ID ${idCotacao}, Alterações: ${JSON.stringify(alteracoes)}`);
   
-  const colunasSincronizaveis = COLUNAS_PARA_ABA_SUBPRODUTOS || ['SubProduto', 'Tamanho', 'UN', 'Fator'];
+  const colunasSincronizaveis = (typeof COLUNAS_PARA_ABA_SUBPRODUTOS !== 'undefined' ? COLUNAS_PARA_ABA_SUBPRODUTOS : []) || ['SubProduto', 'Tamanho', 'UN', 'Fator'];
   const resultado = {
     success: false,
     message: "Nenhuma alteração realizada.",
@@ -541,7 +547,14 @@ async function salvarEdicoesModalDetalhes(sheets, spreadsheetId, idCotacao, iden
     
     // 4. Adicionar a atualização da linha inteira da Cotação
     const linhaPlanilhaCot = linhaEncontradaIndex + 1; // 1-based
-    const rangeUpdateCotacoes = `${ABA_COTACOES}!A${linhaPlanilhaCot}:${String.fromCharCode(65 + cabecalhosCot.length - 1)}${linhaPlanilhaCot}`;
+    
+    // ====================== INÍCIO DA CORREÇÃO 1 ======================
+    const numColunasCot = cabecalhosCot.length;
+    const ultimaColunaLetraCot = String.fromCharCode(65 + (numColunasCot - 1) % 26);
+    const prefixoColunaCot = numColunasCot > 26 ? String.fromCharCode(64 + Math.floor((numColunasCot - 1) / 26)) : '';
+    const rangeUpdateCotacoes = `${ABA_COTACOES}!A${linhaPlanilhaCot}:${prefixoColunaCot}${ultimaColunaLetraCot}${linhaPlanilhaCot}`;
+    // ======================= FIM DA CORREÇÃO 1 ========================
+
     updateRequests.push({
       range: rangeUpdateCotacoes,
       values: [valoresLinhaAtualizada]
@@ -583,7 +596,13 @@ async function salvarEdicoesModalDetalhes(sheets, spreadsheetId, idCotacao, iden
                 }
               }
               
-              const rangeUpdateSub = `${ABA_SUBPRODUTOS}!A${linhaEncontradaSub}:${String.fromCharCode(65 + cabecalhosSub.length - 1)}${linhaEncontradaSub}`;
+              // ====================== INÍCIO DA CORREÇÃO 2 ======================
+              const numColunasSub = cabecalhosSub.length;
+              const ultimaColunaLetraSub = String.fromCharCode(65 + (numColunasSub - 1) % 26);
+              const prefixoColunaSub = numColunasSub > 26 ? String.fromCharCode(64 + Math.floor((numColunasSub - 1) / 26)) : '';
+              const rangeUpdateSub = `${ABA_SUBPRODUTOS}!A${linhaEncontradaSub}:${prefixoColunaSub}${ultimaColunaLetraSub}${linhaEncontradaSub}`;
+              // ======================= FIM DA CORREÇÃO 2 ========================
+
               updateRequests.push({
                 range: rangeUpdateSub,
                 values: [valoresLinhaSubAtualizada]
@@ -621,124 +640,124 @@ async function salvarEdicoesModalDetalhes(sheets, spreadsheetId, idCotacao, iden
  * (Migrado de CotacaoIndividualCRUD_acrescentarItensCotacao)
  */
 async function acrescentarItensCotacao(sheets, spreadsheetId, idCotacaoExistente, opcoesCriacao) {
-  console.log(`[CRUD] Acrescentando itens ao ID '${idCotacaoExistente}'...`);
-  
-  try {
-    const dataAbertura = new Date().toISOString();
+    console.log(`[CRUD] Acrescentando itens ao ID '${idCotacaoExistente}'...`);
 
-    // 1. Busca dados de SubProdutos e Produtos em paralelo
-    const subProdutosPromise = _obterDadosCompletosDaAba(sheets, spreadsheetId, ABA_SUBPRODUTOS, CABECALHOS_SUBPRODUTOS);
-    const produtosPromise = _obterDadosCompletosDaAba(sheets, spreadsheetId, ABA_PRODUTOS, CABECALHOS_PRODUTOS);
-    
-    const [todosSubProdutos, todosProdutos] = await Promise.all([subProdutosPromise, produtosPromise]);
+    try {
+        const dataAbertura = new Date().toISOString();
 
-    if (!todosSubProdutos || !todosProdutos) {
-      return { success: false, message: "Falha ao carregar dados de Produtos ou SubProdutos." };
-    }
-    
-    const produtosMap = todosProdutos.reduce((map, prod) => {
-        map[prod["Produto"]] = prod;
-        return map;
-    }, {});
+        // 1. Busca dados de SubProdutos e Produtos em paralelo
+        const subProdutosPromise = _obterDadosCompletosDaAba(sheets, spreadsheetId, ABA_SUBPRODUTOS, CABECALHOS_SUBPRODUTOS);
+        const produtosPromise = _obterDadosCompletosDaAba(sheets, spreadsheetId, ABA_PRODUTOS, CABECALHOS_PRODUTOS);
 
-    // 2. Filtra os SubProdutos com base nas opções
-    let subProdutosFiltrados = [];
-    const tipo = opcoesCriacao.tipo;
-    const selecoesLowerCase = opcoesCriacao.selecoes.map(s => String(s).toLowerCase());
+        const [todosSubProdutos, todosProdutos] = await Promise.all([subProdutosPromise, produtosPromise]);
 
-    if (tipo === 'categoria') {
-      const nomesProdutosDaCategoria = new Set(todosProdutos
-        .filter(p => p["Categoria"] && selecoesLowerCase.includes(String(p["Categoria"]).toLowerCase()))
-        .map(p => String(p["Produto"]).toLowerCase()));
-      subProdutosFiltrados = todosSubProdutos.filter(sp => {
-        const produtoVinculado = sp["Produto Vinculado"] ? String(sp["Produto Vinculado"]).toLowerCase() : null;
-        return produtoVinculado && nomesProdutosDaCategoria.has(produtoVinculado);
-      });
-    } else if (tipo === 'fornecedor') {
-      subProdutosFiltrados = todosSubProdutos.filter(sp => {
-        const fornecedorSubProduto = sp["Fornecedor"] ? String(sp["Fornecedor"]).toLowerCase() : null;
-        return fornecedorSubProduto && selecoesLowerCase.includes(fornecedorSubProduto);
-      });
-    } else if (tipo === 'curvaABC') {
-      const nomesProdutosDaCurva = new Set(todosProdutos
-        .filter(p => p["ABC"] && selecoesLowerCase.includes(String(p["ABC"]).toLowerCase()))
-        .map(p => String(p["Produto"]).toLowerCase()));
-      subProdutosFiltrados = todosSubProdutos.filter(sp => {
-        const produtoVinculado = sp["Produto Vinculado"] ? String(sp["Produto Vinculado"]).toLowerCase() : null;
-        return produtoVinculado && nomesProdutosDaCurva.has(produtoVinculado);
-      });
-    } else if (tipo === 'produtoEspecifico') {
-      subProdutosFiltrados = todosSubProdutos.filter(sp => {
-        const produtoVinculado = sp["Produto Vinculado"] ? String(sp["Produto Vinculado"]).toLowerCase() : null;
-        return produtoVinculado && selecoesLowerCase.includes(produtoVinculado);
-      });
-    } else {
-      return { success: false, message: "Tipo de criação desconhecido: " + tipo };
-    }
-
-    console.log(`[CRUD] ${subProdutosFiltrados.length} subprodutos filtrados para acrescentar.`);
-    
-    if (subProdutosFiltrados.length === 0) {
-      return { success: true, idCotacao: idCotacaoExistente, numItens: 0, message: "Nenhum novo subproduto encontrado para os critérios selecionados." };
-    }
-
-    // 3. Mapeia para o formato da aba Cotações
-    const linhasParaAdicionar = subProdutosFiltrados.map(subProd => {
-      const produtoPrincipal = produtosMap[subProd["Produto Vinculado"]];
-      const estoqueMinimo = produtoPrincipal ? produtoPrincipal["Estoque Minimo"] : "";
-      const nomeProdutoPrincipalParaCotacao = subProd["Produto Vinculado"];
-
-      // Constrói o array na ordem exata de CABECALHOS_COTACOES
-      return CABECALHOS_COTACOES.map(header => {
-        switch(header) {
-          case "ID da Cotação": return idCotacaoExistente;
-          case "Data Abertura": return dataAbertura;
-          case "Produto": return nomeProdutoPrincipalParaCotacao;
-          case "SubProduto": return subProd["SubProduto"];
-          case "Categoria": return produtoPrincipal ? produtoPrincipal["Categoria"] : subProd["Categoria"];
-          case "Fornecedor": return subProd["Fornecedor"];
-          case "Tamanho": return subProd["Tamanho"];
-          case "UN": return subProd["UN"];
-          case "Fator": return subProd["Fator"];
-          case "Estoque Mínimo": return estoqueMinimo;
-          case "NCM": return subProd["NCM"];
-          case "CST": return subProd["CST"];
-          case "CFOP": return subProd["CFOP"];
-          case "Status da Cotação": return COTacoesCRUD_STATUS_NOVA_COTACAO;
-          default:
-            return ""; // Deixa campos calculáveis em branco
+        if (!todosSubProdutos || !todosProdutos) {
+            return { success: false, message: "Falha ao carregar dados de Produtos ou SubProdutos." };
         }
-      });
-    });
 
-    // 4. Adiciona as novas linhas na aba de Cotações
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: spreadsheetId,
-      range: ABA_COTACOES, // Append no final da aba
-      valueInputOption: 'USER_ENTERED', // Para formatar datas corretamente
-      resource: {
-        values: linhasParaAdicionar
-      }
-    });
-    
-    console.log(`[CRUD] ${linhasParaAdicionar.length} itens adicionados à cotação ${idCotacaoExistente}.`);
-    return { 
-      success: true, 
-      idCotacao: idCotacaoExistente, 
-      numItens: linhasParaAdicionar.length,
-      message: "Itens acrescentados com sucesso."
-    };
+        const produtosMap = todosProdutos.reduce((map, prod) => {
+            map[prod["Produto"]] = prod;
+            return map;
+        }, {});
 
-  } catch (e) {
-    console.error(`ERRO CRÍTICO em acrescentarItensCotacao: ${e.toString()}`, e.stack);
-    return { success: false, message: "Erro no servidor ao acrescentar itens: " + e.message };
-  }
+        // 2. Filtra os SubProdutos com base nas opções
+        let subProdutosFiltrados = [];
+        const tipo = opcoesCriacao.tipo;
+        const selecoesLowerCase = opcoesCriacao.selecoes.map(s => String(s).toLowerCase());
+
+        if (tipo === 'categoria') {
+            const nomesProdutosDaCategoria = new Set(todosProdutos
+                .filter(p => p["Categoria"] && selecoesLowerCase.includes(String(p["Categoria"]).toLowerCase()))
+                .map(p => String(p["Produto"]).toLowerCase()));
+            subProdutosFiltrados = todosSubProdutos.filter(sp => {
+                const produtoVinculado = sp["Produto Vinculado"] ? String(sp["Produto Vinculado"]).toLowerCase() : null;
+                return produtoVinculado && nomesProdutosDaCategoria.has(produtoVinculado);
+            });
+        } else if (tipo === 'fornecedor') {
+            subProdutosFiltrados = todosSubProdutos.filter(sp => {
+                const fornecedorSubProduto = sp["Fornecedor"] ? String(sp["Fornecedor"]).toLowerCase() : null;
+                return fornecedorSubProduto && selecoesLowerCase.includes(fornecedorSubProduto);
+            });
+        } else if (tipo === 'curvaABC') {
+            const nomesProdutosDaCurva = new Set(todosProdutos
+                .filter(p => p["ABC"] && selecoesLowerCase.includes(String(p["ABC"]).toLowerCase()))
+                .map(p => String(p["Produto"]).toLowerCase()));
+            subProdutosFiltrados = todosSubProdutos.filter(sp => {
+                const produtoVinculado = sp["Produto Vinculado"] ? String(sp["Produto Vinculado"]).toLowerCase() : null;
+                return produtoVinculado && nomesProdutosDaCurva.has(produtoVinculado);
+            });
+        } else if (tipo === 'produtoEspecifico') {
+            subProdutosFiltrados = todosSubProdutos.filter(sp => {
+                const produtoVinculado = sp["Produto Vinculado"] ? String(sp["Produto Vinculado"]).toLowerCase() : null;
+                return produtoVinculado && selecoesLowerCase.includes(produtoVinculado);
+            });
+        } else {
+            return { success: false, message: "Tipo de criação desconhecido: " + tipo };
+        }
+
+        console.log(`[CRUD] ${subProdutosFiltrados.length} subprodutos filtrados para acrescentar.`);
+
+        if (subProdutosFiltrados.length === 0) {
+            return { success: true, idCotacao: idCotacaoExistente, numItens: 0, message: "Nenhum novo subproduto encontrado para os critérios selecionados." };
+        }
+
+        // 3. Mapeia para o formato da aba Cotações
+        const linhasParaAdicionar = subProdutosFiltrados.map(subProd => {
+            const produtoPrincipal = produtosMap[subProd["Produto Vinculado"]];
+            const estoqueMinimo = produtoPrincipal ? produtoPrincipal["Estoque Minimo"] : "";
+            const nomeProdutoPrincipalParaCotacao = subProd["Produto Vinculado"];
+
+            // Constrói o array na ordem exata de CABECALHOS_COTACOES
+            return CABECALHOS_COTACOES.map(header => {
+                switch (header) {
+                    case "ID da Cotação": return idCotacaoExistente;
+                    case "Data Abertura": return dataAbertura;
+                    case "Produto": return nomeProdutoPrincipalParaCotacao;
+                    case "SubProduto": return subProd["SubProduto"];
+                    case "Categoria": return produtoPrincipal ? produtoPrincipal["Categoria"] : subProd["Categoria"];
+                    case "Fornecedor": return subProd["Fornecedor"];
+                    case "Tamanho": return subProd["Tamanho"];
+                    case "UN": return subProd["UN"];
+                    case "Fator": return subProd["Fator"];
+                    case "Estoque Mínimo": return estoqueMinimo;
+                    case "NCM": return subProd["NCM"];
+                    case "CST": return subProd["CST"];
+                    case "CFOP": return subProd["CFOP"];
+                    case "Status da Cotação": return COTacoesCRUD_STATUS_NOVA_COTACAO;
+                    default:
+                        return ""; // Deixa campos calculáveis em branco
+                }
+            });
+        });
+
+        // 4. Adiciona as novas linhas na aba de Cotações
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: spreadsheetId,
+            range: ABA_COTACOES, // Append no final da aba
+            valueInputOption: 'USER_ENTERED', // Para formatar datas corretamente
+            resource: {
+                values: linhasParaAdicionar
+            }
+        });
+
+        console.log(`[CRUD] ${linhasParaAdicionar.length} itens adicionados à cotação ${idCotacaoExistente}.`);
+        return {
+            success: true,
+            idCotacao: idCotacaoExistente,
+            numItens: linhasParaAdicionar.length,
+            message: "Itens acrescentados com sucesso."
+        };
+
+    } catch (e) {
+        console.error(`ERRO CRÍTICO em acrescentarItensCotacao: ${e.toString()}`, e.stack);
+        return { success: false, message: "Erro no servidor ao acrescentar itens: " + e.message };
+    }
 }
 
 // Exporta as funções
 module.exports = {
-  buscarProdutosPorIdCotacao,
-  salvarEdicaoCelulaCotacao,
-  salvarEdicoesModalDetalhes,
-  acrescentarItensCotacao
+    buscarProdutosPorIdCotacao,
+    salvarEdicaoCelulaCotacao,
+    salvarEdicoesModalDetalhes,
+    acrescentarItensCotacao
 };
