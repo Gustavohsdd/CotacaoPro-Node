@@ -1,6 +1,21 @@
-// Importa as funções CRUD que acabamos de criar
-const FornecedoresCRUD = require('./FornecedoresCRUD');
-// Importa o CRUD de subprodutos (que criaremos em breve, mas já referenciamos)
+// controllers/FornecedoresController.js
+
+// Importa as funções CRUD
+// *** CORREÇÃO: Adicionada a importação da nova função do CRUD ***
+const {
+  getFornecedoresPlanilha,
+  sheetDataToObjects,
+  objectToSheetRow,
+  appendFornecedor,
+  updateFornecedorRow,
+  propagarNomeFornecedor,
+  getSubProdutosPorFornecedor,
+  getOutrosFornecedores,
+  batchExcluirFornecedorEAtualizarSubprodutos,
+  getTodosFornecedoresParaDropdown // <<< ADICIONADO
+} = require('./FornecedoresCRUD');
+
+// Importa o CRUD de subprodutos
 const SubProdutosCRUD = require('./SubProdutosCRUD'); 
 
 // Importa as constantes
@@ -25,12 +40,6 @@ function normalizarCnpjComparacao(cnpj) {
   return cnpj.replace(/\D/g, ''); // Remove todos os não dígitos
 }
 
-/**
- * Gera o próximo ID sequencial.
- * @param {Array<Array<string>>} data - Os dados brutos da planilha (com cabeçalho).
- * @param {number} idColumnIndex - O índice (0-based) da coluna de ID.
- * @returns {number} O próximo ID.
- */
 function gerarProximoId(data, idColumnIndex) {
   let maxId = 0;
   if (data.length > 1) { // Se tem mais que só o cabeçalho
@@ -46,38 +55,29 @@ function gerarProximoId(data, idColumnIndex) {
 
 // --- Funções do Controller (Exportadas para o Router) ---
 
-/**
- * (Migrado de FornecedoresController_obterDadosCompletosFornecedores)
- * Obtém os dados dos fornecedores de forma paginada e com filtro de busca.
- * *** CORREÇÃO: O nome da função foi corrigido para bater com o router. ***
- */
 async function obterListaFornecedoresPaginada(req, res) {
   try {
     const { pagina = 1, itensPorPagina = 10, termoBusca = null } = req.body;
     const termoBuscaNorm = termoBusca ? normalizarTextoComparacao(termoBusca) : null;
 
-    // 1. Busca TODOS os dados (o CRUD não sabe sobre paginação)
-    // *** CORREÇÃO: Usa a ID_PLANILHA_PRINCIPAL do .env ***
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    // 1. Busca TODOS os dados
+    const todosDados = await getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     
     if (todosDados.length <= 1) { // Apenas cabeçalho
       return res.json({ 
         success: true,
-        // *** CORREÇÃO: Usa a constante importada ***
-        cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7), // Ex: Fornecedor, CNPJ, Categoria, Vendedor, Telefone
+        cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7), 
         fornecedoresPaginados: [], totalItens: 0, paginaAtual: 1, totalPaginas: 1
       });
     }
 
     // 2. Converte para objetos
-    // *** CORREÇÃO: Usa a constante importada ***
-    let todosFornecedoresObj = FornecedoresCRUD.sheetDataToObjects(todosDados, CABECALHOS_FORNECEDORES);
+    let todosFornecedoresObj = sheetDataToObjects(todosDados, CABECALHOS_FORNECEDORES);
 
     // 3. Aplica filtro de busca (se existir)
     let fornecedoresFiltrados = todosFornecedoresObj;
     if (termoBuscaNorm) {
       fornecedoresFiltrados = todosFornecedoresObj.filter(fornecedor => {
-        // Itera sobre os valores do objeto para encontrar o termo
         return Object.values(fornecedor).some(valor => 
           normalizarTextoComparacao(String(valor)).includes(termoBuscaNorm)
         );
@@ -94,8 +94,7 @@ async function obterListaFornecedoresPaginada(req, res) {
     // 5. Retorna os dados paginados
     res.json({
       success: true,
-      // *** CORREÇÃO: Usa a constante importada ***
-      cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7), // Ajuste conforme suas colunas de exibição
+      cabecalhosParaExibicao: CABECALHOS_FORNECEDORES.slice(2, 7),
       fornecedoresPaginados: fornecedoresPaginados,
       totalItens: totalItens,
       paginaAtual: paginaAjustada,
@@ -108,14 +107,9 @@ async function obterListaFornecedoresPaginada(req, res) {
   }
 }
 
-/**
- * (Migrado de FornecedoresController_criarNovoFornecedor)
- * Cria um novo fornecedor.
- */
 async function criarNovoFornecedor(req, res) {
   try {
     const dadosNovoFornecedor = req.body;
-    // *** CORREÇÃO: Usa a constante importada ***
     const nomeNovoFornecedor = dadosNovoFornecedor[CABECALHOS_FORNECEDORES[2]]; // "Fornecedor"
     const cnpjNovoFornecedor = dadosNovoFornecedor[CABECALHOS_FORNECEDORES[3]]; // "CNPJ"
 
@@ -123,8 +117,7 @@ async function criarNovoFornecedor(req, res) {
       return res.status(400).json({ success: false, message: "Nome do Fornecedor é obrigatório." });
     }
 
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    const todosDados = await getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const cabecalhosDaPlanilha = todosDados[0].map(String);
     const idColunaIndex = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[1]); // "ID"
     const nomeFornecedorColunaIndex = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
@@ -151,13 +144,11 @@ async function criarNovoFornecedor(req, res) {
     }
 
     const novoIdGerado = gerarProximoId(todosDados, idColunaIndex);
-    dadosNovoFornecedor["ID"] = novoIdGerado; // Adiciona o novo ID ao objeto
+    dadosNovoFornecedor["ID"] = novoIdGerado; 
 
-    // Converte o objeto para um array na ordem correta da planilha
-    const novaLinhaArray = FornecedoresCRUD.objectToSheetRow(dadosNovoFornecedor, cabecalhosDaPlanilha);
+    const novaLinhaArray = objectToSheetRow(dadosNovoFornecedor, cabecalhosDaPlanilha);
 
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    await FornecedoresCRUD.appendFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, novaLinhaArray);
+    await appendFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, novaLinhaArray);
 
     res.json({ success: true, message: "Fornecedor criado com sucesso!", novoId: novoIdGerado });
 
@@ -167,10 +158,6 @@ async function criarNovoFornecedor(req, res) {
   }
 }
 
-/**
- * (Migrado de FornecedoresController_atualizarFornecedor)
- * Atualiza um fornecedor existente.
- */
 async function atualizarFornecedor(req, res) {
   try {
     const dadosAtualizar = req.body;
@@ -179,8 +166,7 @@ async function atualizarFornecedor(req, res) {
       return res.status(400).json({ success: false, message: "ID do fornecedor é obrigatório." });
     }
 
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    const todosDados = await getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const cabecalhosDaPlanilha = todosDados[0].map(String);
     const idxId = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[1]); // "ID"
     const idxNome = cabecalhosDaPlanilha.indexOf(CABECALHOS_FORNECEDORES[2]); // "Fornecedor"
@@ -214,22 +200,19 @@ async function atualizarFornecedor(req, res) {
     // Montar linha atualizada
     const linhaOriginal = todosDados[linhaIndex];
     const linhaAtualizadaArray = cabecalhosDaPlanilha.map((cab, k) => {
-      // *** CORREÇÃO: Usa a constante importada ***
       if (cab === CABECALHOS_FORNECEDORES[1] || cab === CABECALHOS_FORNECEDORES[0]) { // ID ou Data de Cadastro
         return linhaOriginal[k]; // Mantém ID e Data de Cadastro
       }
-      // Se o dado veio no body, usa, senão mantém o original
       return dadosAtualizar[cab] !== undefined ? dadosAtualizar[cab] : linhaOriginal[k];
     });
 
     // 1. Atualiza a linha do fornecedor
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    await FornecedoresCRUD.updateFornecedorRow(req.sheets, req.ID_PLANILHA_PRINCIPAL, linhaIndex, linhaAtualizadaArray, cabecalhosDaPlanilha.length);
+    await updateFornecedorRow(req.sheets, req.ID_PLANILHA_PRINCIPAL, linhaIndex + 1, linhaAtualizadaArray, cabecalhosDaPlanilha.length);
 
     // 2. Propaga a mudança de nome para SubProdutos (se o nome mudou)
     if (nomeAntigo !== nomeAtualizado) {
-      // *** CORREÇÃO: Usa a ID da planilha principal ***
-      await FornecedoresCRUD.propagarNomeFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeAntigo, nomeAtualizado);
+      // *** CORREÇÃO: Chama a função do SubProdutosCRUD ***
+      await SubProdutosCRUD.propagarNomeFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeAntigo, nomeAtualizado);
     }
 
     res.json({ success: true, message: "Fornecedor atualizado com sucesso!" });
@@ -240,18 +223,14 @@ async function atualizarFornecedor(req, res) {
   }
 }
 
-/**
- * (Migrado de FornecedoresCRUD_obterSubProdutosPorNomeFornecedor)
- * API para obter subprodutos de um fornecedor.
- */
 async function obterSubProdutos(req, res) {
   try {
     const { nomeFornecedor } = req.body;
     if (!nomeFornecedor) {
       return res.status(400).json({ success: false, message: "Nome do fornecedor não fornecido." });
     }
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    const dados = await FornecedoresCRUD.getSubProdutosPorFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeFornecedor);
+    // *** CORREÇÃO: Chama a função do SubProdutosCRUD ***
+    const dados = await SubProdutosCRUD.getSubProdutosPorPai(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomeFornecedor, 'FORNECEDOR');
     res.json({ success: true, dados: dados });
   } catch (e) {
     console.error("ERRO em obterSubProdutos:", e);
@@ -259,16 +238,11 @@ async function obterSubProdutos(req, res) {
   }
 }
 
-/**
- * (Migrado de FornecedoresCRUD_obterListaOutrosFornecedores)
- * API para obter outros fornecedores (para realocação).
- */
 async function obterOutrosFornecedores(req, res) {
   try {
     const { idFornecedorExcluido } = req.body;
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    const todosDados = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
-    const dados = FornecedoresCRUD.getOutrosFornecedores(todosDados, idFornecedorExcluido);
+    const todosDados = await getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    const dados = getOutrosFornecedores(todosDados, idFornecedorExcluido);
     res.json({ success: true, dados: dados });
   } catch (e) {
     console.error("ERRO em obterOutrosFornecedores:", e);
@@ -276,10 +250,6 @@ async function obterOutrosFornecedores(req, res) {
   }
 }
 
-/**
- * (Migrado de FornecedoresCRUD_processarExclusaoFornecedor)
- * API para excluir um fornecedor e lidar com seus subprodutos.
- */
 async function excluirFornecedor(req, res) {
   try {
     const { idFornecedor, nomeFornecedorOriginal, deletarSubprodutosVinculados, realocacoesSubprodutos } = req.body;
@@ -289,8 +259,7 @@ async function excluirFornecedor(req, res) {
     }
 
     // 1. Encontrar a linha (0-based) do fornecedor para excluir
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    const todosDadosForn = await FornecedoresCRUD.getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    const todosDadosForn = await getFornecedoresPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
     const idxId = todosDadosForn[0].indexOf(CABECALHOS_FORNECEDORES[1]); // "ID"
     let linhaIndexFornecedor = -1;
     for (let i = 1; i < todosDadosForn.length; i++) {
@@ -308,9 +277,7 @@ async function excluirFornecedor(req, res) {
     const realocacoesComIndex = [];
     
     if (deletarSubprodutosVinculados || (realocacoesSubprodutos && realocacoesSubprodutos.length > 0)) {
-      // Precisamos dos dados dos subprodutos
-      // *** CORREÇÃO: Usa a ID da planilha principal ***
-      const dadosSub = await SubProdutosCRUD.getSubProdutosPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL); // Esta função precisa ser criada em SubProdutosCRUD
+      const dadosSub = await SubProdutosCRUD.getSubProdutosPlanilha(req.sheets, req.ID_PLANILHA_PRINCIPAL);
       const cabecalhosSub = dadosSub[0].map(String);
       const idxSubId = cabecalhosSub.indexOf(CABECALHOS_SUBPRODUTOS[1]); // "ID"
       const idxSubForn = cabecalhosSub.indexOf(CABECALHOS_SUBPRODUTOS[5]); // "Fornecedor"
@@ -337,11 +304,10 @@ async function excluirFornecedor(req, res) {
     }
     
     // 3. Executar o Batch Update
-    // *** CORREÇÃO: Usa a ID da planilha principal ***
-    await FornecedoresCRUD.batchExcluirFornecedorEAtualizarSubprodutos(
+    await batchExcluirFornecedorEAtualizarSubprodutos(
       req.sheets,
       req.ID_PLANILHA_PRINCIPAL,
-      linhaIndexFornecedor,
+      linhaIndexFornecedor, // Ajuste para 0-based
       deletarSubprodutosVinculados,
       realocacoesComIndex,
       subprodutosParaExcluirIndices
@@ -355,13 +321,29 @@ async function excluirFornecedor(req, res) {
   }
 }
 
+/**
+ * [NOVA FUNÇÃO ADICIONADA]
+ * Rota: GET /api/fornecedores/listarNomesIds
+ * (Usada por SubProdutosScript.ejs para popular o dropdown de "Fornecedor")
+ */
+async function listarNomesIds(req, res) {
+  try {
+    const fornecedores = await getTodosFornecedoresParaDropdown(req.sheets, req.ID_PLANILHA_PRINCIPAL);
+    res.json({ success: true, dados: fornecedores });
+  } catch (e) {
+    console.error("ERRO em GET /api/fornecedores/listarNomesIds:", e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+}
+
+
 // Exporta as funções para o Router
 module.exports = {
-  // *** CORREÇÃO: Exporta o nome correto da função ***
   obterListaFornecedoresPaginada,
   criarNovoFornecedor,
   atualizarFornecedor,
   obterSubProdutos,
   obterOutrosFornecedores,
-  excluirFornecedor
+  excluirFornecedor,
+  listarNomesIds // <<< ADICIONADO
 };

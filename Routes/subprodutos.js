@@ -2,91 +2,65 @@
 
 const express = require('express');
 const router = express.Router();
-const SubProdutosCRUD = require('../Controllers/SubProdutosCRUD');
+
+// Importa o Controller (que ainda vamos migrar, mas já referenciamos)
+const SubProdutosController = require('../Controllers/SubProdutosController');
+
+/*
+ * ====================================================================
+ * Rotas do Módulo de SubProdutos
+ * ====================================================================
+ */
 
 /**
- * Rota: POST /api/subprodutos/listarPorPai
- * (Usada por FornecedoresScript.ejs para listar itens no modal)
+ * Rota: POST /api/subprodutos/listar
+ * (Usada por SubProdutosScript_carregarListaSubProdutos)
+ * Obtém a lista principal de subprodutos de forma paginada.
  */
-router.post('/listarPorPai', async (req, res) => {
-  try {
-    const { nomePai, tipoPai } = req.body;
-    // Usa a ID_PLANILHA_PRINCIPAL ***
-    const itens = await SubProdutosCRUD.getSubProdutosPorPai(req.sheets, req.ID_PLANILHA_PRINCIPAL, nomePai, tipoPai);
-    res.json({ success: true, dados: itens });
-  } catch (e) {
-    console.error("ERRO em POST /api/subprodutos/listarPorPai:", e);
-    res.status(500).json({ success: false, message: e.message });
-  }
-});
+router.post('/listar', SubProdutosController.obterListaSubProdutosPaginada);
+
+/**
+ * Rota: POST /api/subprodutos/criar
+ * (Usada por SubProdutosScript_submeterFormularioSubProduto - modo 'criar')
+ * Cria um novo subproduto.
+ */
+router.post('/criar', SubProdutosController.criarNovoSubProduto);
+
+/**
+ * Rota: POST /api/subprodutos/atualizar
+ * (Usada por SubProdutosScript_submeterFormularioSubProduto - modo 'editar')
+ * Atualiza um subproduto existente.
+ */
+router.post('/atualizar', SubProdutosController.atualizarSubProduto);
+
+/**
+ * Rota: POST /api/subprodutos/excluir
+ * (Usada por SubProdutosScript_executarExcluirSubProduto)
+ * Exclui um subproduto.
+ */
+router.post('/excluir', SubProdutosController.excluirSubProduto);
 
 /**
  * Rota: POST /api/subprodutos/obterDetalhes
- * (Usada por FornecedoresScript.ejs para editar um item no modal)
+ * (Usada por SubProdutosScript_carregarSubProdutoParaEdicao)
+ * Obtém os dados completos de um único subproduto pelo ID.
  */
-router.post('/obterDetalhes', async (req, res) => {
-  try {
-    const { itemId } = req.body;
-    // Usa a ID_PLANILHA_PRINCIPAL ***
-    const item = await SubProdutosCRUD.getDetalhesSubProdutoPorId(req.sheets, req.ID_PLANILHA_PRINCIPAL, itemId);
-    if (item) {
-      res.json({ success: true, dados: item });
-    } else {
-      res.status(404).json({ success: false, message: "Item não encontrado" });
-    }
-  } catch (e) {
-    console.error("ERRO em POST /api/subprodutos/obterDetalhes:", e);
-    res.status(500).json({ success: false, message: e.message });
-  }
-});
+router.post('/obterDetalhes', SubProdutosController.obterDetalhesSubProdutoPorId);
 
 /**
- * [NOVO] Rota: POST /api/subprodutos/criar
- * (Usada por FornecedoresScript.ejs para criar um novo subproduto)
+ * Rota: POST /api/subprodutos/criarMultiplos
+ * (Usada por SubProdutosScript_submeterFormularioMultiplosSubProdutos)
+ * Cadastra vários subprodutos em lote.
  */
-router.post('/criar', async (req, res) => {
-    try {
-        const dadosItem = req.body;
-        // Usa a ID_PLANILHA_PRINCIPAL ***
-        const resultado = await SubProdutosCRUD.criarNovoSubProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosItem);
-        res.json(resultado);
-    } catch (e) {
-        console.error("ERRO em POST /api/subprodutos/criar:", e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
+router.post('/criarMultiplos', SubProdutosController.cadastrarMultiplosSubProdutos);
 
 /**
- * [NOVO] Rota: POST /api/subprodutos/atualizar
- * (Usada por FornecedoresScript.ejs para atualizar um subproduto)
+ * Rota: POST /api/subprodutos/listarPorPai
+ * (Rota legada usada por FornecedoresScript.ejs - mantida para compatibilidade)
+ * Lista subprodutos baseados em um 'Pai' (seja Fornecedor ou Produto).
  */
-router.post('/atualizar', async (req, res) => {
-    try {
-        const dadosItem = req.body;
-        // Usa a ID_PLANILHA_PRINCIPAL ***
-        const resultado = await SubProdutosCRUD.atualizarSubProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosItem);
-        res.json(resultado);
-    } catch (e) {
-        console.error("ERRO em POST /api/subprodutos/atualizar:", e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-/**
- * [NOVO] Rota: POST /api/subprodutos/excluir
- * (Usada por FornecedoresScript.ejs para excluir um subproduto)
- */
-router.post('/excluir', async (req, res) => {
-    try {
-        const { itemId } = req.body;
-        // Usa a ID_PLANILHA_PRINCIPAL ***
-        const resultado = await SubProdutosCRUD.excluirSubProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, itemId);
-        res.json(resultado);
-    } catch (e) {
-        console.error("ERRO em POST /api/subprodutos/excluir:", e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
+router.post('/listarPorPai', SubProdutosController.obterSubProdutosPorPai);
 
 
+// Exporta o roteador
 module.exports = router;

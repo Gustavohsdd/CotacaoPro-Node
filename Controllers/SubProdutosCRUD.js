@@ -1,6 +1,5 @@
 // controllers/SubProdutosCRUD.js
 // Migrado e expandido a partir de 'SubProdutosCRUD.js', 'ProdutosCRUD.js', e 'FornecedoresCRUD.js' do Apps Script.
-// *** VERSÃO CORRIGIDA: SEM DEPENDÊNCIAS CIRCULARES ***
 
 const {
   ABA_PRODUTOS,
@@ -10,8 +9,6 @@ const {
   ABA_FORNECEDORES,
   CABECALHOS_FORNECEDORES
 } = require('../config/constants');
-
-// *** REMOVIDAS AS IMPORTAÇÕES DE 'ProdutosCRUD' e 'FornecedoresCRUD' ***
 
 // --- Funções Auxiliares Internas ---
 
@@ -41,6 +38,12 @@ async function getSheetIdByName(sheets, spreadsheetId, sheetName) {
   return sheet ? sheet.properties.sheetId : null;
 }
 
+/**
+ * Busca na planilha TODOS os dados da aba SubProdutos.
+ * @param {object} sheets - O cliente da API Google Sheets autenticado.
+ * @param {string} spreadsheetId - O ID da planilha principal.
+ * @returns {Promise<Array<Array<string>>>} Os dados brutos da planilha (incluindo cabeçalho).
+ */
 async function getSubProdutosPlanilha(sheets, spreadsheetId) {
   console.log(`[SubProdutosCRUD] Lendo dados da aba: ${ABA_SUBPRODUTOS}`);
   const response = await sheets.spreadsheets.values.get({
@@ -50,11 +53,29 @@ async function getSubProdutosPlanilha(sheets, spreadsheetId) {
   return response.data.values || [];
 }
 
+/**
+ * Mapeia uma linha (array) da planilha para um objeto JS.
+ * @param {Array} rowArray - A linha de dados da planilha.
+ * @param {Array} headers - O array de cabeçalhos da planilha.
+ * @return {Object} Um objeto representando o SubProduto.
+ */
 function mapSubProdutoRowToObject(rowArray, headers) {
   const obj = {};
   headers.forEach((header, index) => {
-    obj[header] = rowArray[index];
+    let cellValue = rowArray[index];
+    // Tratamento explícito de datas
+    if (cellValue instanceof Date) {
+        if (cellValue.getHours() > 0 || cellValue.getMinutes() > 0 || cellValue.getSeconds() > 0) {
+            obj[header] = Utilities.formatDate(cellValue, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+        } else {
+            obj[header] = Utilities.formatDate(cellValue, Session.getScriptTimeZone(), "dd/MM/yyyy");
+        }
+    } else {
+        obj[header] = cellValue;
+    }
   });
+
+  // Garante que o frontend receba as chaves que espera
   obj['ID_SubProduto'] = rowArray[headers.indexOf("ID")];
   obj['SubProduto'] = rowArray[headers.indexOf("SubProduto")];
   return obj;
@@ -63,6 +84,15 @@ function mapSubProdutoRowToObject(rowArray, headers) {
 
 // --- Funções CRUD Exportadas ---
 
+/**
+ * (Migrado de FornecedoresCRUD.js (Apps Script) -> SubProdutosCRUD_obterSubProdutosPorPai_NOVO)
+ * Obtém todos os itens (subprodutos) vinculados a um nome de fornecedor ou produto.
+ * @param {object} sheets - O cliente da API Google Sheets autenticado.
+ * @param {string} spreadsheetId - O ID da planilha principal.
+ * @param {string} nomePai - O NOME do Fornecedor ou do Produto.
+ * @param {string} tipoPai - 'FORNECEDOR' ou 'PRODUTO'.
+ * @returns {Promise<Array<object>>} Uma lista de objetos de subprodutos.
+ */
 async function getSubProdutosPorPai(sheets, spreadsheetId, nomePai, tipoPai) {
   try {
     if (tipoPai !== 'FORNECEDOR' && tipoPai !== 'PRODUTO') {
@@ -88,7 +118,8 @@ async function getSubProdutosPorPai(sheets, spreadsheetId, nomePai, tipoPai) {
 
     for (const row of dataRows) {
       const valorCelulaNormalizado = String(row[colunaFiltroIdx] || '').trim();
-      if (valorCelulaNormalizado.toLowerCase() === nomePaiNormalizado.toLowerCase()) {
+      // Comparação direta de nomes (sem normalizar minúsculas, como no original)
+      if (valorCelulaNormalizado === nomePaiNormalizado) { 
         itensVinculados.push(mapSubProdutoRowToObject(row, headers));
       }
     }
@@ -99,6 +130,14 @@ async function getSubProdutosPorPai(sheets, spreadsheetId, nomePai, tipoPai) {
   }
 }
 
+/**
+ * (Migrado de FornecedoresCRUD.js (Apps Script) -> SubProdutosCRUD_obterDetalhesSubProdutoPorId)
+ * Obtém os detalhes completos de um item (subproduto) específico pelo seu ID.
+ * @param {object} sheets - O cliente da API Google Sheets autenticado.
+ * @param {string} spreadsheetId - O ID da planilha principal.
+ * @param {string} itemId - O ID do subproduto.
+ * @returns {Promise<object|null>} O objeto do subproduto ou null.
+ */
 async function getDetalhesSubProdutoPorId(sheets, spreadsheetId, itemId) {
   try {
     const dados = await getSubProdutosPlanilha(sheets, spreadsheetId);
@@ -123,17 +162,19 @@ async function getDetalhesSubProdutoPorId(sheets, spreadsheetId, itemId) {
 }
 
 /**
- * Cria um novo subproduto. Esta versão recebe NOMES (tratados pelo Controller).
+ * (Migrado de SubProdutosCRUD.js (Apps Script) -> SubProdutosCRUD_criarNovoSubProduto)
+ * Cria um novo subproduto. Esta função é chamada pelo Controller e já recebe os NOMES
+ * do Produto Vinculado e do Fornecedor.
  * @param {object} sheets - O cliente da API Google Sheets autenticado.
  * @param {string} spreadsheetId - O ID da planilha principal.
- * @param {object} dadosItem - Objeto com os dados do formulário (deve conter 'Produto Vinculado' e 'Fornecedor' como NOMES).
+ * @param {object} dadosItem - Objeto com os dados do formulário (com Nomes, não IDs).
  * @returns {Promise<object>}
  */
 async function criarNovoSubProduto(sheets, spreadsheetId, dadosItem) {
   try {
     const nomeSubProduto = dadosItem["SubProduto"];
-    const nomeProdutoVinculado = dadosItem["Produto Vinculado"]; // Espera NOME
-    const nomeFornecedor = dadosItem["Fornecedor"]; // Espera NOME
+    const nomeProdutoVinculado = dadosItem["Produto Vinculado"]; // NOME
+    const nomeFornecedor = dadosItem["Fornecedor"]; // NOME
 
     if (!nomeSubProduto) throw new Error("O nome do SubProduto é obrigatório.");
     if (!nomeProdutoVinculado) throw new Error("O nome do Produto Vinculado é obrigatório.");
@@ -184,7 +225,8 @@ async function criarNovoSubProduto(sheets, spreadsheetId, dadosItem) {
 }
 
 /**
- * Atualiza um subproduto existente. Esta versão recebe NOMES (tratados pelo Controller).
+ * (Migrado de SubProdutosCRUD.js (Apps Script) -> SubProdutosCRUD_atualizarSubProduto)
+ * Atualiza um subproduto existente. Recebe os NOMES do Controller.
  * @param {object} sheets - O cliente da API Google Sheets autenticado.
  * @param {string} spreadsheetId - O ID da planilha principal.
  * @param {object} dadosItem - Objeto com os dados (deve conter "ID" ou "ID_SubProduto_Edicao").
@@ -196,8 +238,8 @@ async function atualizarSubProduto(sheets, spreadsheetId, dadosItem) {
     if (!idParaAtualizar) throw new Error("ID do subproduto é obrigatório para atualização.");
 
     const nomeSubProdutoAtualizado = dadosItem["SubProduto"];
-    const nomeProdutoVinculado = dadosItem["Produto Vinculado"]; // Espera NOME
-    const nomeFornecedor = dadosItem["Fornecedor"]; // Espera NOME
+    const nomeProdutoVinculado = dadosItem["Produto Vinculado"]; // NOME
+    const nomeFornecedor = dadosItem["Fornecedor"]; // NOME
 
     if (!nomeSubProdutoAtualizado) throw new Error("O nome do SubProduto é obrigatório.");
     if (!nomeProdutoVinculado) throw new Error("O nome do Produto Vinculado é obrigatório.");
@@ -217,7 +259,7 @@ async function atualizarSubProduto(sheets, spreadsheetId, dadosItem) {
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
       if (String(row[idxId]) === String(idParaAtualizar)) {
-        linhaIndex = i;
+        linhaIndex = i; // 0-based index na dataRows
       } else {
         if (normalizarTextoComparacao(row[idxNome]) === nomeSubProdutoAtualizadoNormalizado &&
             normalizarTextoComparacao(row[idxProdVinc]) === nomeProdutoVinculadoNormalizado) {
@@ -244,7 +286,7 @@ async function atualizarSubProduto(sheets, spreadsheetId, dadosItem) {
         return dadosItem[header] !== undefined ? dadosItem[header] : linhaOriginal[k_idx];
     });
 
-    const linhaPlanilha = linhaIndex + 2; // 1-based + 1 header
+    const linhaPlanilha = linhaIndex + 2; // 1-based (para header) + 1-based (para range)
     const ultimaColunaLetra = String.fromCharCode(65 + (headers.length - 1) % 26);
     const prefixoColuna = headers.length > 26 ? String.fromCharCode(64 + Math.floor((headers.length - 1) / 26)) : '';
     const range = `${ABA_SUBPRODUTOS}!A${linhaPlanilha}:${prefixoColuna}${ultimaColunaLetra}${linhaPlanilha}`;
@@ -264,6 +306,7 @@ async function atualizarSubProduto(sheets, spreadsheetId, dadosItem) {
 }
 
 /**
+ * (Migrado de FornecedoresCRUD.js (Apps Script) -> SubProdutosCRUD_excluirSubProduto)
  * Exclui um subproduto da planilha.
  * @param {object} sheets - O cliente da API Google Sheets autenticado.
  * @param {string} spreadsheetId - O ID da planilha principal.
@@ -282,9 +325,9 @@ async function excluirSubProduto(sheets, spreadsheetId, subProdutoId) {
     }
 
     let linhaIndex = -1; // 0-based
-    for (let i = 1; i < dados.length; i++) {
+    for (let i = 1; i < dados.length; i++) { // i é 1-based index do array 'dados'
       if (String(dados[i][idxId]) === String(subProdutoId)) {
-        linhaIndex = i;
+        linhaIndex = i; // 1-based index (para dados[i])
         break;
       }
     }
@@ -294,37 +337,27 @@ async function excluirSubProduto(sheets, spreadsheetId, subProdutoId) {
     }
 
     const sheetId = await getSheetIdByName(sheets, spreadsheetId, ABA_SUBPRODUTOS);
+    
+    // *** INÍCIO DA CORREÇÃO ***
+    // O startIndex do deleteDimension é 0-based e se refere à planilha.
+    // Se linhaIndex = 1 (que é dados[1]), esta é a LINHA 2 da planilha.
+    // O índice 0-based da LINHA 2 é 1.
+    // Portanto, o startIndex deve ser 'linhaIndex'.
     const requests = [{
       deleteDimension: {
         range: {
           sheetId: sheetId,
           dimension: "ROWS",
-          startIndex: linhaIndex + 1, // +1 para pular cabeçalho
-          endIndex: linhaIndex + 2
+          startIndex: linhaIndex, // CORRIGIDO (era linhaIndex + 1 no seu arquivo)
+          endIndex: linhaIndex + 1   // CORRIGIDO (era linhaIndex + 2 no seu arquivo)
         }
       }
     }];
+    // *** FIM DA CORREÇÃO ***
     
-    // CORREÇÃO: O `startIndex` do `deleteDimension` é 0-based e relativo à planilha,
-    // mas `getValues` retorna um array 0-based. `linhaIndex` (que é 0-based
-    // relativo a `dataRows`) é `linhaPlanilha - 1`.
-    // A API espera o índice 0-based da *planilha*.
-    // linhaIndex = 1 (dados[1]) -> linha 2 da planilha -> startIndex = 1
-    const requestCorrigido = [{
-      deleteDimension: {
-        range: {
-          sheetId: sheetId,
-          dimension: "ROWS",
-          startIndex: linhaIndex + 1, // linha 0-based (dados) + 1 (cabeçalho)
-          endIndex: linhaIndex + 2
-        }
-      }
-    }];
-
-
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetId,
-      resource: { requests: requestCorrigido }
+      resource: { requests: requests }
     });
 
     return { success: true, message: "Subproduto excluído com sucesso!" };
@@ -335,10 +368,11 @@ async function excluirSubProduto(sheets, spreadsheetId, subProdutoId) {
 }
 
 /**
- * Cadastra múltiplos subprodutos de uma vez.
+ * (Migrado de SubProdutosCRUD.js (Apps Script) -> SubProdutosCRUD_cadastrarMultiplosSubProdutos)
+ * Cadastra múltiplos subprodutos de uma vez. Recebe NOMES do Controller.
  * @param {object} sheets - O cliente da API Google Sheets autenticado.
  * @param {string} spreadsheetId - O ID da planilha principal.
- * @param {object} dadosLote - { fornecedorGlobalNome: string, subProdutos: Array<Object> }
+ * @param {object} dadosLote - { fornecedorGlobalNome: string, subProdutos: Array<Object> (com Nomes) }
  * @returns {Promise<object>}
  */
 async function cadastrarMultiplosSubProdutos(sheets, spreadsheetId, dadosLote) {
@@ -368,7 +402,7 @@ async function cadastrarMultiplosSubProdutos(sheets, spreadsheetId, dadosLote) {
 
         for (const subProdutoIndividual of subProdutos) {
             const nomeSubProdutoAtual = subProdutoIndividual["SubProduto"];
-            const nomeProdutoVinculado = subProdutoIndividual["Produto Vinculado"]; // Espera NOME
+            const nomeProdutoVinculado = subProdutoIndividual["Produto Vinculado"]; // NOME
 
             if (!nomeSubProdutoAtual || !nomeProdutoVinculado || !subProdutoIndividual["UN"]) {
                 resultadosDetalhados.push({ nome: nomeSubProdutoAtual || "Nome não fornecido", status: "Falha", erro: "Campos obrigatórios (SubProduto, Produto Vinculado, UN) não preenchidos." });
@@ -376,8 +410,8 @@ async function cadastrarMultiplosSubProdutos(sheets, spreadsheetId, dadosLote) {
             }
             
             const nomeSubProdutoNormalizado = normalizarTextoComparacao(nomeSubProdutoAtual);
-            const nomeProdutoVinculadoIndividualNormalizado = normalizarTextoComparacao(nomeProdutoVinculado);
-            const chaveUnica = `${nomeSubProdutoNormalizado}#${nomeProdutoVinculadoIndividualNormalizado}`;
+            const nomeProdutoVinculadoNormalizado = normalizarTextoComparacao(nomeProdutoVinculado);
+            const chaveUnica = `${nomeSubProdutoNormalizado}#${nomeProdutoVinculadoNormalizado}`;
 
             if (mapaDuplicidadePlanilha.has(chaveUnica) || mapaDuplicidadeLote.has(chaveUnica)) {
                 resultadosDetalhados.push({ nome: nomeSubProdutoAtual, status: "Falha", erro: `Duplicado (já existe ou está no lote).` });
@@ -425,12 +459,12 @@ async function cadastrarMultiplosSubProdutos(sheets, spreadsheetId, dadosLote) {
 }
 
 /**
- * (Migrado de ProdutosCRUD_adicionarNovoSubProdutoVinculado)
+ * (Migrado de ProdutosCRUD.js (Apps Script) -> ProdutosCRUD_adicionarNovoSubProdutoVinculado)
  * Adiciona um novo subproduto, recebendo o *nome* do produto vinculado.
  * Usado por ProdutosScript.
  * @param {object} sheets - O cliente da API Google Sheets autenticado.
  * @param {string} spreadsheetId - O ID da planilha principal.
- * @param {object} dadosItem - Objeto com os dados do formulário (deve conter 'Produto Vinculado' e 'Fornecedor' como NOMES).
+ * @param {object} dadosItem - Objeto com os dados do formulário (com Nomes).
  * @returns {Promise<object>}
  */
 async function adicionarNovoSubProdutoVinculado(sheets, spreadsheetId, dadosItem) {
@@ -469,7 +503,7 @@ async function adicionarNovoSubProdutoVinculado(sheets, spreadsheetId, dadosItem
 }
 
 /**
- * (Migrado de ProdutosCRUD_atualizarSubProdutoVinculado)
+ * (Migrado de ProdutosCRUD.js (Apps Script) -> ProdutosCRUD_atualizarSubProdutoVinculado)
  * Atualiza um subproduto, recebendo o *nome* do produto vinculado.
  * Usado por ProdutosScript.
  * @param {object} sheets - O cliente da API Google Sheets autenticado.
@@ -504,10 +538,11 @@ async function atualizarSubProdutoVinculado(sheets, spreadsheetId, dadosItem) {
             if (header === "ID" || header === "Data de Cadastro") {
                 return linhaOriginal[k_idx];
             }
+            // O 'dadosItem' já vem com os Nomes corretos do Produto Vinculado e Fornecedor
             return dadosItem[header] !== undefined ? dadosItem[header] : linhaOriginal[k_idx];
         });
 
-        const linhaPlanilha = linhaIndex + 2; // 1-based + 1 header
+        const linhaPlanilha = linhaIndex + 2;
         const ultimaColunaLetra = String.fromCharCode(65 + (headers.length - 1) % 26);
         const prefixoColuna = headers.length > 26 ? String.fromCharCode(64 + Math.floor((headers.length - 1) / 26)) : '';
         const range = `${ABA_SUBPRODUTOS}!A${linhaPlanilha}:${prefixoColuna}${ultimaColunaLetra}${linhaPlanilha}`;
@@ -550,13 +585,13 @@ async function propagarNomeProduto(sheets, spreadsheetId, nomeAntigo, nomeAtuali
     let atualizacoes = 0;
     const sheetId = await getSheetIdByName(sheets, spreadsheetId, ABA_SUBPRODUTOS);
 
-    for (let i = 1; i < dadosSub.length; i++) {
+    for (let i = 1; i < dadosSub.length; i++) { // i é 1-based index de dados[]
         if (String(dadosSub[i][idxSubProdVinc]) === nomeAntigo) {
             requests.push({
                 updateCells: {
                     rows: [{ values: [{ userEnteredValue: { stringValue: nomeAtualizado } }] }],
                     fields: "userEnteredValue",
-                    start: { sheetId: sheetId, rowIndex: i, columnIndex: idxSubProdVinc }
+                    start: { sheetId: sheetId, rowIndex: i, columnIndex: idxSubProdVinc } // rowIndex é 0-based
                 }
             });
             atualizacoes++;
@@ -597,13 +632,13 @@ async function propagarNomeFornecedor(sheets, spreadsheetId, nomeAntigo, nomeAtu
     let atualizacoes = 0;
     const sheetId = await getSheetIdByName(sheets, spreadsheetId, ABA_SUBPRODUTOS);
 
-    for (let i = 1; i < dadosSub.length; i++) {
+    for (let i = 1; i < dadosSub.length; i++) { // i é 1-based index de dados[]
         if (String(dadosSub[i][idxSubForn]) === nomeAntigo) {
             requests.push({
                 updateCells: {
                     rows: [{ values: [{ userEnteredValue: { stringValue: nomeAtualizado } }] }],
                     fields: "userEnteredValue",
-                    start: { sheetId: sheetId, rowIndex: i, columnIndex: idxSubForn }
+                    start: { sheetId: sheetId, rowIndex: i, columnIndex: idxSubForn } // rowIndex é 0-based
                 }
             });
             atualizacoes++;

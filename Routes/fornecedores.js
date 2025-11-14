@@ -4,38 +4,45 @@ const express = require('express');
 const router = express.Router();
 
 // Importa o Controller que contém a lógica de negócios
-const FornecedoresController = require('../Controllers/FornecedoresController');
+// *** CORREÇÃO: Importa a nova função listarNomesIds ***
+const {
+  obterListaFornecedoresPaginada,
+  criarNovoFornecedor,
+  atualizarFornecedor,
+  obterSubProdutos,
+  obterOutrosFornecedores,
+  excluirFornecedor,
+  listarNomesIds // <<< ADICIONADO
+} = require('../Controllers/FornecedoresController');
 
 /*
  * Mapeamento das Rotas de Fornecedores:
- * O frontend (FornecedoresScript.ejs) chama esses endpoints.
- * O roteador os direciona para a função correspondente no Controller.
  */
 
 // Rota: POST /api/fornecedores/listar
-// (Usada por FornecedoresScript_carregarListaFornecedores)
-// CORREÇÃO: Aponta para obterListaFornecedoresPaginada (corrigindo meu typo anterior)
-router.post('/listar', FornecedoresController.obterListaFornecedoresPaginada);
+router.post('/listar', obterListaFornecedoresPaginada);
 
 // Rota: POST /api/fornecedores/criar
-// (Usada por FornecedoresScript_submeterFormularioProduto - modo 'criar')
-router.post('/criar', FornecedoresController.criarNovoFornecedor);
+router.post('/criar', criarNovoFornecedor);
 
 // Rota: POST /api/fornecedores/atualizar
-// (Usada por FornecedoresScript_submeterFormularioProduto - modo 'editar')
-router.post('/atualizar', FornecedoresController.atualizarFornecedor);
+router.post('/atualizar', atualizarFornecedor);
 
 // Rota: POST /api/fornecedores/obterSubProdutos
-// (Usada por FornecedoresScript_iniciarConfirmacaoExclusao)
-router.post('/obterSubProdutos', FornecedoresController.obterSubProdutos);
+router.post('/obterSubProdutos', obterSubProdutos);
 
 // Rota: POST /api/fornecedores/obterOutros
-// (Usada por FornecedoresScript_prepararModalRealocacao)
-router.post('/obterOutros', FornecedoresController.obterOutrosFornecedores);
+router.post('/obterOutros', obterOutrosFornecedores);
 
 // Rota: POST /api/fornecedores/excluir
-// (Usada por FornecedoresScript_executarExclusao)
-router.post('/excluir', FornecedoresController.excluirFornecedor);
+router.post('/excluir', excluirFornecedor);
+
+/**
+ * [NOVA ROTA ADICIONADA]
+ * Rota: GET /api/fornecedores/listarNomesIds
+ * (Usada por SubProdutosScript.ejs para popular o dropdown de "Fornecedor")
+ */
+router.get('/listarNomesIds', listarNomesIds);
 
 
 // Exporta o roteador para ser usado no server.js
