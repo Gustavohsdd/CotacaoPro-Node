@@ -41,15 +41,24 @@ async function generatePdfFromHtml(htmlContent, fileName) {
         // 'headless: "new"' é a sintaxe moderna
         browser = await puppeteer.launch({
             headless: "new",
-            args: ['--no-sandbox', '--disable-setuid-sandbox'] // Argumentos comuns para rodar em servidores
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox',
+                // Adiciona um argumento para lidar com memória compartilhada (comum em servidores)
+                '--disable-dev-shm-usage' 
+            ]
         });
 
         // 2. Abre uma nova página
         const page = await browser.newPage();
 
         // 3. Define o conteúdo da página como o seu HTML
-        // 'waitUntil: "networkidle0"' espera todas as fontes e imagens carregarem (se houver)
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+        
+        // --- CORREÇÃO APLICADA AQUI ---
+        // 'networkidle0' causa timeout ao carregar HTML local.
+        // Trocado para 'domcontentloaded', que apenas espera o HTML ser carregado.
+        await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+        // --- FIM DA CORREÇÃO ---
 
         // 4. Gera o PDF
         await page.pdf({

@@ -38,9 +38,17 @@ router.post('/salvarTextoGlobalPortal', FuncoesController.salvarTextoGlobalCotac
 router.post('/preencherUltimosPrecos', FuncoesController.preencherUltimosPrecos);
 
 /**
+ * Rota: POST /api/funcoes/obterDadosImpressaoManual
+ * (Usada por ImprimirPedidosScript.ejs - chamada 1)
+ */
+router.post('/obterDadosImpressaoManual', FuncoesController.gerarPdfsEnvioManual);
+
+/**
+ * --- CORREÇÃO APLICADA AQUI ---
  * Rota: POST /api/funcoes/gerarPdfsEnvioManual
- * (SUBSTITUI a antiga lógica de impressão. Agora gera PDFs no servidor com Puppeteer)
- * (Usada por ImprimirPedidosScript.ejs)
+ * Adicionamos esta rota de volta. Agora, tanto esta rota quanto a
+ * '/obterDadosImpressaoManual' chamam a *mesma* função de geração de PDF.
+ * (Usada por ImprimirPedidosScript.ejs - chamada 2)
  */
 router.post('/gerarPdfsEnvioManual', FuncoesController.gerarPdfsEnvioManual);
 

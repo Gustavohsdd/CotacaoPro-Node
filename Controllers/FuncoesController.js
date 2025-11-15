@@ -195,7 +195,7 @@ async function gerarPdfsEnvioManual(req, res) {
             return res.status(400).json({ success: false, message: "ID da Cotação não fornecido." });
         }
 
-        // 1. Busca os dados dos pedidos (do EtapasCRUD.js que você já migrou)
+        // 1. Busca os dados dos pedidos (do FuncoesCRUD.js)
         const dadosAgrupados = await FuncoesCRUD.obterDadosParaImpressaoManual(req.sheets, req.ID_PLANILHA_PRINCIPAL, idCotacao);
 
         if (!dadosAgrupados || Object.keys(dadosAgrupados).length === 0) {
@@ -220,7 +220,9 @@ async function gerarPdfsEnvioManual(req, res) {
                         // Chama o PdfController para gerar e salvar o arquivo
                         const urlRelativaPdf = await PdfController.generatePdfFromHtml(htmlPedido, nomeArquivo);
 
-                        // Retorna o objeto completo para o cliente
+                        // --- CORREÇÃO APLICADA AQUI ---
+                        // Adicionamos a propriedade "itens" ao objeto de resposta.
+                        // O frontend precisa disso para renderizar os detalhes do pedido.
                         return {
                             fornecedor: pedido.fornecedor,
                             empresaFaturada: pedido.empresaFaturada,
@@ -228,7 +230,8 @@ async function gerarPdfsEnvioManual(req, res) {
                             linkPdf: urlRelativaPdf, // Esta é a URL que o cliente usará
                             numeroCotacao: idCotacao,
                             condicaoPagamento: pedido.condicaoPagamento || 'Não informada',
-                            totalPedido: pedido.totalPedido
+                            totalPedido: pedido.totalPedido,
+                            itens: pedido.itens // <-- ESTA LINHA FOI ADICIONADA
                         };
                     } catch (pdfError) {
                         console.error(`Falha ao gerar PDF para ${pedido.fornecedor}: ${pdfError.message}`);
