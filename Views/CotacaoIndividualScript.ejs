@@ -39,7 +39,6 @@
     window.CotacaoIndividualScript_dadosOriginaisCotacao = [];
     let CotacaoIndividualScript_modoEtapaAtual = null;
     let CotacaoIndividualScript_abaAtiva = 'categoria';
-
     const CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO = [
         "SubProduto", "Fornecedor", "Tamanho", "UN", "Fator",
         "Preço", "Preço por Fator", "Comprar", "Valor Total"
@@ -52,7 +51,6 @@
         "Comprar": "bg-col-verde", "Valor Total": "bg-col-verde", "Economia em Cotação": "bg-col-verde",
         "Empresa Faturada": "bg-col-roxo-leve", "Condição de Pagamento": "bg-col-roxo-leve"
     };
-
     //----------------------------------------------------------------------------------------------------
     // NOVA FUNÇÃO: HELPER DE API FETCH
     //----------------------------------------------------------------------------------------------------
@@ -70,7 +68,6 @@
 
         try {
             const response = await fetch(endpoint, options);
-
             // Tenta parsear como JSON, mesmo em caso de erro, pois o servidor pode enviar um { message: '...' }
             let data;
             try {
@@ -95,7 +92,8 @@
                 throw new Error(data.message || "Ocorreu um erro no servidor.");
             }
 
-            return data; // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
+            return data;
+            // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
 
         } catch (error) {
             console.error(`Erro na chamada da API para ${endpoint}:`, error);
@@ -109,7 +107,8 @@
     // FUNÇÕES UTILITÁRIAS GLOBAIS DA PÁGINA (Sem alterações, exceto formatação)
     //----------------------------------------------------------------------------------------------------
     window.CotacaoIndividualScript_getClasseCorColuna = function (nomeCabecalho) {
-        return CotacaoIndividualScript_MAPA_CORES_COLUNAS[nomeCabecalho] || "";
+        return CotacaoIndividualScript_MAPA_CORES_COLUNAS[nomeCabecalho] ||
+            "";
     }
 
     function CotacaoIndividualScript_parseNumeroPtBr(valor) {
@@ -152,7 +151,8 @@
             P1: null,
             P2: null,
             Pmediana: null,
-            Q: 0
+            Q:
+                0
         };
         if (!grupo || !grupo.subProdutos || grupo.subProdutos.length === 0) {
             return resultado;
@@ -207,6 +207,7 @@
                 setTimeout(() => {
                     if (feedbackDiv.textContent === mensagem) {
                         feedbackDiv.classList.add('hidden');
+
                         feedbackDiv.textContent = '';
                     }
                 }, duracao);
@@ -232,7 +233,6 @@
 
         const matchEstoque = texto.match(/Estoque Atual:\s*([0-9.,]+(?:[.,]\d+)?|N\/A)/i);
         const matchComprar = texto.match(/Comprar:\s*([0-9.,]+(?:[.,]\d+)?|N\/A)/i);
-
         if (matchEstoque && matchEstoque[1] && matchEstoque[1].toUpperCase() !== 'N/A') {
             resultado.estoqueAtual = parseFloat(String(matchEstoque[1]).replace(",", "."));
         }
@@ -272,6 +272,7 @@
             if (opt === valorOriginal) {
                 option.selected = true;
             }
+
             select.appendChild(option);
         });
         td.innerHTML = '';
@@ -290,15 +291,18 @@
                 select.removeEventListener('blur', salvarAlteracao);
                 td.textContent = valorOriginal;
                 td.focus();
+
             } else if (e.key === 'Enter' || e.key === 'Tab') {
                 e.preventDefault();
                 const parentTd = select.closest('td');
                 select.blur();
                 setTimeout(() => {
+
                     if (e.key === 'Tab') {
                         CotacaoIndividualScript_focusNextCell(parentTd, e.shiftKey);
                     } else {
                         const currentRow = parentTd.parentElement;
+
                         const cellIndex = Array.from(currentRow.children).indexOf(parentTd);
                         let nextRow = currentRow.nextElementSibling;
                         while (nextRow && !nextRow.matches('.sub-produto-row, .etapa5-content-row')) {
@@ -325,7 +329,8 @@
         if (td.querySelector('input')) return;
         const valorOriginal = td.dataset.valorOriginal || '';
         const coluna = td.dataset.coluna;
-        const tipoInput = ["Fator", "Preço", "Comprar"].includes(coluna) ? 'number' : 'text';
+        const tipoInput = ["Fator", "Preço", "Comprar"].includes(coluna) ?
+            'number' : 'text';
         td.innerHTML = `<input type="${tipoInput}" step="any" class="inline-edit-input" value="${valorOriginal}" />`;
         const input = td.querySelector('input');
         input.style.width = '95%';
@@ -343,7 +348,7 @@
 
     /**
      * FUNÇÃO ATUALIZADA: Salva a edição inline usando a API Fetch.
-     */
+*/
     function CotacaoIndividualScript_salvarEdicaoInline(element) {
         const td = element.parentElement;
         let novoValorStr = element.value;
@@ -366,7 +371,6 @@
             SubProdutoChave: tr.dataset.subprodutoOriginalPersistido, // Chave original
             Fornecedor: tr.dataset.fornecedor
         };
-
         // Formata o valor para exibição (Display)
         let valorDisplay = novoValorStr;
         if (camposNumericos.includes(coluna) && !isNaN(parseFloat(novoValorStr))) {
@@ -379,7 +383,6 @@
 
         td.textContent = valorDisplay;
         td.dataset.valorOriginal = valorDisplay;
-
         // Atualiza cálculos do cliente imediatamente
         if (["Fator", "Preço", "Comprar"].includes(coluna)) {
             CotacaoIndividualScript_atualizarGrupoDeCalculosCliente(tr);
@@ -406,6 +409,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 idCotacao: CotacaoIndividualScript_cotacaoIdAtual,
+
                 identificadoresLinha: identificadores,
                 colunaAlterada: coluna,
                 novoValor: valorParaBackend // Envia o valor numérico ou string
@@ -413,22 +417,25 @@
         })
             .then(response => {
                 if (response.success) {
+
                     console.log(`Salvo no servidor: ${coluna} = ${valorParaBackend}`);
 
                     // Atualiza o estado local (dadosOriginais)
                     const itemOriginal = CotacaoIndividualScript_dadosOriginaisCotacao.find(item =>
                         item.Produto === identificadores.Produto &&
+
                         item._subProdutoOriginalPersistido === identificadores.SubProdutoChave &&
                         item.Fornecedor === identificadores.Fornecedor
                     );
-
                     if (itemOriginal) {
-                        itemOriginal[coluna] = valorParaBackend; // Salva o valor numérico
+                        itemOriginal[coluna] = valorParaBackend;
+                        // Salva o valor numérico
                     }
 
                     // Se o nome do SubProduto mudou, atualiza a chave
                     if (response.novoSubProdutoNomeSeAlterado) {
-                        tr.dataset.subprodutoOriginalPersistido = response.novoSubProdutoNomeSeAlterado;
+                        tr.dataset.subprodutoOriginalPersistido
+                            = response.novoSubProdutoNomeSeAlterado;
                         if (itemOriginal) {
                             itemOriginal._subProdutoOriginalPersistido = response.novoSubProdutoNomeSeAlterado;
                             itemOriginal.SubProduto = response.novoSubProdutoNomeSeAlterado;
@@ -437,7 +444,8 @@
 
                     // Atualiza os valores calculados vindos do servidor (garante consistência)
                     if (response.valoresCalculados) {
-                        const celulaValorTotal = tr.querySelector('td[data-coluna="Valor Total"]');
+                        const celulaValorTotal
+                            = tr.querySelector('td[data-coluna="Valor Total"]');
                         if (celulaValorTotal) {
                             celulaValorTotal.textContent = response.valoresCalculados.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                             if (itemOriginal) itemOriginal['Valor Total'] = response.valoresCalculados.valorTotal;
@@ -449,12 +457,14 @@
                         }
                     }
                 } else {
-                    throw new Error(response.message); // Cai no .catch()
+                    throw new Error(response.message);
+                    // Cai no .catch()
                 }
             })
             .catch(err => {
                 console.error("Falha ao salvar no servidor:", err.message);
                 td.textContent = valorOriginalStr; // Reverte
+
                 td.dataset.valorOriginal = valorOriginalStr;
                 td.classList.add('bg-col-vermelho-leve');
                 setTimeout(() => td.classList.remove('bg-col-vermelho-leve'), 2000);
@@ -468,13 +478,11 @@
 
         const tbody = trEditada.parentElement;
         const todasLinhasDoGrupo = tbody.querySelectorAll(`tr.sub-produto-row[data-produto="${nomeProdutoPrincipal}"]`);
-
         const lerValorDaLinha = (tr, coluna) => {
             const cell = tr.querySelector(`td[data-coluna="${coluna}"]`);
             const valorTexto = cell.querySelector('input')?.value || cell?.dataset.valorOriginal || cell?.textContent || '0';
             return parseFloat(String(valorTexto).replace(/\./g, '').replace(',', '.')) || 0;
         };
-
         const escreverValorNaLinha = (tr, coluna, valor, casasDecimais = 2) => {
             const cell = tr.querySelector(`td[data-coluna="${coluna}"]`);
             if (cell) {
@@ -494,40 +502,44 @@
             const precoPorFator = fator > 0 ? (preco / fator) : 0;
             if (precoPorFator > maxPrecoPorFator) {
                 maxPrecoPorFator = precoPorFator;
+
             }
         });
-
         todasLinhasDoGrupo.forEach(tr => {
             const preco = lerValorDaLinha(tr, "Preço");
             const fator = lerValorDaLinha(tr, "Fator");
             const comprar = lerValorDaLinha(tr, "Comprar");
             const precoPorFator = fator > 0 ? (preco / fator) : 0;
             escreverValorNaLinha(tr, "Preço por Fator", precoPorFator, 4);
+
             const valorTotal = preco * comprar;
             escreverValorNaLinha(tr, "Valor Total", valorTotal, 2);
             let economia = 0;
             if (comprar > 0 && maxPrecoPorFator > 0 && todasLinhasDoGrupo.length > 1) {
                 economia = (maxPrecoPorFator * fator * comprar) - (preco * comprar);
+
             }
             escreverValorNaLinha(tr, "Economia em Cotação", economia, 2);
         });
-
         const sepRow = tbody.querySelector(`tr.produto-group-separator-row[data-produto-nome="${nomeProdutoPrincipal}"]`);
         if (sepRow) {
             const metricasSpan = sepRow.querySelector('.indicador-oportunidade');
             if (metricasSpan) {
                 const grupoDoDom = {
                     subProdutos: [],
-                    demandaMediaProdutoPrincipal: CotacaoIndividualScript_parseNumeroPtBr(trEditada.dataset.demandaMedia) || 0
+                    demandaMediaProdutoPrincipal: CotacaoIndividualScript_parseNumeroPtBr(trEditada.dataset.demandaMedia) ||
+                        0
                 };
                 todasLinhasDoGrupo.forEach(tr => {
                     const precoCell = tr.querySelector('td[data-coluna="Preço"]');
                     const fatorCell = tr.querySelector('td[data-coluna="Fator"]');
                     const precoPorFatorCell = tr.querySelector('td[data-coluna="Preço por Fator"]');
                     grupoDoDom.subProdutos.push({
+
                         "Preço": precoCell ? precoCell.textContent : '0',
                         "Fator": fatorCell ? fatorCell.textContent : '0',
                         "Preço por Fator": precoPorFatorCell ? precoPorFatorCell.textContent : '0'
+
                     });
                 });
                 const metricas = CotacaoIndividualScript_calcularMetricasNegociacao(grupoDoDom);
@@ -581,12 +593,14 @@
             }
             let textoLinha = "";
             CotacaoIndividualScript_cabecalhosVisiveis.forEach(cabecalho => {
+
                 const cell = row.querySelector(`td[data-coluna="${cabecalho}"]`);
                 if (cell) textoLinha += (cell.textContent || "") + " ";
             });
             textoLinha += (row.dataset.produto || "") + " ";
             textoLinha += (row.dataset.categoria || "") + " ";
-            textoLinha += (row.dataset.fornecedor || "") + " ";
+            textoLinha += (row.dataset.fornecedor || "")
+                + " ";
             const textoLinhaNormalizado = CotacaoIndividualScript_removerAcentos(textoLinha.toLowerCase());
             const deveEsconder = !(termoNormalizado === "" || textoLinhaNormalizado.includes(termoNormalizado));
             row.classList.toggle('hidden-by-search', deveEsconder);
@@ -599,11 +613,13 @@
                 !subRow.classList.contains('hidden-by-search')
             );
             let deveEsconderGrupo = !subProdutosVisiveisNesteGrupo;
+
             if (CotacaoIndividualScript_abaAtiva === 'categoria') {
                 const produtosPrincipaisDoGrupo = tbody.querySelectorAll(`.produto-group-separator-row.${grupoTargetClass}`);
                 let algumProdutoPrincipalVisivel = false;
                 produtosPrincipaisDoGrupo.forEach(linhaProdutoPrincipal => {
                     const nomeProduto = linhaProdutoPrincipal.dataset.produtoNome;
+
                     const subProdutosVisiveisDestePrincipal = todasLinhasSubProduto.some(subRow =>
                         subRow.dataset.produto === nomeProduto &&
                         !subRow.classList.contains('hidden-by-search')
@@ -635,7 +651,9 @@
         const tabela = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO);
         if (!tabela) { console.error("Tabela principal não encontrada."); return; }
         const thead = tabela.querySelector('thead');
-        if (!thead) { console.error("Thead da tabela principal não encontrado."); return; }
+        if (!thead) {
+            console.error("Thead da tabela principal não encontrado."); return;
+        }
         thead.innerHTML = '';
         if (!CotacaoIndividualScript_cabecalhosVisiveis || CotacaoIndividualScript_cabecalhosVisiveis.length === 0) {
             const tr = thead.insertRow();
@@ -661,11 +679,13 @@
             const chaveGrupo = `${categoriaProduto}|${nomeProdutoPrincipal}`;
             if (!gruposTemp[chaveGrupo]) {
                 gruposTemp[chaveGrupo] = {
+
                     produtoNome: nomeProdutoPrincipal,
                     categoria: categoriaProduto,
                     subProdutos: [],
                     estoqueMinimoProdutoPrincipal: linhaProduto.hasOwnProperty("EstoqueMinimoProdutoPrincipal") ? linhaProduto["EstoqueMinimoProdutoPrincipal"] : null
                 };
+
             }
             gruposTemp[chaveGrupo].subProdutos.push(linhaProduto);
         });
@@ -675,6 +695,7 @@
             if (catA < catB) return -1; if (catA > catB) return 1;
             const nomeA = String(a.produtoNome).toLowerCase(); const nomeB = String(b.produtoNome).toLowerCase();
             if (nomeA < nomeB) return -1; if (nomeA > nomeB) return 1;
+
             return 0;
         });
         arrayDeGrupos.forEach(grupo => {
@@ -682,6 +703,7 @@
                 const subNomeAOriginal = String(a["_subProdutoOriginalPersistido"] || a["SubProduto"] || "").toLowerCase();
                 const subNomeBOriginal = String(b["_subProdutoOriginalPersistido"] || b["SubProduto"] || "").toLowerCase();
                 if (subNomeAOriginal < subNomeBOriginal) return -1;
+
                 if (subNomeAOriginal > subNomeBOriginal) return 1;
                 return 0;
             });
@@ -712,11 +734,13 @@
             if (grupo.categoria !== categoriaAtualRenderizada) {
                 const catRow = tbody.insertRow();
                 catRow.className = 'categoria-accordion-header-row';
+
                 catRow.dataset.targetClass = catClass;
                 catRow.dataset.categoriaNome = grupo.categoria;
                 const catCell = catRow.insertCell();
                 catCell.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
                 const headerDiv = document.createElement('div');
+
                 headerDiv.className = 'categoria-header-content';
                 const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                 icon.setAttribute("class", "categoria-accordion-icon");
@@ -733,10 +757,12 @@
                     const exp = this.classList.contains('expanded');
                     if (icon) icon.style.transform = exp ? 'rotate(90deg)' : 'rotate(0deg)';
                     tbody.querySelectorAll(`.${this.dataset.targetClass}`).forEach(r => {
+
                         if (!r.classList.contains('hidden-by-search') && !r.classList.contains('hidden-by-etapa')) {
                             r.classList.toggle('hidden', !exp);
                         }
                     });
+
                 });
                 categoriaAtualRenderizada = grupo.categoria;
             }
@@ -745,7 +771,8 @@
             sepRow.dataset.produtoNome = grupo.produtoNome;
             sepRow.dataset.categoria = grupo.categoria;
             const sepCell = sepRow.insertCell();
-            sepCell.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+            sepCell.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length ||
+                1;
             if (CotacaoIndividualScript_modoEtapaAtual !== 'contagem_estoque') {
                 const wrap = document.createElement('div');
                 wrap.style.display = 'flex';
@@ -761,14 +788,17 @@
                 nomeProdutoSpan.textContent = `Produto: ${grupo.produtoNome}`;
                 info.appendChild(nomeProdutoSpan);
                 const demandaMedia = (grupo.subProdutos && grupo.subProdutos[0] && grupo.subProdutos[0]['DemandaMediaProdutoPrincipal'] != null)
-                    ? parseFloat(grupo.subProdutos[0]['DemandaMediaProdutoPrincipal']).toFixed(2)
+                    ?
+                    parseFloat(grupo.subProdutos[0]['DemandaMediaProdutoPrincipal']).toFixed(2)
                     : 'N/A';
                 const demandaBadge = document.createElement('span');
                 demandaBadge.className = 'info-badge';
                 demandaBadge.textContent = `Demanda Média: ${demandaMedia}`;
                 info.appendChild(demandaBadge);
-                const valorEstoqueBruto = (grupo.subProdutos && grupo.subProdutos[0]) ? grupo.subProdutos[0]["Estoque Atual"] : '';
-                const estoqueParaExibir = (valorEstoqueBruto !== null && valorEstoqueBruto !== undefined && valorEstoqueBruto !== "") ? valorEstoqueBruto : 'N/A';
+                const valorEstoqueBruto = (grupo.subProdutos && grupo.subProdutos[0]) ?
+                    grupo.subProdutos[0]["Estoque Atual"] : '';
+                const estoqueParaExibir = (valorEstoqueBruto !== null && valorEstoqueBruto !== undefined && valorEstoqueBruto !== "") ?
+                    valorEstoqueBruto : 'N/A';
                 const estoqueBadge = document.createElement('span');
                 estoqueBadge.className = 'info-badge';
                 estoqueBadge.textContent = estoqueParaExibir;
@@ -785,6 +815,7 @@
                     const produto = sepRow.dataset.produtoNome || '';
                     const subprodutos = CotacaoIndividualScript_obterSubprodutosDoProduto(produto);
                     CotacaoIndividualScript_abrirModalNegociacao(produto, subprodutos);
+
                 });
                 actions.appendChild(btnNeg);
                 const grupoComDemanda = { ...grupo, demandaMediaProdutoPrincipal: (grupo.subProdutos[0] ? grupo.subProdutos[0].DemandaMediaProdutoPrincipal : 0) };
@@ -806,15 +837,18 @@
                 grupo.subProdutos.forEach(sub => {
                     const subRow = tbody.insertRow();
                     subRow.className = `sub-produto-row category-content-row ${catClass} hidden`;
+
                     if (CotacaoIndividualScript_modoEtapaAtual === 'contagem_estoque') {
                         subRow.classList.add('hidden-by-etapa');
                     }
                     subRow.dataset.subprodutoOriginalPersistido = sub["_subProdutoOriginalPersistido"] || sub["SubProduto"];
                     subRow.dataset.produto = sub['Produto'];
+
                     subRow.dataset.fornecedor = sub['Fornecedor'];
                     subRow.dataset.subprodutoAtual = sub['SubProduto'];
                     subRow.dataset.categoria = sub['Categoria'] || 'Sem Categoria';
                     subRow.dataset.demandaMedia = sub['DemandaMediaProdutoPrincipal'] || '0';
+
                     CotacaoIndividualScript_cabecalhosVisiveis.forEach(header => {
                         const td = subRow.insertCell();
                         const cor = CotacaoIndividualScript_getClasseCorColuna(header);
@@ -826,7 +860,8 @@
                             const fractionDigits = { 'Fator': 4, 'Preço por Fator': 4, 'Preço': 2, 'Comprar': 2, 'Valor Total': 2, 'Economia em Cotação': 2 };
                             fmt = val.toLocaleString('pt-BR', { minimumFractionDigits: fractionDigits[header] || 2, maximumFractionDigits: fractionDigits[header] || 2 });
                         } else {
-                            fmt = val == null ? "" : String(val);
+                            fmt = val == null ?
+                                "" : String(val);
                         }
                         td.textContent = fmt;
                         td.dataset.coluna = header;
@@ -844,7 +879,7 @@
 
     /**
      * FUNÇÃO ATUALIZADA: Configura os menus dropdown e suas ações.
-     */
+*/
     function initDropdownsInterno() {
         // (Esta função permanece idêntica à do Apps Script)
         const dropdowns = [
@@ -858,13 +893,16 @@
             if (btn && content) {
                 btn.addEventListener('click', function (event) {
                     event.stopPropagation();
+
                     document.querySelectorAll('.dropdown-menu-content.show').forEach(openDropdown => {
                         if (openDropdown !== content) {
                             openDropdown.classList.remove('show');
                             const otherBtnId = openDropdown.id.replace('Dropdown', 'Btn');
+
                             const otherBtn = document.getElementById(otherBtnId);
                             if (otherBtn) otherBtn.classList.remove('open');
                         }
+
                     });
                     content.classList.toggle('show');
                     btn.classList.toggle('open');
@@ -875,15 +913,19 @@
                     item.addEventListener('click', function (e) {
                         e.preventDefault();
                         const action = this.dataset.action;
+
                         console.log("Menu item clicado:", action, "ID da Cotação:", CotacaoIndividualScript_cotacaoIdAtual);
                         content.classList.remove('show');
                         btn.classList.remove('open');
                         const icon = btn.querySelector('.dropdown-arrow');
+
                         if (icon) icon.style.transform = 'rotate(0deg)';
                         const modoAnterior = CotacaoIndividualScript_modoEtapaAtual;
                         const novoModoPotencial = action.startsWith('etapa_') ? action.substring(6) : (action.startsWith('funcao_') ? action.substring(7) : (action.startsWith('relatorio_') ? action.substring(10) : null));
+
                         if (modoAnterior && !action.startsWith('relatorio_')) {
-                            if (novoModoPotencial && modoAnterior !== novoModoPotencial || !novoModoPotencial) {
+                            if (novoModoPotencial && modoAnterior !== novoModoPotencial ||
+                                !novoModoPotencial) {
                                 if (modoAnterior === 'contagem_estoque' && typeof EtapasScript_fecharModalContagemEstoque === 'function') EtapasScript_fecharModalContagemEstoque();
                                 else if (modoAnterior === 'retirar_produtos' && typeof EtapasScript_fecharModalRetirarProdutos === 'function') EtapasScript_fecharModalRetirarProdutos();
                                 else if (modoAnterior === 'gerenciar_cotacoes_portal' && typeof FuncoesScript_fecharModalGerenciarCotacoes === 'function') FuncoesScript_fecharModalGerenciarCotacoes();
@@ -894,8 +936,10 @@
                         }
                         // O switch-case permanece o mesmo, ele chama as funções
                         // que estarão disponíveis nos outros scripts incluídos (EtapasScript, FuncoesScript, etc.)
+
                         switch (action) {
-                            case 'etapa_contagem_estoque': if (typeof EtapasScript_ativarModoContagemEstoque === 'function') EtapasScript_ativarModoContagemEstoque(); break;
+                            case 'etapa_contagem_estoque': if (typeof EtapasScript_ativarModoContagemEstoque === 'function') EtapasScript_ativarModoContagemEstoque();
+                                break;
                             case 'etapa_retirar_produtos': if (typeof EtapasScript_ativarModoRetirarProdutos === 'function') EtapasScript_ativarModoRetirarProdutos(); break;
                             case 'etapa_enviar_fornecedores': if (typeof EtapasScript_iniciarEnvioParaFornecedores === 'function') EtapasScript_iniciarEnvioParaFornecedores(); break;
                             case 'etapa_realizar_cotacao': if (typeof EtapasScript_ativarModoRealizarCotacao === 'function') EtapasScript_ativarModoRealizarCotacao(); break;
@@ -905,8 +949,12 @@
                             case 'funcao_gerenciar_cotacoes': if (typeof FuncoesScript_ativarModoGerenciarCotacoesPortal === 'function') FuncoesScript_ativarModoGerenciarCotacoesPortal(); break;
                             case 'funcao_melhores_oportunidades': if (typeof FuncoesScript_abrirSidebarOportunidades === 'function') FuncoesScript_abrirSidebarOportunidades(); break;
                             case 'funcao_acrescentar_itens': if (typeof FuncoesScript_ativarModoAcrescentarItens === 'function') FuncoesScript_ativarModoAcrescentarItens(); break;
-                            case 'funcao_preencher_precos': if (typeof FuncoesScript_iniciarPreenchimentoUltimosPrecos === 'function') { FuncoesScript_iniciarPreenchimentoUltimosPrecos(); } else { console.error("Função FuncoesScript_iniciarPreenchimentoUltimosPrecos não definida."); } break;
-                            case 'relatorio_analise_compra': if (typeof RelatoriosScript_abrirRelatorioAnaliseCompra === 'function') { RelatoriosScript_abrirRelatorioAnaliseCompra(CotacaoIndividualScript_cotacaoIdAtual); } else { console.error("Função RelatoriosScript_abrirRelatorioAnaliseCompra não definida."); } break;
+                            case 'funcao_preencher_precos': if (typeof FuncoesScript_iniciarPreenchimentoUltimosPrecos === 'function') {
+                                FuncoesScript_iniciarPreenchimentoUltimosPrecos();
+                            } else { console.error("Função FuncoesScript_iniciarPreenchimentoUltimosPrecos não definida."); } break;
+                            case 'relatorio_analise_compra': if (typeof RelatoriosScript_abrirRelatorioAnaliseCompra === 'function') {
+                                RelatoriosScript_abrirRelatorioAnaliseCompra(CotacaoIndividualScript_cotacaoIdAtual);
+                            } else { console.error("Função RelatoriosScript_abrirRelatorioAnaliseCompra não definida."); } break;
                             default:
                                 if (!action.startsWith('relatorio_')) {
                                     CotacaoIndividualScript_renderizarVisualizacaoCategoria();
@@ -924,6 +972,7 @@
                 const btnId = openDropdown.id.replace('Dropdown', 'Btn');
                 const btn = document.getElementById(btnId);
                 if (btn) {
+
                     btn.classList.remove('open');
                     const icon = btn.querySelector('.dropdown-arrow');
                     if (icon) icon.style.transform = 'rotate(0deg)';
@@ -934,8 +983,8 @@
 
     /**
      * FUNÇÃO ATUALIZADA: Ponto de entrada principal do script.
-     * Lê as variáveis EJS injetadas em vez de chamar google.script.url.
-     */
+* Lê as variáveis EJS injetadas em vez de chamar google.script.url.
+*/
     async function inicializarPaginaPrincipal() {
         console.log("CotacaoIndividualScript: Iniciando lógica principal da página (Node.js)...");
         CotacaoIndividualScript_ocultarFeedback();
@@ -955,14 +1004,14 @@
 
         const btnAbaCategoria = document.getElementById('CotacaoIndividualScript_btnAbaCategoria');
         if (btnAbaCategoria) btnAbaCategoria.addEventListener('click', CotacaoIndividualScript_renderizarVisualizacaoCategoria);
-
         const btnAbaFornecedor = document.getElementById('CotacaoIndividualScript_btnAbaFornecedor');
         if (btnAbaFornecedor) btnAbaFornecedor.addEventListener('click', CotacaoIndividualScript_renderizarVisualizacaoFornecedor);
 
         // Lê as variáveis globais injetadas pelo EJS em CotacaoIndividualView.ejs
         try {
             // Define as variáveis no objeto WINDOW para serem globais
-            window.CotacaoIndividualScript_cotacaoIdAtual = (typeof EJS_ID_COTACAO !== 'undefined' && EJS_ID_COTACAO !== 'null') ? EJS_ID_COTACAO : null;
+            window.CotacaoIndividualScript_cotacaoIdAtual = (typeof EJS_ID_COTACAO !== 'undefined' && EJS_ID_COTACAO !== 'null') ?
+                EJS_ID_COTACAO : null;
             window.CotacaoIndividualScript_modoPagina = (typeof EJS_MODO !== 'undefined') ? EJS_MODO : 'editar';
         } catch (e) {
             console.error("Erro ao ler variáveis EJS. Elas foram injetadas no CotacaoIndividualView.ejs?", e);
@@ -972,7 +1021,6 @@
 
         const spanIdCotacao = document.getElementById(CotacaoIndividualScript_ID_COTACAO_EXIBIDO);
         renderizarCabecalhoTabelaPrincipalInterno();
-
         if (CotacaoIndividualScript_modoPagina === 'novo') {
             if (spanIdCotacao) spanIdCotacao.textContent = "Nova Cotação";
             document.title = "Nova Cotação - CotaçãoPRO";
@@ -1005,18 +1053,18 @@
         const buscaProdutoInputItens = document.getElementById('CotacaoIndividualScript_inputBuscaProdutoItens');
 
         // ====================== INÍCIO DA CORREÇÃO ======================
-        // Comentamos as funções que dependem de FuncoesScript.html
+        // Descomentamos as funções, pois agora o FuncoesScript.ejs é carregado
         if (btnFecharModalItens) {
-            // btnFecharModalItens.addEventListener('click', FuncoesScript_fecharModalAcrescentarItens);
-            console.warn("Listener para 'btnFecharModalAcrescentarItens' desativado (aguardando FuncoesScript).");
+            btnFecharModalItens.addEventListener('click', FuncoesScript_fecharModalAcrescentarItens);
+            console.log("Listener para 'btnFecharModalAcrescentarItens' ativado.");
         }
         if (btnCancelarModalItens) {
-            // btnCancelarModalItens.addEventListener('click', FuncoesScript_fecharModalAcrescentarItens);
-            console.warn("Listener para 'btnCancelarModalItens' desativado (aguardando FuncoesScript).");
+            btnCancelarModalItens.addEventListener('click', FuncoesScript_fecharModalAcrescentarItens);
+            console.log("Listener para 'btnCancelarModalItens' ativado.");
         }
         if (btnAcrescentarModal) {
-            // btnAcrescentarModal.addEventListener('click', FuncoesScript_lidarComAcrescentarItens);
-            console.warn("Listener para 'btnAcrescentarModal' desativado (aguardando FuncoesScript).");
+            btnAcrescentarModal.addEventListener('click', FuncoesScript_lidarComAcrescentarItens);
+            console.log("Listener para 'btnAcrescentarModal' ativado.");
         }
         // ======================= FIM DA CORREÇÃO ========================
 
@@ -1024,13 +1072,14 @@
             selectTipoCriacaoItens.addEventListener('change', function () {
                 if (typeof FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens === 'function') {
                     FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens(this.value);
+
                 }
             });
         }
         if (modalOverlayItens) {
             modalOverlayItens.addEventListener('click', function (event) {
                 if (event.target === modalOverlayItens) {
-                    // FuncoesScript_fecharModalAcrescentarItens();
+                    FuncoesScript_fecharModalAcrescentarItens();
                 }
             });
         }
@@ -1088,10 +1137,12 @@
                     const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
                     let nextRow = currentRow.nextElementSibling;
                     while (nextRow && !nextRow.matches('.sub-produto-row, .etapa5-content-row')) {
+
                         nextRow = nextRow.nextElementSibling;
                     }
                     if (nextRow) {
                         const nextCell = nextRow.children[cellIndex];
+
                         if (nextCell) nextCell.focus();
                     }
                 }, 50);
@@ -1220,15 +1271,17 @@
 
     /**
      * FUNÇÃO ATUALIZADA: Carrega os dados da cotação usando a API Fetch.
-     */
+*/
     window.CotacaoIndividualScript_carregarDadosCotacao = async function (idCotacao) {
         const tbody = document.getElementById(CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO)?.querySelector('tbody');
         if (tbody) {
             tbody.innerHTML = `<tr><td id="${CotacaoIndividualScript_ID_TABELA_LOADING_MSG_CELL}" colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-gray-500">
                                 <div class="flex justify-center items-center">
-                                    <svg class="custom-spinner" viewBox="0 0 50 50" style="width: 32px; height: 32px;"><circle cx="25" cy="25" r="20" fill="none" stroke="#D1D5DB" stroke-width="5"></circle><circle cx="25" cy="25" r="20" fill="none" stroke="#1D4ED8" stroke-width="5" stroke-linecap="round" stroke-dasharray="31.41592653589793, 125.66370614359172" stroke-dashoffset="0"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 25 25;360 25 25" keyTimes="0;1"></animateTransform></circle></svg>
+                                    <svg class="custom-spinner" viewBox="0 0 50 50" 
+style="width: 32px; height: 32px;"><circle cx="25" cy="25" r="20" fill="none" stroke="#D1D5DB" stroke-width="5"></circle><circle cx="25" cy="25" r="20" fill="none" stroke="#1D4ED8" stroke-width="5" stroke-linecap="round" stroke-dasharray="31.41592653589793, 125.66370614359172" stroke-dashoffset="0"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 25 25;360 25 25" keyTimes="0;1"></animateTransform></circle></svg>
                                     <span class="ml-3 text-gray-700">Carregando dados da cotação...</span>
-                                </div></td></tr>`;
+                              
+  </div></td></tr>`;
         }
 
         return new Promise((resolve, reject) => {
@@ -1237,13 +1290,16 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idCotacao: idCotacao })
             })
+
                 .then(resposta => {
                     if (resposta && resposta.success) {
                         CABECALHOS_COTACOES_TODOS = resposta.cabecalhos || [];
                         CotacaoIndividualScript_dadosOriginaisCotacao = (resposta.dados || []).map(item => {
+
                             item._subProdutoOriginalPersistido = item.SubProduto;
                             return item;
                         });
+
                         const gruposDeProdutos = agruparEClassificarProdutosInterno(CotacaoIndividualScript_dadosOriginaisCotacao);
                         renderizarGruposDeProdutosInterno(gruposDeProdutos);
 
@@ -1262,7 +1318,8 @@
                         }
                         resolve();
                     } else {
-                        const msgErro = (resposta && resposta.message) ? resposta.message : "Falha ao carregar dados da cotação.";
+                        const msgErro = (resposta && resposta.message) ?
+                            resposta.message : "Falha ao carregar dados da cotação.";
                         CotacaoIndividualScript_exibirFeedback(msgErro, true);
                         if (tbody) tbody.innerHTML = `<tr><td colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-red-500">${msgErro}</td></tr>`;
                         reject(new Error(msgErro));
@@ -1271,6 +1328,7 @@
                 .catch(error => {
                     CotacaoIndividualScript_exibirFeedback("Erro de comunicação ao carregar cotação: " + error.message, true);
                     if (tbody) tbody.innerHTML = `<tr><td colspan="${CotacaoIndividualScript_cabecalhosVisiveis.length || 1}" class="text-center p-8 text-red-500">Erro de comunicação.</td></tr>`;
+
                     reject(error);
                 });
         });
@@ -1287,7 +1345,6 @@
     const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_INPUT_PRECO_NOVO = 'CotacaoIndividualScript_inputPrecoNovo';
     const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_TEXTAREA_MENSAGEM = 'CotacaoIndividualScript_textareaMensagem';
     const CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_COPIAR = 'CotacaoIndividualScript_btnCopiarTextoNegociacao';
-
     function CotacaoIndividualScript_aplicarDesconto(precoBase, percentual) {
         const p = Number(precoBase) || 0;
         const d = Number(percentual) || 0;
@@ -1305,6 +1362,7 @@
             const tdPreco = tr.querySelector('td[data-coluna="Preço"]');
             const nome = tdSub ? tdSub.textContent.trim() : (tr.dataset.subprodutoAtual || tr.dataset.subprodutoOriginalPersistido || '');
             const precoT = tdPreco ? tdPreco.textContent.trim() : '';
+
             const precoN = CotacaoIndividualScript_parseNumeroPtBr(precoT);
             lista.push({ fornecedor, subproduto: nome, preco: Number.isFinite(precoN) ? precoN : null });
         });
@@ -1336,8 +1394,9 @@
         const btnCopiar = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_COPIAR);
         const btnFechar = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_FECHAR);
         const btnCancelar = document.getElementById(CotacaoIndividualScript_ID_MODAL_NEGOCIACAO_BTN_CANCELAR);
-
-        if (!modal) { console.error('Modal de Negociação não encontrado no DOM.'); return; }
+        if (!modal) {
+            console.error('Modal de Negociação não encontrado no DOM.'); return;
+        }
 
         tituloModal.textContent = `Negociação: ${produto}`;
         select.innerHTML = '';
@@ -1374,11 +1433,17 @@
                 navigator.clipboard.writeText(txt.value).then(() => {
                     CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000);
                 }).catch(err => {
+
                     console.error('Falha ao copiar com Clipboard API:', err);
                     try { document.execCommand('copy'); CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000); } catch (e) { console.error('Falha ao copiar com execCommand:', e); }
                 });
             } else {
-                try { document.execCommand('copy'); CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000); } catch (e) { console.error('Falha ao copiar com execCommand:', e); }
+                try {
+                    document.execCommand('copy');
+                    CotacaoIndividualScript_exibirFeedback('Mensagem copiada!', false, 2000);
+                } catch (e) {
+                    console.error('Falha ao copiar com execCommand:', e);
+                }
             }
         };
         btnFechar.onclick = fechar;
@@ -1397,14 +1462,13 @@
         console.log("initCotacaoIndividualScript: Iniciando configuração da página (Node.js).");
         // Chama a função de inicialização que agora lê as variáveis EJS
         inicializarPaginaPrincipal();
-
         // ====================== INÍCIO DA CORREÇÃO ======================
-        // Comentamos a chamada da função que ainda não existe.
-        // if (typeof FuncoesScript_initSidebarOportunidades === 'function') {
-        //     FuncoesScript_initSidebarOportunidades();
-        //} else {
-        //  console.warn("FuncoesScript_initSidebarOportunidades não foi encontrada. O sidebar de Oportunidades pode não funcionar.");
-        //}
+        // Descomentamos a chamada da função que agora existe.
+        if (typeof FuncoesScript_initSidebarOportunidades === 'function') {
+            FuncoesScript_initSidebarOportunidades();
+        } else {
+            console.warn("FuncoesScript_initSidebarOportunidades não foi encontrada. O sidebar de Oportunidades pode não funcionar.");
+        }
         // ======================= FIM DA CORREÇÃO ========================
     }
 </script>

@@ -8,7 +8,7 @@
     /**
      * @file FuncoesScript.ejs
      * @description Lógica client-side para as funcionalidades do menu "Funções".
-     */
+*/
 
     // =================================================================================
     // HELPER DE API (Substituto do google.script.run)
@@ -21,8 +21,9 @@
      */
     async function FuncoesScript_apiCall(endpoint, options = {}) {
         // Define o método padrão como POST se houver um 'body', senão GET.
-        if (!options.method) {
-            options.method = options.body ? 'POST' : 'GET';
+            if(!options.method) {
+            options.method = options.body ?
+                'POST' : 'GET';
         }
 
         // Configura headers e converte o 'body' para JSON se necessário
@@ -45,7 +46,8 @@
                 throw new Error(data.message || "Ocorreu um erro no servidor.");
             }
 
-            return data; // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
+            return data;
+            // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
         } catch (error) {
             console.error(`Erro na chamada da API para ${endpoint}:`, error);
             // Rejeita a promise para que o .catch() no local da chamada seja ativado
@@ -64,22 +66,22 @@
     const FuncoesScript_MENSAGEM_PADRAO_BASE = `Olá.
 Segue o link para a Cotação.
 Os pedidos serão fechados amanhã (terça) às 16:00.`;
-
     /**
-     * @file FuncoesScript.html
-     * Monta a mensagem final exatamente no formato desejado:
-     *
-     * [texto do textarea]
-     *
-     * [NOME DO FORNECEDOR] - Cotação([ID])
-     *
-     * Link:
-     * [link]
-     */
+         * @file FuncoesScript.html
+         * Monta a mensagem final exatamente no formato desejado:
+         *
+         * [texto do textarea]
+         *
+         * [NOME DO FORNECEDOR] - Cotação([ID])
+         *
+         * Link:
+         * [link]
+         */
     function FuncoesScript_formatarMensagemCotacao(
         fornecedorNome,
         idCotacao,
         link,
+
         textoBase
     ) {
         // Mantém o texto do textarea como veio (inclusive o "D" se estiver no conteúdo),
@@ -95,9 +97,9 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Ativa o modo de visualização "Gerenciar Cotações (Portal)" através de um modal.
-     * SUBSTITUI a implementação antiga.
+* SUBSTITUI a implementação antiga.
      * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
-     */
+*/
     function FuncoesScript_ativarModoGerenciarCotacoesPortal() {
         console.log(
             "FuncoesScript: Ativando modo Gerenciar Cotações (Portal) via Modal."
@@ -124,24 +126,24 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         );
         portalBodyModal.innerHTML =
             '<div class="empty-state">Carregando dados das cotações do portal...</div>';
-
         FuncoesScript_apiCall('/api/funcoes/obterDadosGerenciarCotacoes', {
             method: 'POST' // A rota foi definida como POST
         })
             .then(function (response) {
                 // A API já retorna { success: true, dados: [...] }
                 FuncoesScript_renderizarConteudoGerenciarCotacoesPortal(
+
                     response.dados
                 );
             })
             .catch(function (error) {
                 portalBodyModal.innerHTML = `<div class="empty-state">Erro de comunicação: ${error.message}</div>`;
                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+
                     "Erro de comunicação: " + error.message,
                     true
                 );
             });
-
         // Configura os botões de fechar do modal
         document
             .getElementById("FuncoesScript_btnFecharModalGerenciarCotacoes")
@@ -153,7 +155,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Renderiza o conteúdo da seção "Gerenciar Cotações (Portal)" DENTRO DO MODAL.
-     * SUBSTITUI a implementação antiga.
+* SUBSTITUI a implementação antiga.
      */
     function FuncoesScript_renderizarConteudoGerenciarCotacoesPortal(
         dadosCotacoes
@@ -168,7 +170,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             return;
         }
         portalBody.innerHTML = "";
-
         if (!dadosCotacoes || dadosCotacoes.length === 0) {
             portalBody.innerHTML =
                 '<div class="empty-state">Nenhuma cotação em aberto encontrada no portal.</div>';
@@ -183,13 +184,15 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             const accordionHeader = document.createElement("div");
             accordionHeader.className = "gerenciar-cotacoes-accordion-header";
             accordionHeader.innerHTML = `
-            <span class="accordion-title-text">Cotação ID: ${cotacao.idCotacao
+   
+         <span class="accordion-title-text">Cotação ID: ${cotacao.idCotacao
                 }</span>
             <span class="accordion-percentage">${cotacao.percentualRespondido.toFixed(
                     1
                 )}% Respondido</span>
             <svg class="gerenciar-cotacoes-accordion-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+ 
+               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
         `;
 
@@ -203,9 +206,9 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 cotacao.textoPersonalizadoCotacao !== null &&
                     cotacao.textoPersonalizadoCotacao !== undefined &&
                     cotacao.textoPersonalizadoCotacao !== ""
-                    ? cotacao.textoPersonalizadoCotacao
+                    ?
+                    cotacao.textoPersonalizadoCotacao
                     : defaultTextCotacao;
-
             textoGlobalDiv.innerHTML = `
             <label for="texto-cotacao-${cotacao.idCotacao}">Mensagem Padrão para esta Cotação:</label>
             <textarea id="texto-cotacao-${cotacao.idCotacao}" placeholder="Digite a mensagem padrão para os fornecedores desta cotação...">${textoSalvoCotacao}</textarea>
@@ -229,15 +232,18 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     fornecedorItem.dataset.fornecedorNome = fornecedor.nome;
 
                     fornecedorItem.innerHTML = `
-                    <input type="checkbox" class="checkbox-selecionar-fornecedor-portal" data-fornecedor-nome="${fornecedor.nome
+        
+            <input type="checkbox" class="checkbox-selecionar-fornecedor-portal" data-fornecedor-nome="${fornecedor.nome
                         }">
                     <div class="gerenciar-cotacoes-fornecedor-info">
                         <span class="fornecedor-nome">${fornecedor.nome
+
                         } (Status: ${fornecedor.statusResposta || "N/A"})</span>
                         <span class="link-display" title="Link do fornecedor">Link: ${fornecedor.link
                         }</span>
                     </div>
-                    <div class="gerenciar-cotacoes-fornecedor-actions-item">
+              
+      <div class="gerenciar-cotacoes-fornecedor-actions-item">
                         <button class="btn-copiar-msg-link-fornecedor">Copiar Mensagem e Link</button>
                     </div>
                 `;
@@ -250,30 +256,38 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                         const textoCotacaoTextarea = accordionContent.querySelector(
                             `#texto-cotacao-${cotacao.idCotacao}`
                         );
+
                         const textoParaCopiar = FuncoesScript_formatarMensagemCotacao(
                             fornecedor.nome,
                             cotacao.idCotacao,
                             fornecedor.link,
+
                             textoCotacaoTextarea.value
                         );
 
                         navigator.clipboard
                             .writeText(textoParaCopiar)
+
                             .then(() =>
                                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
                                     "Mensagem e link copiados!",
+
                                     false,
                                     2000
+
                                 )
                             )
                             .catch((err) => {
                                 console.error(
+
                                     "FuncoesScript: Falha ao copiar para clipboard - ",
                                     err
+
                                 );
                                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
                                     "Falha ao copiar o texto.",
                                     true,
+
                                     3000
                                 );
                             });
@@ -289,12 +303,12 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 accordionContent.classList.toggle("expanded");
                 const icon = this.querySelector(".gerenciar-cotacoes-accordion-icon");
                 if (icon) {
+
                     icon.style.transform = this.classList.contains("expanded")
                         ? "rotate(90deg)"
                         : "rotate(0deg)";
                 }
             });
-
             const btnSalvarTextoCotacao = textoGlobalDiv.querySelector(
                 ".btn-salvar-texto-cotacao-portal"
             );
@@ -304,10 +318,10 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 );
                 FuncoesScript_salvarTextoGlobalCotacaoPortal(
                     cotacao.idCotacao,
+
                     textareaTextoCotacao.value
                 );
             });
-
             const btnExcluirSelecionadosPortal = accordionContent.querySelector(
                 ".btn-excluir-fornecedores-selecionados-cotacao"
             );
@@ -316,24 +330,30 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     const fornecedoresSelecionados = [];
                     accordionContent
                         .querySelectorAll(".checkbox-selecionar-fornecedor-portal:checked")
+
                         .forEach((cb) => {
                             fornecedoresSelecionados.push(cb.dataset.fornecedorNome);
                         });
                     if (fornecedoresSelecionados.length > 0) {
+
                         if (
                             confirm(
                                 `Tem certeza que deseja excluir ${fornecedoresSelecionados.length} fornecedor(es) desta cotação?`
+
                             )
                         ) {
                             FuncoesScript_excluirFornecedoresDaCotacaoPortal(
                                 cotacao.idCotacao,
+
                                 fornecedoresSelecionados
                             );
                         }
+
                     } else {
                         FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
                             "Nenhum fornecedor selecionado para exclusão.",
                             true,
+
                             3000
                         );
                     }
@@ -348,9 +368,9 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Salva o texto personalizado global para uma cotação e atualiza o modal.
-     * SUBSTITUI a implementação antiga.
+* SUBSTITUI a implementação antiga.
      * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
-     */
+*/
     function FuncoesScript_salvarTextoGlobalCotacaoPortal(
         idCotacao,
         textoPersonalizado
@@ -360,7 +380,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             false,
             0
         );
-
         FuncoesScript_apiCall('/api/funcoes/salvarTextoGlobalPortal', {
             body: {
                 idCotacao: idCotacao,
@@ -369,6 +388,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         })
             .then(function (response) {
                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+
                     response.message || "Texto da cotação salvo!",
                     false,
                     3000
@@ -379,6 +399,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
                     "Erro de comunicação: " + error.message,
                     true,
+
                     5000
                 );
             });
@@ -386,9 +407,9 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Exclui fornecedores selecionados e atualiza o modal.
-     * SUBSTITUI a implementação antiga.
+* SUBSTITUI a implementação antiga.
      * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch) e encadeamento.
-     */
+*/
     function FuncoesScript_excluirFornecedoresDaCotacaoPortal(
         idCotacao,
         nomesFornecedores
@@ -398,7 +419,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             false,
             0
         );
-
         // 1. Chama a API para excluir
         FuncoesScript_apiCall('/api/funcoes/excluirFornecedoresPortal', {
             body: {
@@ -407,17 +427,20 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             }
         })
             .then(function (response) {
+
                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
                     response.message || "Fornecedor(es) excluído(s)! Atualizando...",
                     false,
                     4000
                 );
 
+
                 // 2. Após excluir, recarrega o conteúdo do modal
                 const portalBodyModal = document.getElementById(
                     "FuncoesScript_modalContentGerenciarCotacoes"
                 );
                 portalBodyModal.innerHTML =
+
                     '<div class="empty-state">Atualizando dados...</div>';
 
                 // 3. Chama a API de obtenção de dados novamente
@@ -431,6 +454,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             })
             .catch(function (error) {
                 FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+
                     "Erro de comunicação: " + error.message,
                     true,
                     7000
@@ -450,25 +474,23 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         "Preço por Fator",
         "Economia em Cotação",
     ];
-
     //----------------------------------------------------------------------------------------------------
     // FUNÇÕES DE ATIVAÇÃO E DESATIVAÇÃO
     //----------------------------------------------------------------------------------------------------
 
     /**
-     * NOVA FUNÇÃO: Prepara e renderiza a visualização por fornecedor. (VERSÃO CORRIGIDA)
+     * NOVA FUNÇÃO: Prepara e renderiza a visualização por fornecedor.
+(VERSÃO CORRIGIDA)
      */
     function FuncoesScript_renderizarVisualizacaoFornecedor() {
         console.log(
             "FuncoesScript: Preparando para renderizar a visualização por Fornecedor (Versão Corrigida)."
         );
-
         // 1. Começa com uma cópia das colunas padrão definidas no script principal.
         // Garante que CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO esteja acessível.
         let colunasParaExibir = [
             ...CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO,
         ];
-
         // 2. Remove 'Fornecedor' da lista de colunas da tabela, pois ele já aparece no cabeçalho do grupo.
         colunasParaExibir = colunasParaExibir.filter((col) => col !== "Fornecedor");
 
@@ -507,7 +529,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * FUNÇÃO ATUALIZADA E CORRIGIDA: Renderiza os grupos por fornecedor, garantindo que a edição inline e a navegação pelo teclado funcionem corretamente.
-     */
+*/
     function FuncoesScript_renderizarGruposPorFornecedor() {
         const tabela = document.getElementById(
             CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO
@@ -522,7 +544,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             return;
         }
         tbody.innerHTML = "";
-
         const todosOsProdutosDaCotacao =
             CotacaoIndividualScript_dadosOriginaisCotacao;
         if (!todosOsProdutosDaCotacao || todosOsProdutosDaCotacao.length === 0) {
@@ -541,15 +562,14 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 gruposPorFornecedor[fornecedor] = {
                     fornecedorNome: fornecedor,
                     subProdutos: [],
+
                 };
             }
             gruposPorFornecedor[fornecedor].subProdutos.push(linhaProduto);
         });
-
         const arrayDeGrupos = Object.values(gruposPorFornecedor).sort((a, b) => {
             return String(a.fornecedorNome).localeCompare(String(b.fornecedorNome));
         });
-
         const colunasEditaveis = [
             "SubProduto",
             "Tamanho",
@@ -558,13 +578,13 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             "Preço",
             "Comprar",
         ];
-
         arrayDeGrupos.forEach((grupo) => {
             const fornecedorSanitizedParaClasse =
                 String(grupo.fornecedorNome)
                     .replace(/[^a-zA-Z0-9-_]/g, "")
                     .toLowerCase() || "sem-fornecedor";
             const fornecedorTargetClass = `content-for-fornecedor-${fornecedorSanitizedParaClasse}`;
+
 
             const fornecedorRow = tbody.insertRow();
             fornecedorRow.className = "categoria-accordion-header-row";
@@ -574,6 +594,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             const fornecedorCell = fornecedorRow.insertCell();
             fornecedorCell.colSpan =
                 CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+
 
             const fornecedorHeaderContent = document.createElement("div");
             fornecedorHeaderContent.className = "categoria-header-content";
@@ -586,24 +607,24 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             icon.setAttribute("viewBox", "0 0 20 20");
             icon.setAttribute("fill", "currentColor");
             icon.innerHTML = `<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />`;
-
             fornecedorHeaderContent.appendChild(icon);
             const titleSpan = document.createElement("span");
             titleSpan.textContent = `Fornecedor: ${grupo.fornecedorNome}`;
             fornecedorHeaderContent.appendChild(titleSpan);
             fornecedorCell.appendChild(fornecedorHeaderContent);
-
             fornecedorRow.addEventListener("click", function () {
                 this.classList.toggle("expanded");
                 const isExpanded = this.classList.contains("expanded");
                 if (icon)
                     icon.style.transform = isExpanded ? "rotate(90deg)" : "rotate(0deg)";
-                const targetRows = tbody.querySelectorAll(
-                    `.${this.dataset.targetClass}`
-                );
+                const targetRows =
+                    tbody.querySelectorAll(
+                        `.${this.dataset.targetClass}`
+                    );
                 targetRows.forEach((row) => {
                     row.classList.toggle("hidden", !isExpanded);
                 });
+
             });
 
             if (grupo.subProdutos && grupo.subProdutos.length > 0) {
@@ -611,63 +632,71 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 grupo.subProdutos.sort(
                     (a, b) =>
                         String(a.Produto).localeCompare(b.Produto) ||
+
                         String(a.SubProduto).localeCompare(b.SubProduto)
                 );
-
                 grupo.subProdutos.forEach((subProduto) => {
                     const subRow = tbody.insertRow();
                     subRow.className = `sub-produto-row category-content-row ${fornecedorTargetClass} hidden`;
 
                     subRow.dataset.subprodutoOriginalPersistido =
                         subProduto["_subProdutoOriginalPersistido"] ||
+
                         subProduto["SubProduto"];
                     subRow.dataset.produto = subProduto["Produto"];
                     subRow.dataset.fornecedor = subProduto["Fornecedor"];
                     subRow.dataset.subprodutoAtual = subProduto["SubProduto"];
 
+
                     CotacaoIndividualScript_cabecalhosVisiveis.forEach(
                         (cabecalhoVisivel) => {
                             const td = subRow.insertCell();
                             const classeCor =
+
                                 CotacaoIndividualScript_getClasseCorColuna(cabecalhoVisivel);
                             if (classeCor) td.classList.add(classeCor);
-
                             let valor = subProduto[cabecalhoVisivel];
                             let valorFormatado;
 
                             const camposNumericos = [
                                 "Fator",
                                 "Preço",
+
                                 "Preço por Fator",
                                 "Comprar",
                                 "Valor Total",
+
                                 "Economia em Cotação",
                             ];
                             if (
                                 camposNumericos.includes(cabecalhoVisivel) &&
                                 typeof valor === "number"
                             ) {
+
                                 const fractionDigits = {
                                     Fator: 4,
+
                                     "Preço por Fator": 4,
                                     Preço: 2,
                                     Comprar: 2,
+
                                     "Valor Total": 2,
                                     "Economia em Cotação": 2,
                                 };
                                 valorFormatado = valor.toLocaleString("pt-BR", {
                                     minimumFractionDigits: fractionDigits[cabecalhoVisivel] || 2,
                                     maximumFractionDigits: fractionDigits[cabecalhoVisivel] || 2,
+
                                 });
                             } else {
-                                valorFormatado = valor == null ? "" : String(valor);
+                                valorFormatado = valor == null ?
+                                    "" : String(valor);
                             }
 
                             td.textContent = valorFormatado;
                             td.dataset.coluna = cabecalhoVisivel;
                             // Correção #1: Armazena o valor FORMATADO para consistência com a lógica de salvamento.
                             td.dataset.valorOriginal = valorFormatado;
-
                             if (colunasEditaveis.includes(cabecalhoVisivel)) {
                                 td.classList.add("editable-price-cell");
                                 // Correção #2: Adiciona 'tabIndex' para tornar a célula focável pelo teclado.
@@ -675,6 +704,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                                 td.addEventListener(
                                     "click",
                                     CotacaoIndividualScript_transformarCelulaEmInput
+
                                 );
                             }
                         }
@@ -682,13 +712,11 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 });
             }
         });
-
         tbody
             .querySelectorAll(".categoria-accordion-header-row")
             .forEach((headerRow) => {
                 headerRow.click();
             });
-
         CotacaoIndividualScript_filtrarTabelaPrincipal();
     }
 
@@ -698,11 +726,10 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     // Variável para armazenar os dados das opções do modal e evitar múltiplas chamadas
     let FuncoesScript_dadosOpcoesAcrescentarItens = null;
-
     /**
-     * Ativa o modo "Acrescentar Itens", abrindo o modal.
-     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
-     */
+         * Ativa o modo "Acrescentar Itens", abrindo o modal.
+    * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+         */
     function FuncoesScript_ativarModoAcrescentarItens() {
         console.log("FuncoesScript: Ativando modo Acrescentar Itens.");
         const modalOverlay = document.getElementById(
@@ -737,9 +764,10 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         if (!FuncoesScript_dadosOpcoesAcrescentarItens) {
             FuncoesScript_setLoadingStateOpcoesModalItens(true);
 
-            // Esta função/rota ainda não foi migrada, mas estamos preparando a chamada
-            FuncoesScript_apiCall('/api/cotacoes/obterOpcoes', {
-                method: 'POST' // Assumindo POST, ajuste se for GET
+            // --- CORREÇÃO APLICADA AQUI ---
+            // A rota no servidor é GET, não POST.
+            FuncoesScript_apiCall('/api/cotacoes/opcoes', {
+                method: 'GET' // Corrigido de POST para GET
             })
                 .then(FuncoesScript_popularOpcoesModalItens)
                 .catch(FuncoesScript_falhaCarregarOpcoesModalItens);
@@ -760,7 +788,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Fecha o modal de "Acrescentar Itens".
-     */
+*/
     function FuncoesScript_fecharModalAcrescentarItens() {
         const modalOverlay = document.getElementById(
             "CotacaoIndividualScript_modalAcrescentarItensOverlay"
@@ -776,7 +804,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Controla a visibilidade das seções de opções dentro do modal.
-     */
+*/
     function FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens(
         tipoSelecionado
     ) {
@@ -790,7 +818,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             const elSecao = document.getElementById(idSecao);
             if (elSecao) elSecao.classList.remove("active");
         });
-
         let secaoAtivaId = null;
         switch (tipoSelecionado) {
             case "categoria":
@@ -816,7 +843,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Exibe feedback dentro do modal de Acrescentar Itens.
-     */
+*/
     function FuncoesScript_exibirFeedbackModalItens(
         mensagem,
         isError = false,
@@ -828,7 +855,8 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         if (feedbackDiv) {
             const innerDiv = document.createElement("div");
             innerDiv.className = `p-3 rounded-md text-sm ${isError
-                ? "bg-red-100 text-red-700 border border-red-300"
+                ?
+                "bg-red-100 text-red-700 border border-red-300"
                 : "bg-blue-100 text-blue-700 border border-blue-300"
                 }`;
             innerDiv.textContent = mensagem;
@@ -839,6 +867,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     if (feedbackDiv.contains(innerDiv)) {
                         feedbackDiv.innerHTML = "";
                     }
+
                 }, duracao);
             }
         }
@@ -846,10 +875,11 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Define o estado de carregamento para as opções do modal.
-     */
+*/
     function FuncoesScript_setLoadingStateOpcoesModalItens(isLoading) {
         const placeholderText = isLoading
-            ? "Carregando..."
+            ?
+            "Carregando..."
             : "Nenhuma opção disponível.";
         const containers = [
             "CotacaoIndividualScript_checkboxContainerCategoriasItens",
@@ -866,7 +896,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Popula as checkboxes com os dados vindos do servidor.
-     */
+*/
     function FuncoesScript_popularOpcoesModalItens(resposta) {
         FuncoesScript_setLoadingStateOpcoesModalItens(false);
         if (resposta && resposta.success && resposta.dados) {
@@ -893,7 +923,8 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         } else {
             const msg =
                 resposta && resposta.message
-                    ? resposta.message
+                    ?
+                    resposta.message
                     : "Falha ao carregar dados para as opções.";
             FuncoesScript_exibirFeedbackModalItens(msg, true);
         }
@@ -901,7 +932,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Lida com falhas na chamada ao servidor para buscar as opções.
-     */
+*/
     function FuncoesScript_falhaCarregarOpcoesModalItens(error) {
         FuncoesScript_exibirFeedbackModalItens(
             "Erro de comunicação ao buscar opções: " + error.message,
@@ -912,7 +943,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Função genérica para criar e popular checkboxes.
-     */
+*/
     function FuncoesScript_popularCheckboxesItens(
         containerId,
         items,
@@ -934,12 +965,14 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 typeof item === "object"
                     ? usarNomeComoValor
                         ? item.nome
+
                         : item.id
                     : item;
             const itemName = typeof item === "object" ? item.nome : item;
 
             const label = document.createElement("label");
             label.style.display = "flex";
+
             label.className = "items-center space-x-2 text-sm text-gray-700 py-1";
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
@@ -947,6 +980,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             checkbox.value = itemValue;
             checkbox.className =
                 "form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500";
+
 
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(" " + itemName));
@@ -956,13 +990,12 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Filtra as checkboxes nos containers de busca.
-     */
+*/
     function FuncoesScript_filtrarCheckboxesItens(containerId, termoBusca) {
         const container = document.getElementById(containerId);
         if (!container) return;
         const termoLowerCase = String(termoBusca).toLowerCase();
         const labels = container.getElementsByTagName("label");
-
         for (let i = 0; i < labels.length; i++) {
             const label = labels[i];
             const textoLabel = label.textContent || label.innerText || "";
@@ -976,7 +1009,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Coleta os dados selecionados pelo usuário no modal.
-     */
+*/
     function FuncoesScript_coletarSelecoesModalItens() {
         const tipoCriacao = document.getElementById(
             "CotacaoIndividualScript_selectTipoCriacaoItens"
@@ -984,7 +1017,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         let selecoes = [];
         let containerId = "";
         let inputType = "checkbox";
-
         switch (tipoCriacao) {
             case "categoria":
                 containerId =
@@ -1034,7 +1066,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Orquestra o processo de acrescentar itens, chamando o servidor.
-     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+* MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
      */
     async function FuncoesScript_lidarComAcrescentarItens() {
         const dadosCriacao = FuncoesScript_coletarSelecoesModalItens();
@@ -1052,6 +1084,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 "Por favor, selecione ao menos uma opção para o tipo '" +
                 dadosCriacao.tipo +
                 "'.",
+
                 true
             );
             return;
@@ -1073,20 +1106,18 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         document.getElementById(
             "CotacaoIndividualScript_btnAcrescentarItensModal"
         ).disabled = true;
-
         try {
             // Esta função/rota ainda não foi migrada, mas estamos preparando a chamada
             const resposta = await FuncoesScript_apiCall('/api/cotacaoIndividual/acrescentarItens', {
                 body: {
                     idCotacao: CotacaoIndividualScript_cotacaoIdAtual,
-                    dadosCriacao: dadosCriacao
+                    opcoesCriacao:
+                        dadosCriacao
                 }
             });
-
             document.getElementById(
                 "CotacaoIndividualScript_btnAcrescentarItensModal"
             ).disabled = false;
-
             if (resposta && resposta.success) {
                 FuncoesScript_fecharModalAcrescentarItens();
                 CotacaoIndividualScript_exibirFeedback(
@@ -1094,12 +1125,12 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     false,
                     4000
                 );
-
                 if (
                     typeof CotacaoIndividualScript_mostrarLoadingOverlay === "function"
                 ) {
                     CotacaoIndividualScript_mostrarLoadingOverlay(
                         true,
+
                         "Atualizando dados da cotação..."
                     );
                 }
@@ -1108,6 +1139,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     typeof CotacaoIndividualScript_carregarDadosCotacao === "function"
                 ) {
                     await CotacaoIndividualScript_carregarDadosCotacao(
+
                         CotacaoIndividualScript_cotacaoIdAtual
                     );
                 } else {
@@ -1119,7 +1151,8 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             } else {
                 const msg =
                     resposta && resposta.message
-                        ? resposta.message
+                        ?
+                        resposta.message
                         : "Falha ao acrescentar itens.";
                 FuncoesScript_exibirFeedbackModalItens(msg, true);
             }
@@ -1140,7 +1173,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Abre uma nova guia para a Contagem de Estoque Mobile.
-     * MIGRAÇÃO: Convertido para abrir URL relativa.
+* MIGRAÇÃO: Convertido para abrir URL relativa.
      */
     function FuncoesScript_abrirContagemEstoqueMobile() {
         console.log("FuncoesScript: Abrindo Contagem de Estoque Mobile...");
@@ -1156,7 +1189,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         // Em Node.js, não precisamos chamar o servidor para obter a URL.
         // A URL é determinística com base na rota definida no server.js.
         const url = `/view/contagemdeestoque?idCotacao=${encodeURIComponent(id)}`;
-
         // window.location.origin garante que funcione em dev (localhost) e produção.
         const fullUrl = window.location.origin + url;
 
@@ -1170,9 +1202,9 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Inicia o processo de preenchimento dos últimos preços, chamando o backend.
-     * Após a conclusão, recarrega os dados da cotação na tela.
+* Após a conclusão, recarrega os dados da cotação na tela.
      * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
-     */
+*/
     function FuncoesScript_iniciarPreenchimentoUltimosPrecos() {
         const idCotacao = CotacaoIndividualScript_cotacaoIdAtual;
         if (!idCotacao) {
@@ -1190,7 +1222,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             true,
             "Buscando últimos preços..."
         );
-
         FuncoesScript_apiCall('/api/funcoes/preencherUltimosPrecos', {
             body: {
                 idCotacao: idCotacao
@@ -1198,27 +1229,33 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         })
             .then(async function (response) {
                 if (response && response.success) {
+
                     CotacaoIndividualScript_exibirFeedback(
                         response.message || "Processo finalizado. Atualizando a tabela...",
                         false,
                         5000
+
                     );
 
                     // Recarrega os dados da cotação para refletir os novos preços na UI
                     try {
                         await window.CotacaoIndividualScript_carregarDadosCotacao(
+
                             idCotacao
                         );
                         // Após recarregar, força o recálculo dos totais na UI
                         if (
+
                             typeof CotacaoIndividualScript_forcarRecalculoTotalUI ===
                             "function"
                         ) {
+
                             setTimeout(CotacaoIndividualScript_forcarRecalculoTotalUI, 200);
                         }
                     } catch (loadError) {
                         console.error(
                             "Falha ao recarregar dados da cotação após preenchimento de preços:",
+
                             loadError
                         );
                         CotacaoIndividualScript_exibirFeedback(
@@ -1230,6 +1267,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     CotacaoIndividualScript_exibirFeedback(
                         response.message ||
                         "Ocorreu uma falha no servidor ao preencher os preços.",
+
                         true
                     );
                 }
@@ -1240,6 +1278,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                 console.error("Erro de comunicação ao preencher preços:", error);
                 CotacaoIndividualScript_exibirFeedback(
                     "Erro de comunicação com o servidor: " + error.message,
+
                     true
                 );
             });
@@ -1247,7 +1286,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Fecha o modal de "Gerenciar Cotações (Portal)" e limpa seu estado.
-     */
+*/
     function FuncoesScript_fecharModalGerenciarCotacoes() {
         console.log("FuncoesScript: Fechando modal de Gerenciar Cotações.");
         const modalOverlay = document.getElementById(
@@ -1257,7 +1296,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             modalOverlay.classList.remove("active");
         }
         CotacaoIndividualScript_modoEtapaAtual = null;
-
         // Limpa o feedback para a próxima abertura
         const feedbackDiv = document.getElementById(
             "FuncoesScript_feedbackModalGerenciarCotacoes"
@@ -1267,10 +1305,10 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Exibe feedback dentro do modal de Gerenciar Cotações.
-     * @param {string} mensagem O texto a ser exibido.
+* @param {string} mensagem O texto a ser exibido.
      * @param {boolean} isError Se a mensagem é um erro.
-     * @param {number} duracao Duração em milissegundos para a mensagem desaparecer.
-     */
+* @param {number} duracao Duração em milissegundos para a mensagem desaparecer.
+*/
     function FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
         mensagem,
         isError = false,
@@ -1282,7 +1320,8 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         if (feedbackDiv) {
             const innerDiv = document.createElement("div");
             innerDiv.className = `p-3 rounded-md text-sm ${isError
-                ? "bg-red-100 text-red-700 border border-red-300"
+                ?
+                "bg-red-100 text-red-700 border border-red-300"
                 : "bg-green-100 text-green-700 border border-green-300"
                 }`;
             innerDiv.textContent = mensagem;
@@ -1294,6 +1333,7 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
                     if (feedbackDiv.contains(innerDiv)) {
                         feedbackDiv.innerHTML = "";
                     }
+
                 }, duracao);
             }
         }
@@ -1305,10 +1345,9 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     // Variável para armazenar os dados calculados e evitar reprocessamento ao reordenar
     let FuncoesScript_dadosOportunidades = [];
-
     /**
-     * Orquestra a abertura e o preenchimento do sidebar de Melhores Oportunidades.
-     */
+         * Orquestra a abertura e o preenchimento do sidebar de Melhores Oportunidades.
+    */
     function FuncoesScript_abrirSidebarOportunidades() {
         const sidebar = document.getElementById(
             "FuncoesScript_sidebarOportunidades"
@@ -1326,16 +1365,16 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         );
         listaContainer.innerHTML =
             '<div class="sidebar-oportunidades-empty-state">Calculando oportunidades...</div>';
-
         // A variável global agora estará acessível corretamente
         const dadosBrutos =
-            window.CotacaoIndividualScript_dadosOriginaisCotacao || [];
+            window.CotacaoIndividualScript_dadosOriginaisCotacao ||
+            [];
         if (dadosBrutos.length === 0) {
             console.warn(
                 "FuncoesScript_abrirSidebarOportunidades: dadosOriginaisCotacao está vazio. A tabela principal pode não ter sido carregada ainda."
             );
             listaContainer.innerHTML =
-                '<div class="sidebar-oportunidades-empty-state">Nenhum dado para exibir. Verifique se a cotação foi carregada.</div>';
+                '<div class="sidebar-oportunidades-empty-state">Nenhum dado para exibir. Verifique se a cotação foi carregada.</div > ';
             return;
         }
 
@@ -1347,11 +1386,13 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             const chaveGrupo = nomeProdutoPrincipal;
             if (!gruposTemp[chaveGrupo]) {
                 gruposTemp[chaveGrupo] = {
+
                     produtoNome: nomeProdutoPrincipal,
                     subProdutos: [],
                     demandaMediaProdutoPrincipal: linhaProduto.hasOwnProperty(
                         "DemandaMediaProdutoPrincipal"
                     )
+
                         ? linhaProduto["DemandaMediaProdutoPrincipal"]
                         : 0,
                 };
@@ -1366,16 +1407,16 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             return {
                 produtoNome: grupo.produtoNome,
                 oportunidade: metricas.oportunidadeReais,
+
                 spread: metricas.spreadPercent,
             };
         });
-
         FuncoesScript_renderizarListaOportunidades("oportunidade");
     }
 
     /**
      * Fecha o sidebar de Melhores Oportunidades.
-     */
+*/
     function FuncoesScript_fecharSidebarOportunidades() {
         const sidebar = document.getElementById(
             "FuncoesScript_sidebarOportunidades"
@@ -1389,8 +1430,8 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
     /**
      * Renderiza (ou re-renderiza) a lista de produtos no sidebar, aplicando a ordenação.
-     * @param {'oportunidade' | 'spread'} sortBy - O critério de ordenação.
-     */
+* @param {'oportunidade' | 'spread'} sortBy - O critério de ordenação.
+*/
     function FuncoesScript_renderizarListaOportunidades(sortBy) {
         const listaContainer = document.getElementById(
             "FuncoesScript_sidebarOportunidadesListaContainer"
@@ -1399,7 +1440,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
         // Faz uma cópia para não alterar a ordem original dos dados cacheados
         const dadosOrdenados = [...FuncoesScript_dadosOportunidades];
-
         // Ordena os dados com base no critério (sempre do maior para o menor)
         if (sortBy === "oportunidade") {
             dadosOrdenados.sort((a, b) => b.oportunidade - a.oportunidade);
@@ -1409,7 +1449,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
 
         // Limpa o container
         listaContainer.innerHTML = "";
-
         if (dadosOrdenados.length === 0) {
             listaContainer.innerHTML =
                 '<div class="sidebar-oportunidades-empty-state">Nenhum dado para exibir.</div>';
@@ -1424,13 +1463,15 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
             const oportunidadeFormatada =
                 window.CotacaoIndividualScript_formatarPreco(item.oportunidade);
             const spreadFormatado =
+
                 item.spread.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                 }) + "%";
 
             itemDiv.innerHTML = `
-            <span class="sidebar-oportunidades-item-produto">${item.produtoNome}</span>
+          
+  <span class="sidebar-oportunidades-item-produto">${item.produtoNome}</span>
             <div class="sidebar-oportunidades-item-metricas">
                 <span>Oportunidade: <strong>${oportunidadeFormatada}</strong></span>
                 <span>Spread: <strong>${spreadFormatado}</strong></span>
@@ -1438,7 +1479,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         `;
             listaContainer.appendChild(itemDiv);
         });
-
         // Atualiza o estado visual dos botões de ordenação
         const btnOportunidade = document.getElementById(
             "FuncoesScript_btnOrdenarPorOportunidade"
@@ -1453,7 +1493,8 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
     }
 
     /**
-     * Inicializa os event listeners para o sidebar. Deve ser chamada uma vez no carregamento da página.
+     * Inicializa os event listeners para o sidebar.
+Deve ser chamada uma vez no carregamento da página.
      */
     function FuncoesScript_initSidebarOportunidades() {
         const btnFechar = document.getElementById(
@@ -1465,7 +1506,6 @@ Os pedidos serão fechados amanhã (terça) às 16:00.`;
         const btnSpread = document.getElementById(
             "FuncoesScript_btnOrdenarPorSpread"
         );
-
         if (btnFechar)
             btnFechar.addEventListener(
                 "click",
