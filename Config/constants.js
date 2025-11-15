@@ -2,7 +2,6 @@
 // Migrado de Constantes.js e outros arquivos que dependiam delas.
 
 // IDs das planilhas e pastas (lidos do .env)
-// *** CORREÇÃO: Adicionada a ID_PLANILHA_PRINCIPAL ***
 const ID_PLANILHA_PRINCIPAL = process.env.ID_PLANILHA_PRINCIPAL;
 const ID_PLANILHA_NF = process.env.ID_PLANILHA_NF;
 const ID_PLANILHA_FINANCEIRO = process.env.ID_PLANILHA_FINANCEIRO;
@@ -53,6 +52,15 @@ const CABECALHOS_COTACOES = [
   "Divergencia da Nota", "Quantidade na Nota", "Preço da Nota", "Número da Nota"
 ];
 
+const CABECALHOS_CADASTROS = [
+  "Empresas",
+  "CNPJ",
+  "Endereço",
+  "Telefone",
+  "Email",
+  "Contato"
+];
+
 const CABECALHOS_NF_FATURAS = [
   "Chave de Acesso", "Número da Fatura", "Número da Parcela",
   "Data de Vencimento", "Valor da Parcela"
@@ -66,7 +74,6 @@ const CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR = [
 
 // Exporta tudo para ser usado em outros arquivos do Node.js
 module.exports = {
-  // *** CORREÇÃO: Exporta a ID_PLANILHA_PRINCIPAL ***
   ID_PLANILHA_PRINCIPAL,
   ID_PLANILHA_NF,
   ID_PLANILHA_FINANCEIRO,
@@ -87,6 +94,7 @@ module.exports = {
   CABECALHOS_PRODUTOS,
   CABECALHOS_SUBPRODUTOS,
   CABECALHOS_COTACOES,
+  CABECALHOS_CADASTROS,
   CABECALHOS_NF_FATURAS,
   CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR
 };

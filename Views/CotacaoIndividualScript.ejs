@@ -32,8 +32,8 @@
     const CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_CONTAINER = 'CotacaoIndividualScript_gerenciarCotacoesPortalContainer';
     const CotacaoIndividualScript_ID_GERENCIAR_COTACOES_PORTAL_BODY = 'CotacaoIndividualScript_gerenciarCotacoesPortalBody';
 
-    let CotacaoIndividualScript_cotacaoIdAtual = null;
-    let CotacaoIndividualScript_modoPagina = 'editar';
+    window.CotacaoIndividualScript_cotacaoIdAtual = null;
+    window.CotacaoIndividualScript_modoPagina = 'editar';
     let CotacaoIndividualScript_cabecalhosVisiveis = [];
     let CABECALHOS_COTACOES_TODOS = [];
     window.CotacaoIndividualScript_dadosOriginaisCotacao = [];
@@ -959,17 +959,16 @@
         const btnAbaFornecedor = document.getElementById('CotacaoIndividualScript_btnAbaFornecedor');
         if (btnAbaFornecedor) btnAbaFornecedor.addEventListener('click', CotacaoIndividualScript_renderizarVisualizacaoFornecedor);
 
-        // **AQUI ESTÁ A MUDANÇA**
         // Lê as variáveis globais injetadas pelo EJS em CotacaoIndividualView.ejs
         try {
-            CotacaoIndividualScript_cotacaoIdAtual = (typeof EJS_ID_COTACAO !== 'undefined' && EJS_ID_COTACAO !== 'null') ? EJS_ID_COTACAO : null;
-            CotacaoIndividualScript_modoPagina = (typeof EJS_MODO !== 'undefined') ? EJS_MODO : 'editar';
+            // Define as variáveis no objeto WINDOW para serem globais
+            window.CotacaoIndividualScript_cotacaoIdAtual = (typeof EJS_ID_COTACAO !== 'undefined' && EJS_ID_COTACAO !== 'null') ? EJS_ID_COTACAO : null;
+            window.CotacaoIndividualScript_modoPagina = (typeof EJS_MODO !== 'undefined') ? EJS_MODO : 'editar';
         } catch (e) {
             console.error("Erro ao ler variáveis EJS. Elas foram injetadas no CotacaoIndividualView.ejs?", e);
             CotacaoIndividualScript_exibirFeedback("Erro crítico ao carregar parâmetros da página.", true, 0);
             return;
         }
-        // Fim da mudança
 
         const spanIdCotacao = document.getElementById(CotacaoIndividualScript_ID_COTACAO_EXIBIDO);
         renderizarCabecalhoTabelaPrincipalInterno();
@@ -1403,9 +1402,9 @@
         // Comentamos a chamada da função que ainda não existe.
         // if (typeof FuncoesScript_initSidebarOportunidades === 'function') {
         //     FuncoesScript_initSidebarOportunidades();
-         //} else {
-           //  console.warn("FuncoesScript_initSidebarOportunidades não foi encontrada. O sidebar de Oportunidades pode não funcionar.");
-         //}
+        //} else {
+        //  console.warn("FuncoesScript_initSidebarOportunidades não foi encontrada. O sidebar de Oportunidades pode não funcionar.");
+        //}
         // ======================= FIM DA CORREÇÃO ========================
     }
 </script>
