@@ -1,0 +1,1483 @@
+<script>
+    //####################################################################################################
+    // MÓDULO: FUNCOES (CLIENT-SIDE) - FuncoesScript.html
+    // Funções relacionadas às opções do menu "Funções", como "Gerenciar Cotações (Portal)".
+    // VERSÃO MIGRADADA PARA NODE.JS / FETCH API
+    //####################################################################################################
+
+    /**
+     * @file FuncoesScript.ejs
+     * @description Lógica client-side para as funcionalidades do menu "Funções".
+     */
+
+    // =================================================================================
+    // HELPER DE API (Substituto do google.script.run)
+    // =================================================================================
+
+    /**
+     * Função genérica para tratar chamadas de API (fetch)
+     * @param {string} endpoint O endpoint da API (ex: /api/funcoes/listar)
+     * @param {object} options Opções do Fetch (method, body, etc.)
+     */
+    async function FuncoesScript_apiCall(endpoint, options = {}) {
+        // Define o método padrão como POST se houver um 'body', senão GET.
+        if (!options.method) {
+            options.method = options.body ? 'POST' : 'GET';
+        }
+
+        // Configura headers e converte o 'body' para JSON se necessário
+        if (options.body && typeof options.body === 'object') {
+            options.headers = { 'Content-Type': 'application/json', ...options.headers };
+            options.body = JSON.stringify(options.body);
+        }
+
+        try {
+            const response = await fetch(endpoint, options);
+            const data = await response.json(); // Sempre espera uma resposta JSON
+
+            if (!response.ok) {
+                // Se a resposta não for OK (ex: 404, 500), usa a mensagem de erro do servidor
+                throw new Error(data.message || `Erro ${response.status}: ${response.statusText}`);
+            }
+
+            // Se a resposta for OK, mas o *servidor* indicar uma falha (ex: success: false)
+            if (data.success === false) {
+                throw new Error(data.message || "Ocorreu um erro no servidor.");
+            }
+
+            return data; // Retorna o objeto JSON completo (ex: { success: true, dados: [...] })
+        } catch (error) {
+            console.error(`Erro na chamada da API para ${endpoint}:`, error);
+            // Rejeita a promise para que o .catch() no local da chamada seja ativado
+            return Promise.reject(error);
+        }
+    }
+
+    // =================================================================================
+    // LÓGICA DO MÓDULO (Migrada)
+    // =================================================================================
+
+    /**
+     * Texto padrão da mensagem de cotação mostrado no textarea
+     * (sem ID e sem nome do fornecedor — isso vai só no momento de copiar)
+     */
+    const FuncoesScript_MENSAGEM_PADRAO_BASE = `Olá.
+Segue o link para a Cotação.
+Os pedidos serão fechados amanhã (terça) às 16:00.`;
+
+    /**
+     * @file FuncoesScript.html
+     * Monta a mensagem final exatamente no formato desejado:
+     *
+     * [texto do textarea]
+     *
+     * [NOME DO FORNECEDOR] - Cotação([ID])
+     *
+     * Link:
+     * [link]
+     */
+    function FuncoesScript_formatarMensagemCotacao(
+        fornecedorNome,
+        idCotacao,
+        link,
+        textoBase
+    ) {
+        // Mantém o texto do textarea como veio (inclusive o "D" se estiver no conteúdo),
+        // mas remove apenas espaços/quebras extras no final para não “grudar” com as próximas linhas.
+        const base = (textoBase ?? "").trimEnd();
+
+        return `${base}\n\n${fornecedorNome} - Cotação(${idCotacao})\n\nLink:\n${link}`;
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // FUNÇÃO: GERENCIAR COTAÇÕES (PORTAL)
+    //----------------------------------------------------------------------------------------------------
+
+    /**
+     * Ativa o modo de visualização "Gerenciar Cotações (Portal)" através de um modal.
+     * SUBSTITUI a implementação antiga.
+     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+     */
+    function FuncoesScript_ativarModoGerenciarCotacoesPortal() {
+        console.log(
+            "FuncoesScript: Ativando modo Gerenciar Cotações (Portal) via Modal."
+        );
+        CotacaoIndividualScript_modoEtapaAtual = "gerenciar_cotacoes_portal";
+
+        const modalOverlay = document.getElementById(
+            "FuncoesScript_modalGerenciarCotacoesOverlay"
+        );
+        if (!modalOverlay) {
+            console.error(
+                "FuncoesScript: Modal de Gerenciar Cotações não encontrado no DOM."
+            );
+            CotacaoIndividualScript_exibirFeedback(
+                "Erro: Componente do modal não encontrado.",
+                true
+            );
+            return;
+        }
+
+        modalOverlay.classList.add("active");
+        const portalBodyModal = document.getElementById(
+            "FuncoesScript_modalContentGerenciarCotacoes"
+        );
+        portalBodyModal.innerHTML =
+            '<div class="empty-state">Carregando dados das cotações do portal...</div>';
+
+        FuncoesScript_apiCall('/api/funcoes/obterDadosGerenciarCotacoes', {
+            method: 'POST' // A rota foi definida como POST
+        })
+            .then(function (response) {
+                // A API já retorna { success: true, dados: [...] }
+                FuncoesScript_renderizarConteudoGerenciarCotacoesPortal(
+                    response.dados
+                );
+            })
+            .catch(function (error) {
+                portalBodyModal.innerHTML = `<div class="empty-state">Erro de comunicação: ${error.message}</div>`;
+                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                    "Erro de comunicação: " + error.message,
+                    true
+                );
+            });
+
+        // Configura os botões de fechar do modal
+        document
+            .getElementById("FuncoesScript_btnFecharModalGerenciarCotacoes")
+            .addEventListener("click", FuncoesScript_fecharModalGerenciarCotacoes);
+        document
+            .getElementById("FuncoesScript_btnConcluirModalGerenciarCotacoes")
+            .addEventListener("click", FuncoesScript_fecharModalGerenciarCotacoes);
+    }
+
+    /**
+     * Renderiza o conteúdo da seção "Gerenciar Cotações (Portal)" DENTRO DO MODAL.
+     * SUBSTITUI a implementação antiga.
+     */
+    function FuncoesScript_renderizarConteudoGerenciarCotacoesPortal(
+        dadosCotacoes
+    ) {
+        const portalBody = document.getElementById(
+            "FuncoesScript_modalContentGerenciarCotacoes"
+        );
+        if (!portalBody) {
+            console.error(
+                "FuncoesScript_renderizarConteudoGerenciarCotacoesPortal: Elemento do corpo do modal não encontrado."
+            );
+            return;
+        }
+        portalBody.innerHTML = "";
+
+        if (!dadosCotacoes || dadosCotacoes.length === 0) {
+            portalBody.innerHTML =
+                '<div class="empty-state">Nenhuma cotação em aberto encontrada no portal.</div>';
+            return;
+        }
+
+        dadosCotacoes.forEach((cotacao) => {
+            const accordionItem = document.createElement("div");
+            accordionItem.className = "gerenciar-cotacoes-accordion-item";
+            accordionItem.dataset.idCotacao = cotacao.idCotacao;
+
+            const accordionHeader = document.createElement("div");
+            accordionHeader.className = "gerenciar-cotacoes-accordion-header";
+            accordionHeader.innerHTML = `
+            <span class="accordion-title-text">Cotação ID: ${cotacao.idCotacao
+                }</span>
+            <span class="accordion-percentage">${cotacao.percentualRespondido.toFixed(
+                    1
+                )}% Respondido</span>
+            <svg class="gerenciar-cotacoes-accordion-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+        `;
+
+            const accordionContent = document.createElement("div");
+            accordionContent.className = "gerenciar-cotacoes-accordion-content";
+
+            const textoGlobalDiv = document.createElement("div");
+            textoGlobalDiv.className = "gerenciar-cotacoes-texto-global-cotacao";
+            const defaultTextCotacao = FuncoesScript_MENSAGEM_PADRAO_BASE;
+            const textoSalvoCotacao =
+                cotacao.textoPersonalizadoCotacao !== null &&
+                    cotacao.textoPersonalizadoCotacao !== undefined &&
+                    cotacao.textoPersonalizadoCotacao !== ""
+                    ? cotacao.textoPersonalizadoCotacao
+                    : defaultTextCotacao;
+
+            textoGlobalDiv.innerHTML = `
+            <label for="texto-cotacao-${cotacao.idCotacao}">Mensagem Padrão para esta Cotação:</label>
+            <textarea id="texto-cotacao-${cotacao.idCotacao}" placeholder="Digite a mensagem padrão para os fornecedores desta cotação...">${textoSalvoCotacao}</textarea>
+            <button class="btn-salvar-texto-cotacao-portal">Salvar Texto da Cotação</button>
+        `;
+            accordionContent.appendChild(textoGlobalDiv);
+
+            if (cotacao.fornecedores && cotacao.fornecedores.length > 0) {
+                const fornecedorListaHeader = document.createElement("div");
+                fornecedorListaHeader.className =
+                    "gerenciar-cotacoes-fornecedor-lista-header";
+                fornecedorListaHeader.innerHTML = `
+                <h5>Fornecedores:</h5>
+                <button class="btn-excluir-fornecedores-selecionados-cotacao btn-excluir-selecionados">Excluir Selecionados</button>
+            `;
+                accordionContent.appendChild(fornecedorListaHeader);
+
+                cotacao.fornecedores.forEach((fornecedor) => {
+                    const fornecedorItem = document.createElement("div");
+                    fornecedorItem.className = "gerenciar-cotacoes-fornecedor-item";
+                    fornecedorItem.dataset.fornecedorNome = fornecedor.nome;
+
+                    fornecedorItem.innerHTML = `
+                    <input type="checkbox" class="checkbox-selecionar-fornecedor-portal" data-fornecedor-nome="${fornecedor.nome
+                        }">
+                    <div class="gerenciar-cotacoes-fornecedor-info">
+                        <span class="fornecedor-nome">${fornecedor.nome
+                        } (Status: ${fornecedor.statusResposta || "N/A"})</span>
+                        <span class="link-display" title="Link do fornecedor">Link: ${fornecedor.link
+                        }</span>
+                    </div>
+                    <div class="gerenciar-cotacoes-fornecedor-actions-item">
+                        <button class="btn-copiar-msg-link-fornecedor">Copiar Mensagem e Link</button>
+                    </div>
+                `;
+                    accordionContent.appendChild(fornecedorItem);
+
+                    const btnCopiar = fornecedorItem.querySelector(
+                        ".btn-copiar-msg-link-fornecedor"
+                    );
+                    btnCopiar.addEventListener("click", function () {
+                        const textoCotacaoTextarea = accordionContent.querySelector(
+                            `#texto-cotacao-${cotacao.idCotacao}`
+                        );
+                        const textoParaCopiar = FuncoesScript_formatarMensagemCotacao(
+                            fornecedor.nome,
+                            cotacao.idCotacao,
+                            fornecedor.link,
+                            textoCotacaoTextarea.value
+                        );
+
+                        navigator.clipboard
+                            .writeText(textoParaCopiar)
+                            .then(() =>
+                                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                                    "Mensagem e link copiados!",
+                                    false,
+                                    2000
+                                )
+                            )
+                            .catch((err) => {
+                                console.error(
+                                    "FuncoesScript: Falha ao copiar para clipboard - ",
+                                    err
+                                );
+                                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                                    "Falha ao copiar o texto.",
+                                    true,
+                                    3000
+                                );
+                            });
+                    });
+                });
+            } else {
+                accordionContent.innerHTML +=
+                    '<p class="text-sm text-gray-500">Nenhum fornecedor encontrado para esta cotação no portal.</p>';
+            }
+
+            accordionHeader.addEventListener("click", function () {
+                this.classList.toggle("expanded");
+                accordionContent.classList.toggle("expanded");
+                const icon = this.querySelector(".gerenciar-cotacoes-accordion-icon");
+                if (icon) {
+                    icon.style.transform = this.classList.contains("expanded")
+                        ? "rotate(90deg)"
+                        : "rotate(0deg)";
+                }
+            });
+
+            const btnSalvarTextoCotacao = textoGlobalDiv.querySelector(
+                ".btn-salvar-texto-cotacao-portal"
+            );
+            btnSalvarTextoCotacao.addEventListener("click", function () {
+                const textareaTextoCotacao = accordionContent.querySelector(
+                    `#texto-cotacao-${cotacao.idCotacao}`
+                );
+                FuncoesScript_salvarTextoGlobalCotacaoPortal(
+                    cotacao.idCotacao,
+                    textareaTextoCotacao.value
+                );
+            });
+
+            const btnExcluirSelecionadosPortal = accordionContent.querySelector(
+                ".btn-excluir-fornecedores-selecionados-cotacao"
+            );
+            if (btnExcluirSelecionadosPortal) {
+                btnExcluirSelecionadosPortal.addEventListener("click", function () {
+                    const fornecedoresSelecionados = [];
+                    accordionContent
+                        .querySelectorAll(".checkbox-selecionar-fornecedor-portal:checked")
+                        .forEach((cb) => {
+                            fornecedoresSelecionados.push(cb.dataset.fornecedorNome);
+                        });
+                    if (fornecedoresSelecionados.length > 0) {
+                        if (
+                            confirm(
+                                `Tem certeza que deseja excluir ${fornecedoresSelecionados.length} fornecedor(es) desta cotação?`
+                            )
+                        ) {
+                            FuncoesScript_excluirFornecedoresDaCotacaoPortal(
+                                cotacao.idCotacao,
+                                fornecedoresSelecionados
+                            );
+                        }
+                    } else {
+                        FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                            "Nenhum fornecedor selecionado para exclusão.",
+                            true,
+                            3000
+                        );
+                    }
+                });
+            }
+
+            accordionItem.appendChild(accordionHeader);
+            accordionItem.appendChild(accordionContent);
+            portalBody.appendChild(accordionItem);
+        });
+    }
+
+    /**
+     * Salva o texto personalizado global para uma cotação e atualiza o modal.
+     * SUBSTITUI a implementação antiga.
+     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+     */
+    function FuncoesScript_salvarTextoGlobalCotacaoPortal(
+        idCotacao,
+        textoPersonalizado
+    ) {
+        FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+            "Salvando texto...",
+            false,
+            0
+        );
+
+        FuncoesScript_apiCall('/api/funcoes/salvarTextoGlobalPortal', {
+            body: {
+                idCotacao: idCotacao,
+                textoPersonalizado: textoPersonalizado
+            }
+        })
+            .then(function (response) {
+                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                    response.message || "Texto da cotação salvo!",
+                    false,
+                    3000
+                );
+                // Não precisa recarregar a UI inteira, a alteração já está no textarea.
+            })
+            .catch(function (error) {
+                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                    "Erro de comunicação: " + error.message,
+                    true,
+                    5000
+                );
+            });
+    }
+
+    /**
+     * Exclui fornecedores selecionados e atualiza o modal.
+     * SUBSTITUI a implementação antiga.
+     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch) e encadeamento.
+     */
+    function FuncoesScript_excluirFornecedoresDaCotacaoPortal(
+        idCotacao,
+        nomesFornecedores
+    ) {
+        FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+            `Excluindo ${nomesFornecedores.length} fornecedor(es)...`,
+            false,
+            0
+        );
+
+        // 1. Chama a API para excluir
+        FuncoesScript_apiCall('/api/funcoes/excluirFornecedoresPortal', {
+            body: {
+                idCotacao: idCotacao,
+                nomesFornecedores: nomesFornecedores
+            }
+        })
+            .then(function (response) {
+                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                    response.message || "Fornecedor(es) excluído(s)! Atualizando...",
+                    false,
+                    4000
+                );
+
+                // 2. Após excluir, recarrega o conteúdo do modal
+                const portalBodyModal = document.getElementById(
+                    "FuncoesScript_modalContentGerenciarCotacoes"
+                );
+                portalBodyModal.innerHTML =
+                    '<div class="empty-state">Atualizando dados...</div>';
+
+                // 3. Chama a API de obtenção de dados novamente
+                return FuncoesScript_apiCall('/api/funcoes/obterDadosGerenciarCotacoes', {
+                    method: 'POST'
+                });
+            })
+            .then(function (response) {
+                // 4. Renderiza o modal com os dados atualizados
+                FuncoesScript_renderizarConteudoGerenciarCotacoesPortal(response.dados);
+            })
+            .catch(function (error) {
+                FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+                    "Erro de comunicação: " + error.message,
+                    true,
+                    7000
+                );
+            });
+    }
+
+    //####################################################################################################
+    // ADIÇÃO: FUNÇÃO PEDIDO DIRETO
+    //####################################################################################################
+
+    //----------------------------------------------------------------------------------------------------
+    // CONSTANTES E VARIÁVEIS PARA O MODO PEDIDO DIRETO
+    //----------------------------------------------------------------------------------------------------
+    const FuncoesScript_COLUNAS_A_OCULTAR_VISTA_FORNECEDOR = [
+        "Fornecedor",
+        "Preço por Fator",
+        "Economia em Cotação",
+    ];
+
+    //----------------------------------------------------------------------------------------------------
+    // FUNÇÕES DE ATIVAÇÃO E DESATIVAÇÃO
+    //----------------------------------------------------------------------------------------------------
+
+    /**
+     * NOVA FUNÇÃO: Prepara e renderiza a visualização por fornecedor. (VERSÃO CORRIGIDA)
+     */
+    function FuncoesScript_renderizarVisualizacaoFornecedor() {
+        console.log(
+            "FuncoesScript: Preparando para renderizar a visualização por Fornecedor (Versão Corrigida)."
+        );
+
+        // 1. Começa com uma cópia das colunas padrão definidas no script principal.
+        // Garante que CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO esteja acessível.
+        let colunasParaExibir = [
+            ...CotacaoIndividualScript_COLUNAS_A_EXIBIR_PADRAO,
+        ];
+
+        // 2. Remove 'Fornecedor' da lista de colunas da tabela, pois ele já aparece no cabeçalho do grupo.
+        colunasParaExibir = colunasParaExibir.filter((col) => col !== "Fornecedor");
+
+        // 3. Adiciona 'Estoque Atual' à lista, se ainda não estiver presente, na posição correta.
+        if (!colunasParaExibir.includes("Estoque Atual")) {
+            const fatorIndex = colunasParaExibir.indexOf("Fator");
+            if (fatorIndex !== -1) {
+                // Insere 'Estoque Atual' logo após 'Fator' para uma ordem lógica.
+                colunasParaExibir.splice(fatorIndex + 1, 0, "Estoque Atual");
+            } else {
+                // Se 'Fator' não for encontrado por algum motivo, apenas adiciona no final.
+                colunasParaExibir.push("Estoque Atual");
+            }
+        }
+
+        // 4. Define a variável global que será usada para renderizar o cabeçalho e as linhas da tabela.
+        CotacaoIndividualScript_cabecalhosVisiveis = colunasParaExibir;
+
+        // 5. Chama as funções de renderização, que usarão a variável global que acabamos de definir.
+        if (typeof renderizarCabecalhoTabelaPrincipalInterno === "function") {
+            renderizarCabecalhoTabelaPrincipalInterno();
+        } else {
+            console.error(
+                "Função 'renderizarCabecalhoTabelaPrincipalInterno' não encontrada em CotacaoIndividualScript."
+            );
+        }
+
+        FuncoesScript_renderizarGruposPorFornecedor();
+
+        // CotacaoIndividualScript_exibirFeedback("Visualização por fornecedor ativada.", false, 3000);
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // FUNÇÃO DE RENDERIZAÇÃO PARA O MODO PEDIDO DIRETO
+    //----------------------------------------------------------------------------------------------------
+
+    /**
+     * FUNÇÃO ATUALIZADA E CORRIGIDA: Renderiza os grupos por fornecedor, garantindo que a edição inline e a navegação pelo teclado funcionem corretamente.
+     */
+    function FuncoesScript_renderizarGruposPorFornecedor() {
+        const tabela = document.getElementById(
+            CotacaoIndividualScript_ID_TABELA_PRODUTOS_COTACAO
+        );
+        if (!tabela) {
+            console.error("Tabela não encontrada para renderizar por fornecedor.");
+            return;
+        }
+        const tbody = tabela.querySelector("tbody");
+        if (!tbody) {
+            console.error("Tbody não encontrado.");
+            return;
+        }
+        tbody.innerHTML = "";
+
+        const todosOsProdutosDaCotacao =
+            CotacaoIndividualScript_dadosOriginaisCotacao;
+        if (!todosOsProdutosDaCotacao || todosOsProdutosDaCotacao.length === 0) {
+            const tr = tbody.insertRow();
+            const td = tr.insertCell();
+            td.colSpan = CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+            td.className = "text-center p-8 text-gray-500";
+            td.textContent = "Nenhum produto encontrado nesta cotação.";
+            return;
+        }
+
+        const gruposPorFornecedor = {};
+        todosOsProdutosDaCotacao.forEach((linhaProduto) => {
+            const fornecedor = linhaProduto["Fornecedor"] || "Sem Fornecedor";
+            if (!gruposPorFornecedor[fornecedor]) {
+                gruposPorFornecedor[fornecedor] = {
+                    fornecedorNome: fornecedor,
+                    subProdutos: [],
+                };
+            }
+            gruposPorFornecedor[fornecedor].subProdutos.push(linhaProduto);
+        });
+
+        const arrayDeGrupos = Object.values(gruposPorFornecedor).sort((a, b) => {
+            return String(a.fornecedorNome).localeCompare(String(b.fornecedorNome));
+        });
+
+        const colunasEditaveis = [
+            "SubProduto",
+            "Tamanho",
+            "UN",
+            "Fator",
+            "Preço",
+            "Comprar",
+        ];
+
+        arrayDeGrupos.forEach((grupo) => {
+            const fornecedorSanitizedParaClasse =
+                String(grupo.fornecedorNome)
+                    .replace(/[^a-zA-Z0-9-_]/g, "")
+                    .toLowerCase() || "sem-fornecedor";
+            const fornecedorTargetClass = `content-for-fornecedor-${fornecedorSanitizedParaClasse}`;
+
+            const fornecedorRow = tbody.insertRow();
+            fornecedorRow.className = "categoria-accordion-header-row";
+            fornecedorRow.dataset.targetClass = fornecedorTargetClass;
+            fornecedorRow.dataset.fornecedorNome = grupo.fornecedorNome;
+
+            const fornecedorCell = fornecedorRow.insertCell();
+            fornecedorCell.colSpan =
+                CotacaoIndividualScript_cabecalhosVisiveis.length || 1;
+
+            const fornecedorHeaderContent = document.createElement("div");
+            fornecedorHeaderContent.className = "categoria-header-content";
+
+            const icon = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "svg"
+            );
+            icon.setAttribute("class", "categoria-accordion-icon");
+            icon.setAttribute("viewBox", "0 0 20 20");
+            icon.setAttribute("fill", "currentColor");
+            icon.innerHTML = `<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />`;
+
+            fornecedorHeaderContent.appendChild(icon);
+            const titleSpan = document.createElement("span");
+            titleSpan.textContent = `Fornecedor: ${grupo.fornecedorNome}`;
+            fornecedorHeaderContent.appendChild(titleSpan);
+            fornecedorCell.appendChild(fornecedorHeaderContent);
+
+            fornecedorRow.addEventListener("click", function () {
+                this.classList.toggle("expanded");
+                const isExpanded = this.classList.contains("expanded");
+                if (icon)
+                    icon.style.transform = isExpanded ? "rotate(90deg)" : "rotate(0deg)";
+                const targetRows = tbody.querySelectorAll(
+                    `.${this.dataset.targetClass}`
+                );
+                targetRows.forEach((row) => {
+                    row.classList.toggle("hidden", !isExpanded);
+                });
+            });
+
+            if (grupo.subProdutos && grupo.subProdutos.length > 0) {
+                // Adiciona uma ordenação para garantir a consistência da exibição
+                grupo.subProdutos.sort(
+                    (a, b) =>
+                        String(a.Produto).localeCompare(b.Produto) ||
+                        String(a.SubProduto).localeCompare(b.SubProduto)
+                );
+
+                grupo.subProdutos.forEach((subProduto) => {
+                    const subRow = tbody.insertRow();
+                    subRow.className = `sub-produto-row category-content-row ${fornecedorTargetClass} hidden`;
+
+                    subRow.dataset.subprodutoOriginalPersistido =
+                        subProduto["_subProdutoOriginalPersistido"] ||
+                        subProduto["SubProduto"];
+                    subRow.dataset.produto = subProduto["Produto"];
+                    subRow.dataset.fornecedor = subProduto["Fornecedor"];
+                    subRow.dataset.subprodutoAtual = subProduto["SubProduto"];
+
+                    CotacaoIndividualScript_cabecalhosVisiveis.forEach(
+                        (cabecalhoVisivel) => {
+                            const td = subRow.insertCell();
+                            const classeCor =
+                                CotacaoIndividualScript_getClasseCorColuna(cabecalhoVisivel);
+                            if (classeCor) td.classList.add(classeCor);
+
+                            let valor = subProduto[cabecalhoVisivel];
+                            let valorFormatado;
+
+                            const camposNumericos = [
+                                "Fator",
+                                "Preço",
+                                "Preço por Fator",
+                                "Comprar",
+                                "Valor Total",
+                                "Economia em Cotação",
+                            ];
+                            if (
+                                camposNumericos.includes(cabecalhoVisivel) &&
+                                typeof valor === "number"
+                            ) {
+                                const fractionDigits = {
+                                    Fator: 4,
+                                    "Preço por Fator": 4,
+                                    Preço: 2,
+                                    Comprar: 2,
+                                    "Valor Total": 2,
+                                    "Economia em Cotação": 2,
+                                };
+                                valorFormatado = valor.toLocaleString("pt-BR", {
+                                    minimumFractionDigits: fractionDigits[cabecalhoVisivel] || 2,
+                                    maximumFractionDigits: fractionDigits[cabecalhoVisivel] || 2,
+                                });
+                            } else {
+                                valorFormatado = valor == null ? "" : String(valor);
+                            }
+
+                            td.textContent = valorFormatado;
+                            td.dataset.coluna = cabecalhoVisivel;
+                            // Correção #1: Armazena o valor FORMATADO para consistência com a lógica de salvamento.
+                            td.dataset.valorOriginal = valorFormatado;
+
+                            if (colunasEditaveis.includes(cabecalhoVisivel)) {
+                                td.classList.add("editable-price-cell");
+                                // Correção #2: Adiciona 'tabIndex' para tornar a célula focável pelo teclado.
+                                td.tabIndex = 0;
+                                td.addEventListener(
+                                    "click",
+                                    CotacaoIndividualScript_transformarCelulaEmInput
+                                );
+                            }
+                        }
+                    );
+                });
+            }
+        });
+
+        tbody
+            .querySelectorAll(".categoria-accordion-header-row")
+            .forEach((headerRow) => {
+                headerRow.click();
+            });
+
+        CotacaoIndividualScript_filtrarTabelaPrincipal();
+    }
+
+    //####################################################################################################
+    // ADIÇÃO: FUNÇÃO ACRESCENTAR ITENS
+    //####################################################################################################
+
+    // Variável para armazenar os dados das opções do modal e evitar múltiplas chamadas
+    let FuncoesScript_dadosOpcoesAcrescentarItens = null;
+
+    /**
+     * Ativa o modo "Acrescentar Itens", abrindo o modal.
+     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+     */
+    function FuncoesScript_ativarModoAcrescentarItens() {
+        console.log("FuncoesScript: Ativando modo Acrescentar Itens.");
+        const modalOverlay = document.getElementById(
+            "CotacaoIndividualScript_modalAcrescentarItensOverlay"
+        );
+        if (!modalOverlay) {
+            console.error("Modal de Acrescentar Itens não encontrado no DOM.");
+            CotacaoIndividualScript_exibirFeedback(
+                "Erro: O modal para acrescentar itens não foi encontrado.",
+                true
+            );
+            return;
+        }
+
+        modalOverlay.classList.add("active");
+        document.getElementById(
+            "CotacaoIndividualScript_selectTipoCriacaoItens"
+        ).value = "";
+        FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens("");
+
+        // Limpa campos de busca
+        const buscaFornecedorInput = document.getElementById(
+            "CotacaoIndividualScript_inputBuscaFornecedorItens"
+        );
+        if (buscaFornecedorInput) buscaFornecedorInput.value = "";
+        const buscaProdutoInput = document.getElementById(
+            "CotacaoIndividualScript_inputBuscaProdutoItens"
+        );
+        if (buscaProdutoInput) buscaProdutoInput.value = "";
+
+        // Carrega os dados para as opções do modal (categorias, fornecedores, etc.) se ainda não foram carregados
+        if (!FuncoesScript_dadosOpcoesAcrescentarItens) {
+            FuncoesScript_setLoadingStateOpcoesModalItens(true);
+
+            // Esta função/rota ainda não foi migrada, mas estamos preparando a chamada
+            FuncoesScript_apiCall('/api/cotacoes/obterOpcoes', {
+                method: 'POST' // Assumindo POST, ajuste se for GET
+            })
+                .then(FuncoesScript_popularOpcoesModalItens)
+                .catch(FuncoesScript_falhaCarregarOpcoesModalItens);
+        } else {
+            FuncoesScript_popularOpcoesModalItens(
+                FuncoesScript_dadosOpcoesAcrescentarItens
+            );
+            FuncoesScript_filtrarCheckboxesItens(
+                "CotacaoIndividualScript_checkboxContainerFornecedoresItens",
+                ""
+            );
+            FuncoesScript_filtrarCheckboxesItens(
+                "CotacaoIndividualScript_checkboxContainerProdutosItens",
+                ""
+            );
+        }
+    }
+
+    /**
+     * Fecha o modal de "Acrescentar Itens".
+     */
+    function FuncoesScript_fecharModalAcrescentarItens() {
+        const modalOverlay = document.getElementById(
+            "CotacaoIndividualScript_modalAcrescentarItensOverlay"
+        );
+        if (modalOverlay) {
+            modalOverlay.classList.remove("active");
+            const feedbackDiv = document.getElementById(
+                "CotacaoIndividualScript_feedbackModalItens"
+            );
+            if (feedbackDiv) feedbackDiv.innerHTML = "";
+        }
+    }
+
+    /**
+     * Controla a visibilidade das seções de opções dentro do modal.
+     */
+    function FuncoesScript_gerenciarVisibilidadeSecoesOpcoesItens(
+        tipoSelecionado
+    ) {
+        const secoes = [
+            "CotacaoIndividualScript_secaoOpcoesCategoriaItens",
+            "CotacaoIndividualScript_secaoOpcoesFornecedorItens",
+            "CotacaoIndividualScript_secaoOpcoesCurvaABCItens",
+            "CotacaoIndividualScript_secaoOpcoesProdutoEspecificoItens",
+        ];
+        secoes.forEach((idSecao) => {
+            const elSecao = document.getElementById(idSecao);
+            if (elSecao) elSecao.classList.remove("active");
+        });
+
+        let secaoAtivaId = null;
+        switch (tipoSelecionado) {
+            case "categoria":
+                secaoAtivaId = "CotacaoIndividualScript_secaoOpcoesCategoriaItens";
+                break;
+            case "fornecedor":
+                secaoAtivaId = "CotacaoIndividualScript_secaoOpcoesFornecedorItens";
+                break;
+            case "curvaABC":
+                secaoAtivaId = "CotacaoIndividualScript_secaoOpcoesCurvaABCItens";
+                break;
+            case "produtoEspecifico":
+                secaoAtivaId =
+                    "CotacaoIndividualScript_secaoOpcoesProdutoEspecificoItens";
+                break;
+        }
+
+        if (secaoAtivaId) {
+            const elSecaoAtiva = document.getElementById(secaoAtivaId);
+            if (elSecaoAtiva) elSecaoAtiva.classList.add("active");
+        }
+    }
+
+    /**
+     * Exibe feedback dentro do modal de Acrescentar Itens.
+     */
+    function FuncoesScript_exibirFeedbackModalItens(
+        mensagem,
+        isError = false,
+        duracao = 5000
+    ) {
+        const feedbackDiv = document.getElementById(
+            "CotacaoIndividualScript_feedbackModalItens"
+        );
+        if (feedbackDiv) {
+            const innerDiv = document.createElement("div");
+            innerDiv.className = `p-3 rounded-md text-sm ${isError
+                ? "bg-red-100 text-red-700 border border-red-300"
+                : "bg-blue-100 text-blue-700 border border-blue-300"
+                }`;
+            innerDiv.textContent = mensagem;
+            feedbackDiv.innerHTML = "";
+            feedbackDiv.appendChild(innerDiv);
+            if (duracao > 0) {
+                setTimeout(() => {
+                    if (feedbackDiv.contains(innerDiv)) {
+                        feedbackDiv.innerHTML = "";
+                    }
+                }, duracao);
+            }
+        }
+    }
+
+    /**
+     * Define o estado de carregamento para as opções do modal.
+     */
+    function FuncoesScript_setLoadingStateOpcoesModalItens(isLoading) {
+        const placeholderText = isLoading
+            ? "Carregando..."
+            : "Nenhuma opção disponível.";
+        const containers = [
+            "CotacaoIndividualScript_checkboxContainerCategoriasItens",
+            "CotacaoIndividualScript_checkboxContainerFornecedoresItens",
+            "CotacaoIndividualScript_checkboxContainerProdutosItens",
+        ];
+        containers.forEach((containerId) => {
+            const containerElement = document.getElementById(containerId);
+            if (containerElement) {
+                containerElement.innerHTML = `<p class="text-gray-500 text-sm">${placeholderText}</p>`;
+            }
+        });
+    }
+
+    /**
+     * Popula as checkboxes com os dados vindos do servidor.
+     */
+    function FuncoesScript_popularOpcoesModalItens(resposta) {
+        FuncoesScript_setLoadingStateOpcoesModalItens(false);
+        if (resposta && resposta.success && resposta.dados) {
+            FuncoesScript_dadosOpcoesAcrescentarItens = resposta;
+            const { categorias, fornecedores, produtos } = resposta.dados;
+
+            FuncoesScript_popularCheckboxesItens(
+                "CotacaoIndividualScript_checkboxContainerCategoriasItens",
+                categorias,
+                "catItens"
+            );
+            FuncoesScript_popularCheckboxesItens(
+                "CotacaoIndividualScript_checkboxContainerFornecedoresItens",
+                fornecedores,
+                "fornItens",
+                true
+            );
+            FuncoesScript_popularCheckboxesItens(
+                "CotacaoIndividualScript_checkboxContainerProdutosItens",
+                produtos,
+                "prodItens",
+                true
+            );
+        } else {
+            const msg =
+                resposta && resposta.message
+                    ? resposta.message
+                    : "Falha ao carregar dados para as opções.";
+            FuncoesScript_exibirFeedbackModalItens(msg, true);
+        }
+    }
+
+    /**
+     * Lida com falhas na chamada ao servidor para buscar as opções.
+     */
+    function FuncoesScript_falhaCarregarOpcoesModalItens(error) {
+        FuncoesScript_exibirFeedbackModalItens(
+            "Erro de comunicação ao buscar opções: " + error.message,
+            true
+        );
+        FuncoesScript_setLoadingStateOpcoesModalItens(false);
+    }
+
+    /**
+     * Função genérica para criar e popular checkboxes.
+     */
+    function FuncoesScript_popularCheckboxesItens(
+        containerId,
+        items,
+        namePrefix,
+        usarNomeComoValor = false
+    ) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = "";
+
+        if (!items || items.length === 0) {
+            container.innerHTML =
+                '<p class="text-gray-500 text-sm">Nenhuma opção disponível.</p>';
+            return;
+        }
+
+        items.forEach((item, index) => {
+            const itemValue =
+                typeof item === "object"
+                    ? usarNomeComoValor
+                        ? item.nome
+                        : item.id
+                    : item;
+            const itemName = typeof item === "object" ? item.nome : item;
+
+            const label = document.createElement("label");
+            label.style.display = "flex";
+            label.className = "items-center space-x-2 text-sm text-gray-700 py-1";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.name = `${namePrefix}_${index}`;
+            checkbox.value = itemValue;
+            checkbox.className =
+                "form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500";
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(" " + itemName));
+            container.appendChild(label);
+        });
+    }
+
+    /**
+     * Filtra as checkboxes nos containers de busca.
+     */
+    function FuncoesScript_filtrarCheckboxesItens(containerId, termoBusca) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const termoLowerCase = String(termoBusca).toLowerCase();
+        const labels = container.getElementsByTagName("label");
+
+        for (let i = 0; i < labels.length; i++) {
+            const label = labels[i];
+            const textoLabel = label.textContent || label.innerText || "";
+            if (textoLabel.toLowerCase().includes(termoLowerCase)) {
+                label.style.display = "flex";
+            } else {
+                label.style.display = "none";
+            }
+        }
+    }
+
+    /**
+     * Coleta os dados selecionados pelo usuário no modal.
+     */
+    function FuncoesScript_coletarSelecoesModalItens() {
+        const tipoCriacao = document.getElementById(
+            "CotacaoIndividualScript_selectTipoCriacaoItens"
+        ).value;
+        let selecoes = [];
+        let containerId = "";
+        let inputType = "checkbox";
+
+        switch (tipoCriacao) {
+            case "categoria":
+                containerId =
+                    "CotacaoIndividualScript_checkboxContainerCategoriasItens";
+                break;
+            case "fornecedor":
+                containerId =
+                    "CotacaoIndividualScript_checkboxContainerFornecedoresItens";
+                break;
+            case "curvaABC":
+                inputType = "radio";
+                const radiosCurva = document.querySelectorAll(
+                    '#CotacaoIndividualScript_secaoOpcoesCurvaABCItens input[name="curvaABCItens"]:checked'
+                );
+                if (radiosCurva.length > 0) {
+                    selecoes.push(radiosCurva[0].value);
+                }
+                break;
+            case "produtoEspecifico":
+                containerId = "CotacaoIndividualScript_checkboxContainerProdutosItens";
+                break;
+            default:
+                FuncoesScript_exibirFeedbackModalItens(
+                    "Selecione um tipo de criação.",
+                    true
+                );
+                return null;
+        }
+
+        if (inputType === "checkbox" && containerId) {
+            const checkboxes = document.querySelectorAll(
+                `#${containerId} input[type="checkbox"]:checked`
+            );
+            checkboxes.forEach((cb) => selecoes.push(cb.value));
+        }
+
+        if (selecoes.length === 0 && tipoCriacao !== "") {
+            FuncoesScript_exibirFeedbackModalItens(
+                "Nenhuma opção selecionada para o tipo escolhido.",
+                true
+            );
+            return null;
+        }
+
+        return { tipo: tipoCriacao, selecoes: selecoes };
+    }
+
+    /**
+     * Orquestra o processo de acrescentar itens, chamando o servidor.
+     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+     */
+    async function FuncoesScript_lidarComAcrescentarItens() {
+        const dadosCriacao = FuncoesScript_coletarSelecoesModalItens();
+        if (!dadosCriacao) return;
+
+        if (!dadosCriacao.tipo) {
+            FuncoesScript_exibirFeedbackModalItens(
+                "Por favor, selecione um tipo para acrescentar.",
+                true
+            );
+            return;
+        }
+        if (dadosCriacao.selecoes.length === 0) {
+            FuncoesScript_exibirFeedbackModalItens(
+                "Por favor, selecione ao menos uma opção para o tipo '" +
+                dadosCriacao.tipo +
+                "'.",
+                true
+            );
+            return;
+        }
+
+        if (!CotacaoIndividualScript_cotacaoIdAtual) {
+            FuncoesScript_exibirFeedbackModalItens(
+                "Erro crítico: ID da cotação atual não encontrado.",
+                true
+            );
+            return;
+        }
+
+        FuncoesScript_exibirFeedbackModalItens(
+            "Acrescentando itens, por favor aguarde...",
+            false,
+            0
+        );
+        document.getElementById(
+            "CotacaoIndividualScript_btnAcrescentarItensModal"
+        ).disabled = true;
+
+        try {
+            // Esta função/rota ainda não foi migrada, mas estamos preparando a chamada
+            const resposta = await FuncoesScript_apiCall('/api/cotacaoIndividual/acrescentarItens', {
+                body: {
+                    idCotacao: CotacaoIndividualScript_cotacaoIdAtual,
+                    dadosCriacao: dadosCriacao
+                }
+            });
+
+            document.getElementById(
+                "CotacaoIndividualScript_btnAcrescentarItensModal"
+            ).disabled = false;
+
+            if (resposta && resposta.success) {
+                FuncoesScript_fecharModalAcrescentarItens();
+                CotacaoIndividualScript_exibirFeedback(
+                    `${resposta.numItens} item(ns) acrescentado(s)! Atualizando tabela...`,
+                    false,
+                    4000
+                );
+
+                if (
+                    typeof CotacaoIndividualScript_mostrarLoadingOverlay === "function"
+                ) {
+                    CotacaoIndividualScript_mostrarLoadingOverlay(
+                        true,
+                        "Atualizando dados da cotação..."
+                    );
+                }
+
+                if (
+                    typeof CotacaoIndividualScript_carregarDadosCotacao === "function"
+                ) {
+                    await CotacaoIndividualScript_carregarDadosCotacao(
+                        CotacaoIndividualScript_cotacaoIdAtual
+                    );
+                } else {
+                    console.error(
+                        "Função CotacaoIndividualScript_carregarDadosCotacao não encontrada. Recarregando página como fallback."
+                    );
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            } else {
+                const msg =
+                    resposta && resposta.message
+                        ? resposta.message
+                        : "Falha ao acrescentar itens.";
+                FuncoesScript_exibirFeedbackModalItens(msg, true);
+            }
+        } catch (error) {
+            document.getElementById(
+                "CotacaoIndividualScript_btnAcrescentarItensModal"
+            ).disabled = false;
+            FuncoesScript_exibirFeedbackModalItens(
+                "Erro de comunicação ao acrescentar itens: " + error.message,
+                true
+            );
+        } finally {
+            if (typeof CotacaoIndividualScript_mostrarLoadingOverlay === "function") {
+                CotacaoIndividualScript_mostrarLoadingOverlay(false);
+            }
+        }
+    }
+
+    /**
+     * Abre uma nova guia para a Contagem de Estoque Mobile.
+     * MIGRAÇÃO: Convertido para abrir URL relativa.
+     */
+    function FuncoesScript_abrirContagemEstoqueMobile() {
+        console.log("FuncoesScript: Abrindo Contagem de Estoque Mobile...");
+        const id = CotacaoIndividualScript_cotacaoIdAtual;
+        if (!id) {
+            CotacaoIndividualScript_exibirFeedback(
+                "ID da Cotação não definido.",
+                true
+            );
+            return;
+        }
+
+        // Em Node.js, não precisamos chamar o servidor para obter a URL.
+        // A URL é determinística com base na rota definida no server.js.
+        const url = `/view/contagemdeestoque?idCotacao=${encodeURIComponent(id)}`;
+
+        // window.location.origin garante que funcione em dev (localhost) e produção.
+        const fullUrl = window.location.origin + url;
+
+        console.log("Abrindo URL:", fullUrl);
+        window.open(fullUrl, "_blank");
+    }
+
+    //####################################################################################################
+    // ADIÇÃO: FUNÇÃO PREENCHER ÚLTIMOS PREÇOS
+    //####################################################################################################
+
+    /**
+     * Inicia o processo de preenchimento dos últimos preços, chamando o backend.
+     * Após a conclusão, recarrega os dados da cotação na tela.
+     * MIGRAÇÃO: Convertido para usar FuncoesScript_apiCall (fetch).
+     */
+    function FuncoesScript_iniciarPreenchimentoUltimosPrecos() {
+        const idCotacao = CotacaoIndividualScript_cotacaoIdAtual;
+        if (!idCotacao) {
+            CotacaoIndividualScript_exibirFeedback(
+                "Erro: Não há uma cotação ativa para preencher os preços.",
+                true
+            );
+            return;
+        }
+
+        console.log(
+            `FuncoesScript: Solicitando preenchimento de últimos preços para a cotação ${idCotacao}.`
+        );
+        CotacaoIndividualScript_mostrarLoadingOverlay(
+            true,
+            "Buscando últimos preços..."
+        );
+
+        FuncoesScript_apiCall('/api/funcoes/preencherUltimosPrecos', {
+            body: {
+                idCotacao: idCotacao
+            }
+        })
+            .then(async function (response) {
+                if (response && response.success) {
+                    CotacaoIndividualScript_exibirFeedback(
+                        response.message || "Processo finalizado. Atualizando a tabela...",
+                        false,
+                        5000
+                    );
+
+                    // Recarrega os dados da cotação para refletir os novos preços na UI
+                    try {
+                        await window.CotacaoIndividualScript_carregarDadosCotacao(
+                            idCotacao
+                        );
+                        // Após recarregar, força o recálculo dos totais na UI
+                        if (
+                            typeof CotacaoIndividualScript_forcarRecalculoTotalUI ===
+                            "function"
+                        ) {
+                            setTimeout(CotacaoIndividualScript_forcarRecalculoTotalUI, 200);
+                        }
+                    } catch (loadError) {
+                        console.error(
+                            "Falha ao recarregar dados da cotação após preenchimento de preços:",
+                            loadError
+                        );
+                        CotacaoIndividualScript_exibirFeedback(
+                            "Preços atualizados no backend, mas houve um erro ao recarregar a tela. Por favor, recarregue a página.",
+                            true
+                        );
+                    }
+                } else {
+                    CotacaoIndividualScript_exibirFeedback(
+                        response.message ||
+                        "Ocorreu uma falha no servidor ao preencher os preços.",
+                        true
+                    );
+                }
+                CotacaoIndividualScript_mostrarLoadingOverlay(false);
+            })
+            .catch(function (error) {
+                CotacaoIndividualScript_mostrarLoadingOverlay(false);
+                console.error("Erro de comunicação ao preencher preços:", error);
+                CotacaoIndividualScript_exibirFeedback(
+                    "Erro de comunicação com o servidor: " + error.message,
+                    true
+                );
+            });
+    }
+
+    /**
+     * Fecha o modal de "Gerenciar Cotações (Portal)" e limpa seu estado.
+     */
+    function FuncoesScript_fecharModalGerenciarCotacoes() {
+        console.log("FuncoesScript: Fechando modal de Gerenciar Cotações.");
+        const modalOverlay = document.getElementById(
+            "FuncoesScript_modalGerenciarCotacoesOverlay"
+        );
+        if (modalOverlay) {
+            modalOverlay.classList.remove("active");
+        }
+        CotacaoIndividualScript_modoEtapaAtual = null;
+
+        // Limpa o feedback para a próxima abertura
+        const feedbackDiv = document.getElementById(
+            "FuncoesScript_feedbackModalGerenciarCotacoes"
+        );
+        if (feedbackDiv) feedbackDiv.innerHTML = "";
+    }
+
+    /**
+     * Exibe feedback dentro do modal de Gerenciar Cotações.
+     * @param {string} mensagem O texto a ser exibido.
+     * @param {boolean} isError Se a mensagem é um erro.
+     * @param {number} duracao Duração em milissegundos para a mensagem desaparecer.
+     */
+    function FuncoesScript_exibirFeedbackModalGerenciarCotacoes(
+        mensagem,
+        isError = false,
+        duracao = 5000
+    ) {
+        const feedbackDiv = document.getElementById(
+            "FuncoesScript_feedbackModalGerenciarCotacoes"
+        );
+        if (feedbackDiv) {
+            const innerDiv = document.createElement("div");
+            innerDiv.className = `p-3 rounded-md text-sm ${isError
+                ? "bg-red-100 text-red-700 border border-red-300"
+                : "bg-green-100 text-green-700 border border-green-300"
+                }`;
+            innerDiv.textContent = mensagem;
+            feedbackDiv.innerHTML = "";
+            feedbackDiv.appendChild(innerDiv);
+
+            if (duracao > 0) {
+                setTimeout(() => {
+                    if (feedbackDiv.contains(innerDiv)) {
+                        feedbackDiv.innerHTML = "";
+                    }
+                }, duracao);
+            }
+        }
+    }
+
+    //####################################################################################################
+    //FUNÇÃO MELHORES OPORTUNIDADES
+    //####################################################################################################
+
+    // Variável para armazenar os dados calculados e evitar reprocessamento ao reordenar
+    let FuncoesScript_dadosOportunidades = [];
+
+    /**
+     * Orquestra a abertura e o preenchimento do sidebar de Melhores Oportunidades.
+     */
+    function FuncoesScript_abrirSidebarOportunidades() {
+        const sidebar = document.getElementById(
+            "FuncoesScript_sidebarOportunidades"
+        );
+        if (!sidebar) {
+            console.error("Sidebar de Oportunidades não encontrado no DOM.");
+            return;
+        }
+        // CORREÇÃO: Adiciona classe ao body para ajustar o layout principal
+        document.body.classList.add("sidebar-active");
+        sidebar.classList.add("active");
+
+        const listaContainer = document.getElementById(
+            "FuncoesScript_sidebarOportunidadesListaContainer"
+        );
+        listaContainer.innerHTML =
+            '<div class="sidebar-oportunidades-empty-state">Calculando oportunidades...</div>';
+
+        // A variável global agora estará acessível corretamente
+        const dadosBrutos =
+            window.CotacaoIndividualScript_dadosOriginaisCotacao || [];
+        if (dadosBrutos.length === 0) {
+            console.warn(
+                "FuncoesScript_abrirSidebarOportunidades: dadosOriginaisCotacao está vazio. A tabela principal pode não ter sido carregada ainda."
+            );
+            listaContainer.innerHTML =
+                '<div class="sidebar-oportunidades-empty-state">Nenhum dado para exibir. Verifique se a cotação foi carregada.</div>';
+            return;
+        }
+
+        const gruposTemp = {};
+        dadosBrutos.forEach((linhaProduto) => {
+            const nomeProdutoPrincipal = linhaProduto["Produto"];
+            if (!nomeProdutoPrincipal) return; // Pula linhas sem produto principal
+
+            const chaveGrupo = nomeProdutoPrincipal;
+            if (!gruposTemp[chaveGrupo]) {
+                gruposTemp[chaveGrupo] = {
+                    produtoNome: nomeProdutoPrincipal,
+                    subProdutos: [],
+                    demandaMediaProdutoPrincipal: linhaProduto.hasOwnProperty(
+                        "DemandaMediaProdutoPrincipal"
+                    )
+                        ? linhaProduto["DemandaMediaProdutoPrincipal"]
+                        : 0,
+                };
+            }
+            gruposTemp[chaveGrupo].subProdutos.push(linhaProduto);
+        });
+        const arrayDeGrupos = Object.values(gruposTemp);
+
+        FuncoesScript_dadosOportunidades = arrayDeGrupos.map((grupo) => {
+            const metricas =
+                window.CotacaoIndividualScript_calcularMetricasNegociacao(grupo);
+            return {
+                produtoNome: grupo.produtoNome,
+                oportunidade: metricas.oportunidadeReais,
+                spread: metricas.spreadPercent,
+            };
+        });
+
+        FuncoesScript_renderizarListaOportunidades("oportunidade");
+    }
+
+    /**
+     * Fecha o sidebar de Melhores Oportunidades.
+     */
+    function FuncoesScript_fecharSidebarOportunidades() {
+        const sidebar = document.getElementById(
+            "FuncoesScript_sidebarOportunidades"
+        );
+        if (sidebar) {
+            sidebar.classList.remove("active");
+        }
+        // CORREÇÃO: Remove a classe do body para o layout principal voltar ao normal
+        document.body.classList.remove("sidebar-active");
+    }
+
+    /**
+     * Renderiza (ou re-renderiza) a lista de produtos no sidebar, aplicando a ordenação.
+     * @param {'oportunidade' | 'spread'} sortBy - O critério de ordenação.
+     */
+    function FuncoesScript_renderizarListaOportunidades(sortBy) {
+        const listaContainer = document.getElementById(
+            "FuncoesScript_sidebarOportunidadesListaContainer"
+        );
+        if (!listaContainer) return;
+
+        // Faz uma cópia para não alterar a ordem original dos dados cacheados
+        const dadosOrdenados = [...FuncoesScript_dadosOportunidades];
+
+        // Ordena os dados com base no critério (sempre do maior para o menor)
+        if (sortBy === "oportunidade") {
+            dadosOrdenados.sort((a, b) => b.oportunidade - a.oportunidade);
+        } else if (sortBy === "spread") {
+            dadosOrdenados.sort((a, b) => b.spread - a.spread);
+        }
+
+        // Limpa o container
+        listaContainer.innerHTML = "";
+
+        if (dadosOrdenados.length === 0) {
+            listaContainer.innerHTML =
+                '<div class="sidebar-oportunidades-empty-state">Nenhum dado para exibir.</div>';
+            return;
+        }
+
+        // Popula a lista com os itens ordenados
+        dadosOrdenados.forEach((item) => {
+            const itemDiv = document.createElement("div");
+            itemDiv.className = "sidebar-oportunidades-item";
+
+            const oportunidadeFormatada =
+                window.CotacaoIndividualScript_formatarPreco(item.oportunidade);
+            const spreadFormatado =
+                item.spread.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                }) + "%";
+
+            itemDiv.innerHTML = `
+            <span class="sidebar-oportunidades-item-produto">${item.produtoNome}</span>
+            <div class="sidebar-oportunidades-item-metricas">
+                <span>Oportunidade: <strong>${oportunidadeFormatada}</strong></span>
+                <span>Spread: <strong>${spreadFormatado}</strong></span>
+            </div>
+        `;
+            listaContainer.appendChild(itemDiv);
+        });
+
+        // Atualiza o estado visual dos botões de ordenação
+        const btnOportunidade = document.getElementById(
+            "FuncoesScript_btnOrdenarPorOportunidade"
+        );
+        const btnSpread = document.getElementById(
+            "FuncoesScript_btnOrdenarPorSpread"
+        );
+        if (btnOportunidade && btnSpread) {
+            btnOportunidade.classList.toggle("active", sortBy === "oportunidade");
+            btnSpread.classList.toggle("active", sortBy === "spread");
+        }
+    }
+
+    /**
+     * Inicializa os event listeners para o sidebar. Deve ser chamada uma vez no carregamento da página.
+     */
+    function FuncoesScript_initSidebarOportunidades() {
+        const btnFechar = document.getElementById(
+            "FuncoesScript_btnFecharSidebarOportunidades"
+        );
+        const btnOportunidade = document.getElementById(
+            "FuncoesScript_btnOrdenarPorOportunidade"
+        );
+        const btnSpread = document.getElementById(
+            "FuncoesScript_btnOrdenarPorSpread"
+        );
+
+        if (btnFechar)
+            btnFechar.addEventListener(
+                "click",
+                FuncoesScript_fecharSidebarOportunidades
+            );
+        if (btnOportunidade)
+            btnOportunidade.addEventListener("click", () =>
+                FuncoesScript_renderizarListaOportunidades("oportunidade")
+            );
+        if (btnSpread)
+            btnSpread.addEventListener("click", () =>
+                FuncoesScript_renderizarListaOportunidades("spread")
+            );
+    }
+</script>

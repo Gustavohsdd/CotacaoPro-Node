@@ -1968,23 +1968,25 @@
         </div>
     </div>
     <script>
-    // Estas variáveis globais serão lidas pelo CotacaoIndividualScript
-    const EJS_ID_COTACAO = '<%- typeof idCotacao !== "undefined" ? idCotacao : null %>';
-    const EJS_MODO = '<%- typeof modo !== "undefined" ? modo : "editar" %>';
-  </script>
+        // Estas variáveis globais serão lidas pelo CotacaoIndividualScript
+        const EJS_ID_COTACAO = '<%- typeof idCotacao !== "undefined" ? idCotacao : null %>';
+        const EJS_MODO = '<%- typeof modo !== "undefined" ? modo : "editar" %>';
+    </script>
 
-  <%- include('CotacaoIndividualScript') %>
-  <%- include('EtapasScript') %>
+    <%- include('CotacaoIndividualScript') %>
+        <%- include('EtapasScript') %>
+            <%- include('FuncoesScript') %>
 
 </body>
 <script>
-  // Script de inicialização final (será executado após o EJS ser renderizado)
-  setTimeout(() => {
-    if (typeof initCotacaoIndividualScript === 'function') {
-      initCotacaoIndividualScript(); 
-    } else {
-      console.error("Falha ao inicializar CotacaoIndividualScript.");
-    }
-  }, 300); 
+    // Script de inicialização final (será executado após o EJS ser renderizado)
+    setTimeout(() => {
+        if (typeof initCotacaoIndividualScript === 'function') {
+            initCotacaoIndividualScript();
+        } else {
+            console.error("Falha ao inicializar CotacaoIndividualScript.");
+        }
+    }, 300); 
 </script>
+
 </html>

@@ -16,6 +16,7 @@ const subprodutosRouterApi = require('./Routes/subprodutos');
 const cotacoesRouterApi = require('./Routes/cotacoes');
 const cotacaoIndividualRouterApi = require('./Routes/cotacaoIndividual');
 const etapasRouterApi = require('./Routes/etapas');
+const FuncoesRouterApi = require('./Routes/funcoes');
 
 // (Você importará os outros, como subprodutosRouterApi, aqui)
 
@@ -177,6 +178,7 @@ app.use('/api/subprodutos', subprodutosRouterApi);
 app.use('/api/cotacoes', cotacoesRouterApi);
 app.use('/api/cotacaoIndividual', cotacaoIndividualRouterApi);
 app.use('/api/etapas', etapasRouterApi);
+app.use('/api/funcoes', FuncoesRouterApi);
 // (Você adicionará os outros aqui, ex: app.use('/api/subprodutos', subprodutosRouterApi);)
 
 

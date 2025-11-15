@@ -52,6 +52,27 @@ const CABECALHOS_COTACOES = [
   "Divergencia da Nota", "Quantidade na Nota", "Preço da Nota", "Número da Nota"
 ];
 
+const CABECALHOS_PORTAL = [
+  "ID da Cotação",
+  "Nome Fornecedor",
+  "Token Acesso",
+  "Link Acesso",
+  "Status",
+  "Data Envio",
+  "Data Resposta",
+  "Texto Personalizado Link"
+];
+
+const STATUS_PORTAL = {
+  LINK_GERADO: "Link Gerado",
+  RESPONDIDO: "Respondido",
+  EM_PREENCHIMENTO: "Em Preenchimento",
+  FECHADO: "Fechado",
+  ERRO_PORTAL: "Erro no Portal",
+  EXPIRADO: "Expirado"
+};
+Object.freeze(STATUS_PORTAL);
+
 const CABECALHOS_CADASTROS = [
   "Empresas",
   "CNPJ",
@@ -94,6 +115,8 @@ module.exports = {
   CABECALHOS_PRODUTOS,
   CABECALHOS_SUBPRODUTOS,
   CABECALHOS_COTACOES,
+  CABECALHOS_PORTAL,
+  STATUS_PORTAL,
   CABECALHOS_CADASTROS,
   CABECALHOS_NF_FATURAS,
   CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR
