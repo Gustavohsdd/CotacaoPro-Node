@@ -5,3 +5,6 @@ node_modules
 .env.local
 .env.*.local
 cotacaopro-node-service-account.json
+
+# Arquivos de PDF gerados
+/public/pedidos_pdf/

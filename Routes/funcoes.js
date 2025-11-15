@@ -38,11 +38,11 @@ router.post('/salvarTextoGlobalPortal', FuncoesController.salvarTextoGlobalCotac
 router.post('/preencherUltimosPrecos', FuncoesController.preencherUltimosPrecos);
 
 /**
- * Rota: POST /api/funcoes/obterDadosImpressaoManual
- * (SUBSTITUI a antiga geração de PDF. Agora apenas busca os dados para o cliente imprimir)
- * (Usada por ImprimirPedidosScript.html / EtapasController.js no projeto antigo)
+ * Rota: POST /api/funcoes/gerarPdfsEnvioManual
+ * (SUBSTITUI a antiga lógica de impressão. Agora gera PDFs no servidor com Puppeteer)
+ * (Usada por ImprimirPedidosScript.ejs)
  */
-router.post('/obterDadosImpressaoManual', FuncoesController.obterDadosImpressaoManual);
+router.post('/gerarPdfsEnvioManual', FuncoesController.gerarPdfsEnvioManual);
 
 
 // Exporta o roteador

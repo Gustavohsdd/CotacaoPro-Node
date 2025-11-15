@@ -1,0 +1,534 @@
+<script>
+    //####################################################################################################
+    // MÓDULO: IMPRIMIR PEDIDOS (CLIENT-SIDE) - ImprimirPedidosScript.ejs
+    // Funções da página de impressão de pedidos.
+    // MIGRADAS PARA NODE.JS / FETCH API
+    // LÓGICA DE PDF NO SERVIDOR (PUPPETEER) RESTAURADA.
+    //####################################################################################################
+
+    let dadosImpressaoGlobais = null;
+    let ImprimirPedidosScript_idCotacaoAtual = null;
+
+    /**
+     * Função genérica para tratar chamadas de API (fetch)
+     */
+    async function ImprimirPedidosScript_apiCall(endpoint, options = {}) {
+        if (!options.method) {
+            options.method = options.body ? 'POST' : 'GET';
+        }
+        if (options.body && typeof options.body === 'object') {
+            options.headers = { 'Content-Type': 'application/json', ...options.headers };
+            options.body = JSON.stringify(options.body);
+        }
+
+        try {
+            const response = await fetch(endpoint, options);
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || `Erro ${response.status}`);
+            }
+            if (data.success === false) {
+                throw new Error(data.message || "Ocorreu um erro no servidor.");
+            }
+            return data; // Retorna { success: true, ... }
+        } catch (error) {
+            console.error(`Erro na chamada da API para ${endpoint}:`, error);
+            return Promise.reject(error); // Rejeita para ser pego pelo .catch()
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", initImprimirPedidosScript);
+
+    function initImprimirPedidosScript() {
+        console.log("ImprimirPedidosScript: Iniciando página de impressão.");
+        const loadingOverlay = document.getElementById(
+            "ImprimirPedidosScript_loadingOverlay"
+        );
+        const containerPrincipal = document.getElementById(
+            "ImprimirPedidosScript_containerPrincipal"
+        );
+
+        const printButton = document.getElementById("print-button");
+        const checklistButton = document.getElementById("checklist-button");
+        const manualSendButton = document.getElementById("manual-send-button");
+        const modalOverlay = document.getElementById(
+            "ImprimirPedidosScript_modalEnvioManualOverlay"
+        );
+        const btnFecharModal = document.getElementById(
+            "ImprimirPedidosScript_btnFecharModalEnvioManual"
+        );
+
+        if (printButton) {
+            printButton.addEventListener(
+                "click",
+                ImprimirPedidosScript_executarImpressao
+            );
+        }
+        if (checklistButton) {
+            checklistButton.addEventListener(
+                "click",
+                ImprimirPedidosScript_executarImpressaoChecklist
+            );
+        }
+        if (manualSendButton) {
+            manualSendButton.addEventListener(
+                "click",
+                ImprimirPedidosScript_iniciarGeracaoDeLinksManuais
+            );
+        }
+        if (btnFecharModal) {
+            btnFecharModal.addEventListener(
+                "click",
+                ImprimirPedidosScript_fecharModalEnvioManual
+            );
+        }
+        if (modalOverlay) {
+            modalOverlay.addEventListener("click", function (event) {
+                if (event.target === modalOverlay) {
+                    ImprimirPedidosScript_fecharModalEnvioManual();
+                }
+            });
+        }
+
+        try {
+            // Lógica migrada de google.script.url.getLocation
+            const params = new URLSearchParams(window.location.search);
+            const idCotacao = params.get('idCotacao');
+
+            if (!idCotacao) {
+                loadingOverlay.classList.add("hidden");
+                containerPrincipal.innerHTML =
+                    "<h1>Erro Crítico</h1><p>O ID da Cotação não foi encontrado na URL.</p>";
+                return;
+            }
+
+            ImprimirPedidosScript_idCotacaoAtual = idCotacao;
+            console.log(
+                "ID da cotação encontrado com sucesso:",
+                ImprimirPedidosScript_idCotacaoAtual
+            );
+
+            // Chamada de API migrada para fetch
+            // Esta rota (do FuncoesController) apenas busca os DADOS, não gera PDFs.
+            ImprimirPedidosScript_apiCall('/api/funcoes/obterDadosImpressaoManual', {
+                body: {
+                    idCotacao: ImprimirPedidosScript_idCotacaoAtual
+                }
+            })
+            .then((response) => {
+                loadingOverlay.classList.add("hidden");
+                dadosImpressaoGlobais = response.dados; // Salva os dados globalmente
+                ImprimirPedidosScript_renderizarPedidos(dadosImpressaoGlobais);
+            })
+            .catch((error) => {
+                loadingOverlay.classList.add("hidden");
+                containerPrincipal.innerHTML = `<h1>Erro de Comunicação</h1><p>${error.message}</p>`;
+            });
+
+        } catch (e) {
+            loadingOverlay.classList.add("hidden");
+            containerPrincipal.innerHTML = `<h1>Erro Inesperado</h1><p>${e.message}</p>`;
+            console.error(e);
+        }
+    }
+
+    /**
+     * Gera o HTML para um único pedido.
+     * @param {object} pedido - O objeto do pedido.
+     * @returns {string} - O HTML do pedido.
+     */
+    function ImprimirPedidosScript_gerarHtmlParaPedido(pedido) {
+        let itensHtml = '';
+        pedido.itens.forEach(item => {
+            itensHtml += `
+              <tr>
+                <td>${item.subProduto}</td>
+                <td class="col-un">${item.un}</td>
+                <td class="col-qtd">${item.qtd}</td>
+                <td class="col-valor">${ImprimirPedidosScript_formatarMoeda(
+                    item.valorUnit
+                )}</td>
+                <td class="col-valor">${ImprimirPedidosScript_formatarMoeda(
+                    item.valorTotal
+                )}</td>
+              </tr>
+            `;
+        });
+
+        return `
+            <div class="pedido-container">
+                <div class="pedido-header-fornecedor">
+                    <h2>${pedido.fornecedor}</h2>
+                    <div class="info-grid">
+                        <div>
+                            <strong>EMPRESA PARA FATURAMENTO:</strong>
+                            <span>${pedido.empresaFaturada}</span>
+                        </div>
+                        <div>
+                            <strong>CNPJ:</strong>
+                            <span>${pedido.cnpj || "Não informado"}</span>
+                        </div>
+                        <div>
+                            <strong>CONDIÇÃO DE PAGAMENTO:</strong>
+                            <span>${pedido.condicaoPagamento || "Não informada"}</span>
+                        </div>
+                    </div>
+                </div>
+                <table class="itens-table">
+                    <thead>
+                        <tr>
+                            <th>PRODUTO (SUBPRODUTO)</th>
+                            <th class="col-un">UN</th>
+                            <th class="col-qtd">QTD.</th>
+                            <th class="col-valor">VALOR UNIT.</th>
+                            <th class="col-valor">VALOR TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itensHtml}</tbody>
+                </table>
+                <div class="total-pedido-footer">
+                    TOTAL DO PEDIDO: ${ImprimirPedidosScript_formatarMoeda(
+                        pedido.totalPedido
+                    )}
+                </div>
+            </div>
+        `;
+    }
+
+    function ImprimirPedidosScript_renderizarPedidos(dados) {
+        const containerPrincipal = document.getElementById(
+            "ImprimirPedidosScript_containerPrincipal"
+        );
+        containerPrincipal.innerHTML = "";
+
+        // Os dados agora vêm como um array de pedidos
+        if (!dados || dados.length === 0) {
+            containerPrincipal.innerHTML =
+                "<h1>Nenhum pedido para exibir</h1><p>Não há itens a comprar nesta cotação.</p>";
+            return;
+        }
+
+        // Agrupa por fornecedor apenas para a renderização principal
+        const dadosAgrupados = dados.reduce((acc, pedido) => {
+            const fornecedor = pedido.fornecedor;
+            if (!acc[fornecedor]) {
+                acc[fornecedor] = [];
+            }
+            acc[fornecedor].push(pedido);
+            return acc;
+        }, {});
+
+        for (const nomeFornecedor in dadosAgrupados) {
+            const pedidosDoFornecedor = dadosAgrupados[nomeFornecedor];
+            pedidosDoFornecedor.forEach((pedido) => {
+                // Reutiliza a nova função de geração de HTML
+                containerPrincipal.innerHTML += ImprimirPedidosScript_gerarHtmlParaPedido(pedido);
+            });
+        }
+    }
+
+    function ImprimirPedidosScript_executarImpressao() {
+        const stylesHtml = document.getElementById("page-styles").outerHTML;
+        const contentHtml = document.getElementById(
+            "ImprimirPedidosScript_containerPrincipal"
+        ).innerHTML;
+
+        const printWindow = window.open("", "", "height=700,width=900");
+        printWindow.document.write(
+            `<!DOCTYPE html><html><head><title>Imprimir Pedidos</title>${stylesHtml}</head><body>${contentHtml}</body></html>`
+        );
+        printWindow.document.close();
+        setTimeout(function () {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        }, 250);
+    }
+
+    /**
+     * Atualiza o status e imprime o checklist.
+     * MIGRAÇÃO: Convertido para usar ImprimirPedidosScript_apiCall (fetch).
+     */
+    function ImprimirPedidosScript_executarImpressaoChecklist() {
+        console.log(
+            "Checklist: Iniciando processo de atualização de status e impressão."
+        );
+
+        if (!ImprimirPedidosScript_idCotacaoAtual) {
+            alert(
+                "Erro crítico: O ID da cotação não está disponível. Não é possível continuar."
+            );
+            return;
+        }
+
+        const loadingOverlay = document.getElementById(
+            "ImprimirPedidosScript_loadingOverlay"
+        );
+        if (loadingOverlay) {
+            loadingOverlay.querySelector("p").textContent =
+                "Atualizando status da cotação...";
+            loadingOverlay.classList.remove("hidden");
+        }
+
+        // Chama a API para atualizar o status (usando o endpoint de Etapas)
+        ImprimirPedidosScript_apiCall('/api/etapas/atualizarStatus', {
+            body: {
+                idCotacao: ImprimirPedidosScript_idCotacaoAtual,
+                novoStatus: "Aguardando Faturamento"
+            }
+        })
+        .then((response) => {
+            if (loadingOverlay) loadingOverlay.classList.add("hidden");
+            console.log(
+                "Status atualizado com sucesso. Prosseguindo para a impressão do checklist."
+            );
+
+            const stylesHtml = document.getElementById("page-styles").outerHTML;
+            const checklistHtml = ImprimirPedidosScript_gerarHtmlParaChecklist();
+
+            const printWindow = window.open("", "", "height=700,width=900");
+            printWindow.document.write(
+                `<!DOCTYPE html><html><head><title>Imprimir Checklist de Separação</title>${stylesHtml}</head><body>${checklistHtml}</body></html>`
+            );
+            printWindow.document.close();
+            setTimeout(function () {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        })
+        .catch((error) => {
+            if (loadingOverlay) loadingOverlay.classList.add("hidden");
+            alert(
+                `Erro de comunicação com o servidor:\n\n${error.message}\n\nA impressão foi cancelada.`
+            );
+            console.error(
+                "Erro ao chamar /api/etapas/atualizarStatus:",
+                error
+            );
+        });
+    }
+
+    /**
+     * Gera uma string de HTML para a versão de checklist (lista única).
+     */
+    function ImprimirPedidosScript_gerarHtmlParaChecklist() {
+        if (
+            !dadosImpressaoGlobais ||
+            dadosImpressaoGlobais.length === 0
+        ) {
+            return "<h1>Nenhum item para o checklist.</h1>";
+        }
+
+        let htmlString = '<div class="page-container">';
+        htmlString += "<h2>Checklist Geral de Separação</h2>";
+
+        htmlString += `<table class="itens-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">FORNECEDOR</th>
+                <th>PRODUTO (SUBPRODUTO)</th>
+                <th class="col-un">UN</th>
+                <th class="col-qtd">QTD.</th>
+                <th class="col-check">CONFERIDO</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+        // Os dados agora são um array plano de pedidos
+        dadosImpressaoGlobais.forEach((pedido) => {
+            pedido.itens.forEach((item) => {
+                htmlString += `
+                    <tr>
+                        <td>${pedido.fornecedor}</td>
+                        <td>${item.subProduto}</td>
+                        <td class="col-un">${item.un}</td>
+                        <td class="col-qtd">${item.qtd}</td>
+                        <td class="col-check" style="font-family: monospace;">[ &nbsp; ]</td>
+                    </tr>
+                `;
+            });
+        });
+
+        htmlString += "</tbody></table></div>";
+        return htmlString;
+    }
+
+    /**
+     * Inicia o processo de gerar os PDFs no back-end e abrir o MODAL com os links.
+     * MIGRAÇÃO: Convertido para usar ImprimirPedidosScript_apiCall (fetch).
+     */
+    function ImprimirPedidosScript_iniciarGeracaoDeLinksManuais() {
+        if (!ImprimirPedidosScript_idCotacaoAtual) {
+            alert("Erro: ID da Cotação não encontrado.");
+            return;
+        }
+
+        const loadingOverlay = document.getElementById(
+            "ImprimirPedidosScript_loadingOverlay"
+        );
+        if (loadingOverlay) {
+            loadingOverlay.querySelector("p").textContent =
+                "Gerando PDFs para envio... Isso pode levar um momento.";
+            loadingOverlay.classList.remove("hidden");
+        }
+
+        // Chama a rota que GERA os PDFs no servidor
+        ImprimirPedidosScript_apiCall('/api/funcoes/gerarPdfsEnvioManual', {
+            body: {
+                idCotacao: ImprimirPedidosScript_idCotacaoAtual
+            }
+        })
+        .then((response) => {
+            if (loadingOverlay) loadingOverlay.classList.add("hidden");
+            // Abre o modal com os DADOS (que incluem a linkPdf)
+            ImprimirPedidosScript_abrirModalEnvioManual(response.dados);
+        })
+        .catch((error) => {
+            if (loadingOverlay) loadingOverlay.classList.add("hidden");
+            alert(
+                `Erro de comunicação ao gerar PDFs para envio: ${error.message}`
+            );
+        });
+    }
+
+    /**
+     * Abre e popula o modal de envio manual com os dados recebidos do controller.
+     * @param {Array<object>} dados - O array com os dados dos pedidos gerados.
+     */
+    function ImprimirPedidosScript_abrirModalEnvioManual(dados) {
+        const modalOverlay = document.getElementById(
+            "ImprimirPedidosScript_modalEnvioManualOverlay"
+        );
+        if (modalOverlay) {
+            ImprimirPedidosScript_renderizarListaDeEnvioManual(dados);
+            modalOverlay.classList.remove("hidden");
+        }
+    }
+
+    /**
+     * Fecha o modal de envio manual.
+     */
+    function ImprimirPedidosScript_fecharModalEnvioManual() {
+        const modalOverlay = document.getElementById(
+            "ImprimirPedidosScript_modalEnvioManualOverlay"
+        );
+        if (modalOverlay) {
+            modalOverlay.classList.add("hidden");
+        }
+    }
+
+    /**
+     * Renderiza a lista de pedidos dentro do modal.
+     * MUDANÇA: Agora cria o botão "Copiar Mensagem + Link".
+     * @param {Array<object>} dados - O array com os dados dos pedidos gerados.
+     */
+    function ImprimirPedidosScript_renderizarListaDeEnvioManual(dados) {
+        const container = document.getElementById(
+            "ImprimirPedidosScript_pedidosContainerModal"
+        );
+        if (!container) return;
+
+        container.innerHTML = ""; // Limpa a mensagem de "Carregando..."
+
+        if (!dados || dados.length === 0) {
+            container.innerHTML = "<p>Nenhum link de pedido foi gerado.</p>";
+            return;
+        }
+
+        dados.forEach((pedido) => {
+            const itemDiv = document.createElement("div");
+            itemDiv.className = "pedido-item";
+            itemDiv.style.cssText =
+                "display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid #e2e8f0;";
+
+            const infoDiv = document.createElement("div");
+            infoDiv.className = "pedido-info";
+            infoDiv.style.cssText = "display: flex; flex-direction: column;";
+
+            const fornecedorSpan = document.createElement("span");
+            fornecedorSpan.className = "fornecedor";
+            fornecedorSpan.textContent = pedido.fornecedor;
+            fornecedorSpan.style.cssText = "font-weight: 600; font-size: 1.1rem;";
+
+            const empresaSpan = document.createElement("span");
+            empresaSpan.className = "empresa";
+            empresaSpan.textContent = `Faturar para: ${pedido.empresaFaturada}`;
+            empresaSpan.style.cssText = "font-size: 0.9rem; color: #64748b;";
+
+            infoDiv.appendChild(fornecedorSpan);
+            infoDiv.appendChild(empresaSpan);
+
+            const copyButton = document.createElement("button");
+            copyButton.className = "copy-button";
+            copyButton.textContent = "Copiar Mensagem + Link";
+            copyButton.style.cssText =
+                "padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; color: #fff; background-color: #0891b2; border: none; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.2s;";
+
+            // Armazena todos os dados do pedido no dataset do botão
+            copyButton.dataset.pedido = JSON.stringify(pedido);
+
+            copyButton.addEventListener(
+                "click",
+                ImprimirPedidosScript_copiarParaAreaDeTransferencia
+            );
+
+            itemDiv.appendChild(infoDiv);
+            itemDiv.appendChild(copyButton);
+            container.appendChild(itemDiv);
+        });
+    }
+
+    /**
+     * Copia a mensagem personalizada e o link do PDF para a área de transferência.
+     * @param {Event} event - O evento de clique do botão.
+     */
+    function ImprimirPedidosScript_copiarParaAreaDeTransferencia(event) {
+        const botao = event.currentTarget;
+        const pedido = JSON.parse(botao.dataset.pedido);
+
+        // Constrói a URL absoluta para o PDF
+        // window.location.origin nos dá "http://localhost:8080" ou o domínio de produção
+        const urlAbsolutaPdf = window.location.origin + pedido.linkPdf;
+
+        const totalFormatado = ImprimirPedidosScript_formatarMoeda(pedido.totalPedido);
+        const condicaoPagamento = pedido.condicaoPagamento || "Não informada";
+
+        const textoParaCopiar = `Pedido ${pedido.numeroCotacao} - ${pedido.fornecedor}
+Faturar para: ${pedido.empresaFaturada}
+Condição de Pagamento: ${condicaoPagamento}
+Valor Total: ${totalFormatado}
+
+*Atenção à forma de pagamento escolhida, qualquer coisa estou à disposição.*
+
+Link para o pedido: ${urlAbsolutaPdf}`; // Usa a URL absoluta
+
+        navigator.clipboard
+            .writeText(textoParaCopiar)
+            .then(() => {
+                const textoOriginal = botao.textContent;
+                botao.textContent = "Copiado!";
+                botao.style.backgroundColor = "#16a34a"; // Verde sucesso
+
+                setTimeout(() => {
+                    botao.textContent = textoOriginal;
+                    botao.style.backgroundColor = "#0891b2"; // Cor original
+                }, 2000);
+            })
+            .catch((err) => {
+                console.error("Falha ao copiar texto: ", err);
+                alert("Não foi possível copiar o texto. Por favor, copie manualmente.");
+            });
+    }
+
+    /**
+     * Formata um número como moeda BRL.
+     */
+    function ImprimirPedidosScript_formatarMoeda(valor) {
+        const numero = Number(valor) || 0;
+        return numero.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+        });
+    }
+</script>

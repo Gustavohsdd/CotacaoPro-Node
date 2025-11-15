@@ -25,6 +25,7 @@ const FuncoesRouterApi = require('./Routes/funcoes');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+
 // --- Autenticação com Google ---
 // Esta função nos dará um cliente autenticado para usar as APIs
 async function getAuthClient() {
@@ -131,12 +132,13 @@ app.get('/view/:viewName', async (req, res) => {
     "produtos": "ProdutosView",
     "subprodutos": "SubProdutosView",
     "cotacoes": "CotacoesView",
-    "cotacaoIndividual": "CotacaoIndividualView", // Esta é a view que estamos consertando
+    "cotacaoIndividual": "CotacaoIndividualView",
     "contagemdeestoque": "ContagemDeEstoqueView",
     "marcarprodutos": "MarcacaoProdutosView",
     "conciliacaonf": "ConciliacaoNFView",
     "relatoriorateio": "RelatorioRateioView",
-    "notasfiscais": "NotasFiscaisView"
+    "notasfiscais": "NotasFiscaisView",
+    "ImprimirPedidosView": "ImprimirPedidosView"
     // Adicione os outros mapeamentos do seu App.js aqui
   };
 

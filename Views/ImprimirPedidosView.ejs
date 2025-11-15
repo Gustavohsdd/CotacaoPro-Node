@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos para Impressão</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style id="page-styles">
+        /* Estilos para visualização na tela */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e9ecef;
+            color: #212529;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        .print-button-container {
+            max-width: 900px;
+            margin: 0 auto 1.5rem auto;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        #print-button, #checklist-button, #manual-send-button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #manual-send-button {
+            background-color: #0891b2; /* Um tom de azul-petróleo/ciano */
+        }
+        #manual-send-button:hover {
+            background-color: #0e7490;
+        }
+
+        #print-button {
+            background-color: #0d6efd;
+        }
+        #print-button:hover {
+            background-color: #0b5ed7;
+        }
+
+        #checklist-button {
+            background-color: #f97316;
+        }
+        #checklist-button:hover {
+            background-color: #ea580c;
+        }
+
+        .page-container {
+            max-width: 900px;
+            margin: auto;
+        }
+        
+        /* Card de cada pedido */
+        .pedido-container {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            padding: 1rem 1.5rem 1.5rem 1.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        
+        /* Cabeçalho do pedido */
+        .pedido-header-fornecedor {
+            border-bottom: 1px solid #ced4da;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        /* Nome do fornecedor */
+        h2 {
+            font-size: 1.5rem;
+            color: #343a40;
+            margin-bottom: 0.75rem;
+        }
+
+        /* Grade de informações */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .info-grid strong {
+            font-weight: 500;
+            color: #495057;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Tabela de itens */
+        .itens-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Células do cabeçalho da tabela */
+        .itens-table thead th {
+            background-color: #343a40;
+            color: #ffffff;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Células do corpo da tabela */
+        .itens-table tbody td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .itens-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .itens-table .col-un, .itens-table .col-qtd {
+            text-align: center;
+            width: 8%;
+        }
+        .itens-table .col-valor {
+             text-align: right;
+             width: 20%;
+        }
+        .itens-table .col-check {
+             text-align: center;
+             width: 15%;
+        }
+
+        .total-pedido-footer {
+            margin-top: 1.5rem;
+            text-align: right;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(230, 230, 230, 0.8); 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 2000; font-size: 1.2rem; color: #0d6efd;
+        }
+        .loading-overlay.hidden { display: none; }
+        
+        @media print {
+            body {
+                padding: 0;
+                margin: 0;
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+
+            .page-container {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0.5in !important;
+                box-sizing: border-box;
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            .pedido-container {
+                break-after: page;
+                page-break-after: page;
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="ImprimirPedidosScript_loadingOverlay" class="loading-overlay no-print">
+        <p>Carregando dados dos pedidos...</p>
+    </div>
+
+    <div class="print-button-container no-print">
+        <button id="manual-send-button">Enviar/Imprimir Manual</button>
+        <button id="checklist-button">Imprimir CheckList</button>
+        <button id="print-button">Imprimir Pedidos</button>
+    </div>
+
+    <div class="page-container" id="ImprimirPedidosScript_containerPrincipal">
+        </div>
+    
+    <div id="ImprimirPedidosScript_modalEnvioManualOverlay" class="loading-overlay no-print hidden" style="background-color: rgba(0, 0, 0, 0.6); align-items: center; justify-content: center;">
+        <div id="ImprimirPedidosScript_modalEnvioManualContent" style="background-color: #fff; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 900px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <div id="ImprimirPedidosScript_modalHeader" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1rem;">
+                <h1 style="color: #1e3a8a; margin: 0; font-size: 1.75rem;">Enviar Pedidos Manualmente</h1>
+                <button id="ImprimirPedidosScript_btnFecharModalEnvioManual" style="background: none; border: none; font-size: 2rem; cursor: pointer; color: #6b7280;">&times;</button>
+            </div>
+            
+            <div id="ImprimirPedidosScript_modalBody" style="overflow-y: auto; flex-grow: 1;">
+                <p>Use os botões abaixo para copiar a mensagem para o fornecedor ou para imprimir um pedido individual.</p>
+                
+                <div class="pedidos-list-header" style="margin-top: 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem; font-weight: 600; font-size: 1.25rem;">
+                    Pedidos Gerados
+                </div>
+                <div id="ImprimirPedidosScript_pedidosContainerModal">
+                    <p class="loading" style="text-align: center; font-size: 1.2rem; color: #64748b;">Carregando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+        
+    <%- include('ImprimirPedidosScript') %>
+</body>
+</html>

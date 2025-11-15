@@ -17,7 +17,9 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "google-auth-library": "^10.5.0",
-    "googleapis": "^166.0.0"
+    "googleapis": "^166.0.0",
+    "mime-types": "^3.0.1",
+    "puppeteer": "^24.30.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
