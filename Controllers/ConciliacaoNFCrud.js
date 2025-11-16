@@ -45,7 +45,16 @@ function mapDataToObjects(data, V) {
     const obj = {};
     headerKeys.forEach(key => {
       const index = indices[key];
-      obj[key] = row[index];
+      const valor = row[index];
+      // --- INÍCIO DA CORREÇÃO ---
+      // Se o valor for uma string, limpa os espaços invisíveis e normais.
+      if (typeof valor === 'string') {
+        // Substitui non-breaking spaces (e outros) por um espaço normal e depois faz o trim.
+        obj[key] = valor.replace(/[\s\u00A0]+/g, ' ').trim();
+      } else {
+        obj[key] = valor;
+      }
+      // --- FIM DA CORREÇÃO ---
     });
     return obj;
   });
@@ -115,9 +124,9 @@ async function getItensNF(sheets, chavesAcesso = null) {
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_ITENS,
     });
-    
+
     const allItens = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_ITENS);
-    
+
     if (chavesAcesso && Array.isArray(chavesAcesso)) {
       const chavesSet = new Set(chavesAcesso);
       // Filtra os itens pela Chave de Acesso
@@ -143,9 +152,9 @@ async function getFaturasNF(sheets, chavesAcesso = null) {
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_FATURAS,
     });
-    
+
     const allFaturas = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_FATURAS);
-    
+
     if (chavesAcesso && Array.isArray(chavesAcesso)) {
       const chavesSet = new Set(chavesAcesso);
       // Filtra as faturas pela Chave de Acesso
@@ -171,9 +180,9 @@ async function getTransporteNF(sheets, chavesAcesso = null) {
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_TRANSPORTE,
     });
-    
+
     const allTransporte = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_TRANSPORTE);
-    
+
     if (chavesAcesso && Array.isArray(chavesAcesso)) {
       const chavesSet = new Set(chavesAcesso);
       // Filtra os dados de transporte pela Chave de Acesso
@@ -199,9 +208,9 @@ async function getTributosTotaisNF(sheets, chavesAcesso = null) {
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_TRIBUTOS_TOTAIS,
     });
-    
+
     const allTributos = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_TRIBUTOS_TOTAIS);
-    
+
     if (chavesAcesso && Array.isArray(chavesAcesso)) {
       const chavesSet = new Set(chavesAcesso);
       // Filtra os tributos pela Chave de Acesso
@@ -245,11 +254,11 @@ async function getContasAPagar(sheets, chavesAcesso = null) {
       spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
       range: constants.ABA_FINANCEIRO_CONTAS_A_PAGAR,
     });
-    
+
     const allContas = mapDataToObjects(res.data.values, constants.CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR);
-    
+
     if (chavesAcesso && Array.isArray(chavesAcesso)) {
-       const chavesSet = new Set(chavesAcesso);
+      const chavesSet = new Set(chavesAcesso);
       // Filtra as contas pela Chave de Acesso
       return allContas.filter(conta => chavesSet.has(conta["Chave de Acesso"]));
     }
@@ -403,7 +412,7 @@ async function updateContasAPagar(sheets, dataObjects) {
   try {
     const rows = dataObjects.map(obj => mapObjectToRow(obj, constants.CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR));
     if (rows.length === 0) return;
-    
+
     const res = await sheets.spreadsheets.values.append({
       spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
       range: constants.ABA_FINANCEIRO_CONTAS_A_PAGAR,
@@ -435,7 +444,7 @@ async function findChaveAcesso(sheets, chaveAcesso) {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: constants.ID_PLANILHA_NF,
       // Busca apenas a coluna A (Chave de Acesso)
-      range: `${constants.ABA_NF_NOTAS_FISCAIS}!A2:A`, 
+      range: `${constants.ABA_NF_NOTAS_FISCAIS}!A2:A`,
     });
 
     if (res.data.values) {
@@ -558,7 +567,7 @@ async function obterCotacoesAbertas(sheets) {
       if (b.idCotacao !== a.idCotacao) return b.idCotacao - a.idCotacao;
       return a.fornecedor.localeCompare(b.fornecedor);
     });
-    
+
     return resultado;
   } catch (e) {
     console.error(`Erro em obterCotacoesAbertas: ${e.message}\n${e.stack}`);
@@ -588,7 +597,7 @@ async function obterMapeamentoConciliacao(sheets) {
       itemCotacao: linha[colItemCotacao],
       descricaoNF: linha[colDescricaoNF]
     })).filter(item => item.itemCotacao && item.descricaoNF);
-    
+
     return mapeamento;
   } catch (e) {
     console.error(`Erro em obterMapeamentoConciliacao: ${e.message}`);
@@ -687,7 +696,7 @@ async function obterDadosGeraisDasNFs(sheets, chavesAcessoNF) {
         });
       }
     }
-    
+
     return Object.values(resultadosMap);
   } catch (e) {
     console.error(`Erro em obterDadosGeraisDasNFs: ${e.message}\n${e.stack}`);
@@ -710,10 +719,367 @@ async function obterSetoresUnicos(sheets) {
   }
 }
 
+/**
+ * [HELPER] Busca o ID de uma aba (Sheet) pelo seu nome.
+ * (Necessário para operações de exclusão/atualização por lote)
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {string} spreadsheetId - ID da planilha.
+ * @param {string} sheetName - Nome da aba.
+ * @returns {Promise<number|null>}
+ */
+async function _getSheetIdByName(sheets, spreadsheetId, sheetName) {
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetId,
+    });
+    const sheet = response.data.sheets.find(s => s.properties.title === sheetName);
+    return sheet ? sheet.properties.sheetId : null;
+  } catch (error) {
+    console.error(`[ConciliacaoNFCrud] Erro ao buscar ID da aba "${sheetName}": ${error.message}`);
+    throw new Error(`Erro ao buscar ID da aba '${sheetName}'.`);
+  }
+}
+
+/**
+ * [MIGRADO] Atualiza o status de uma ou mais NFs na aba 'NotasFiscais'.
+ * Baseado em: ConciliacaoNFCrud_atualizarStatusNF
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {Array<string>} chavesAcesso - Array de chaves de acesso a serem atualizadas.
+ * @param {string|null} idCotacao - O ID da cotação para vincular (ou null).
+ * @param {string} novoStatus - O novo status (ex: "Conciliada").
+ */
+async function atualizarStatusNF(sheets, chavesAcesso, idCotacao, novoStatus) {
+  console.log(`[ConciliacaoNFCrud] Atualizando status de ${chavesAcesso.length} NFs para '${novoStatus}'.`);
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_NF, constants.ABA_NF_NOTAS_FISCAIS);
+    const cabecalhos = dados[0];
+    const colMap = {
+      chave: cabecalhos.indexOf("Chave de Acesso"),
+      status: cabecalhos.indexOf("Status da Conciliação"),
+      idCot: cabecalhos.indexOf("ID da Cotação (Sistema)")
+    };
+
+    if (Object.values(colMap).includes(-1)) {
+      throw new Error("Colunas essenciais (Chave, Status, ID Cotação) não encontradas na aba 'NotasFiscais'.");
+    }
+
+    const chavesSet = new Set(chavesAcesso);
+    const updateRequests = [];
+    const sheetId = await _getSheetIdByName(sheets, constants.ID_PLANILHA_NF, constants.ABA_NF_NOTAS_FISCAIS);
+
+    for (let i = 1; i < dados.length; i++) {
+      if (chavesSet.has(dados[i][colMap.chave])) {
+        // Adiciona requisição para atualizar Status
+        updateRequests.push({
+          updateCells: {
+            rows: [{ values: [{ userEnteredValue: { stringValue: novoStatus } }] }],
+            fields: "userEnteredValue",
+            start: { sheetId: sheetId, rowIndex: i, columnIndex: colMap.status }
+          }
+        });
+        // Adiciona requisição para atualizar ID da Cotação (se fornecido)
+        if (idCotacao !== null) {
+          updateRequests.push({
+            updateCells: {
+              rows: [{ values: [{ userEnteredValue: { stringValue: String(idCotacao) } }] }],
+              fields: "userEnteredValue",
+              start: { sheetId: sheetId, rowIndex: i, columnIndex: colMap.idCot }
+            }
+          });
+        }
+      }
+    }
+
+    if (updateRequests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: constants.ID_PLANILHA_NF,
+        resource: { requests: updateRequests }
+      });
+    }
+    console.log(`[ConciliacaoNFCrud] Status de NFs atualizado.`);
+    return true;
+
+  } catch (e) {
+    console.error(`ERRO CRÍTICO em atualizarStatusNF: ${e.toString()}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [MIGRADO] Atualiza o mapeamento de conciliação.
+ * Baseado em: ConciliacaoNFCrud_atualizarMapeamentoConciliacao
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {Array<object>} novosMapeamentos - Array de { itemCotacao, descricaoNF, gtin }.
+ */
+async function atualizarMapeamentoConciliacao(sheets, novosMapeamentos) {
+  if (!novosMapeamentos || novosMapeamentos.length === 0) {
+    return;
+  }
+  console.log(`[ConciliacaoNFCrud] Atualizando mapeamento com ${novosMapeamentos.length} novos itens.`);
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_CONCILIACAO);
+    const cabecalhos = dados[0] || ["Item da Cotação", "Descrição Produto (NF)", "GTIN/EAN (Cód. Barras)"];
+    const dadosAtuais = dados.slice(1);
+
+    const colMap = {
+      itemCotacao: cabecalhos.indexOf("Item da Cotação"),
+      descricaoNF: cabecalhos.indexOf("Descrição Produto (NF)"),
+      gtin: cabecalhos.indexOf("GTIN/EAN (Cód. Barras)")
+    };
+    if (Object.values(colMap).includes(-1)) {
+      throw new Error(`Colunas ("Item da Cotação", "Descrição Produto (NF)", "GTIN/EAN (Cód. Barras)") não encontradas na aba "${constants.ABA_CONCILIACAO}".`);
+    }
+
+    const mapaExistente = new Set(dadosAtuais.map(linha => `${linha[colMap.itemCotacao]}#${linha[colMap.descricaoNF]}`));
+    const linhasParaAdicionar = [];
+
+    novosMapeamentos.forEach(item => {
+      const chaveUnica = `${item.itemCotacao}#${item.descricaoNF}`;
+      if (!mapaExistente.has(chaveUnica)) {
+        const novaLinha = new Array(cabecalhos.length).fill('');
+        novaLinha[colMap.itemCotacao] = item.itemCotacao;
+        novaLinha[colMap.descricaoNF] = item.descricaoNF;
+        novaLinha[colMap.gtin] = item.gtin || '';
+        linhasParaAdicionar.push(novaLinha);
+        mapaExistente.add(chaveUnica); // Adiciona ao set para evitar duplicatas no mesmo lote
+      }
+    });
+
+    if (linhasParaAdicionar.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: constants.ID_PLANILHA_PRINCIPAL,
+        range: constants.ABA_CONCILIACAO,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: linhasParaAdicionar },
+      });
+      console.log(`[ConciliacaoNFCrud] ${linhasParaAdicionar.length} novos mapeamentos adicionados.`);
+    }
+  } catch (e) {
+    console.error(`ERRO em atualizarMapeamentoConciliacao: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [MIGRADO] Salva as alterações de conciliação na aba 'Cotacoes'.
+ * Baseado em: ConciliacaoNFCrud_salvarAlteracoesEmLote
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {Array<object>} conciliacoes - Payload de conciliações.
+ * @param {Array<object>} itensCortados - Payload de itens cortados.
+ */
+async function salvarAlteracoesEmLote(sheets, conciliacoes, itensCortados) {
+  console.log(`[ConciliacaoNFCrud] Salvando alterações em lote. Conciliações: ${conciliacoes.length}, Itens cortados: ${itensCortados.length}`);
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_COTACOES);
+    const cabecalhos = dados[0];
+    const colMap = {
+      id: cabecalhos.indexOf("ID da Cotação"),
+      fornecedor: cabecalhos.indexOf("Fornecedor"),
+      subProduto: cabecalhos.indexOf("SubProduto"),
+      statusSub: cabecalhos.indexOf("Status do SubProduto"),
+      divergencia: cabecalhos.indexOf("Divergencia da Nota"),
+      qtdNota: cabecalhos.indexOf("Quantidade na Nota"),
+      precoNota: cabecalhos.indexOf("Preço da Nota"),
+      numeroNota: cabecalhos.indexOf("Número da Nota")
+    };
+    if (Object.values(colMap).includes(-1)) {
+      throw new Error("Não foi possível encontrar todas as colunas necessárias na aba de Cotações.");
+    }
+
+    const updateRequests = [];
+    const sheetId = await _getSheetIdByName(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_COTACOES);
+
+    // Mapeia conciliações
+    conciliacoes.forEach(conc => {
+      const mapaItens = new Map(conc.itensConciliados.map(item => [item.subProduto, item]));
+      for (let i = 1; i < dados.length; i++) {
+        if (dados[i][colMap.id] == conc.idCotacao && dados[i][colMap.fornecedor] == conc.nomeFornecedor) {
+          const subProdutoLinha = dados[i][colMap.subProduto];
+          if (mapaItens.has(subProdutoLinha)) {
+            const itemConciliado = mapaItens.get(subProdutoLinha);
+            // Adiciona requests para atualizar as células
+            updateRequests.push(
+              { updateCells: { rows: [{ values: [{ userEnteredValue: { stringValue: "Faturado" } }] }], fields: "userEnteredValue", start: { sheetId, rowIndex: i, columnIndex: colMap.statusSub } } },
+              { updateCells: { rows: [{ values: [{ userEnteredValue: { stringValue: itemConciliado.divergenciaNota } }] }], fields: "userEnteredValue", start: { sheetId, rowIndex: i, columnIndex: colMap.divergencia } } },
+              { updateCells: { rows: [{ values: [{ userEnteredValue: { numberValue: itemConciliado.quantidadeNota } }] }], fields: "userEnteredValue", start: { sheetId, rowIndex: i, columnIndex: colMap.qtdNota } } },
+              { updateCells: { rows: [{ values: [{ userEnteredValue: { numberValue: itemConciliado.precoNota } }] }], fields: "userEnteredValue", start: { sheetId, rowIndex: i, columnIndex: colMap.precoNota } } },
+              { updateCells: { rows: [{ values: [{ userEnteredValue: { stringValue: conc.numeroNF } }] }], fields: "userEnteredValue", start: { sheetId, rowIndex: i, columnIndex: colMap.numeroNota } } }
+            );
+          }
+        }
+      }
+    });
+
+    // Mapeia itens cortados
+    const mapaCortados = new Map();
+    itensCortados.forEach(item => {
+      const key = `${item.idCotacao}-${item.nomeFornecedor}`;
+      if (!mapaCortados.has(key)) mapaCortados.set(key, new Set());
+      mapaCortados.get(key).add(item.subProduto);
+    });
+    for (let i = 1; i < dados.length; i++) {
+      const key = `${dados[i][colMap.id]}-${dados[i][colMap.fornecedor]}`;
+      if (mapaCortados.has(key) && mapaCortados.get(key).has(dados[i][colMap.subProduto])) {
+        updateRequests.push({
+          updateCells: {
+            rows: [{ values: [{ userEnteredValue: { stringValue: "Cortado" } }] }],
+            fields: "userEnteredValue",
+            start: { sheetId, rowIndex: i, columnIndex: colMap.statusSub }
+          }
+        });
+      }
+    }
+
+    if (updateRequests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: constants.ID_PLANILHA_PRINCIPAL,
+        resource: { requests: updateRequests }
+      });
+    }
+
+    console.log("[ConciliacaoNFCrud] Planilha de Cotações atualizada.");
+    return true;
+  } catch (e) {
+    console.error(`ERRO CRÍTICO em salvarAlteracoesEmLote: ${e.toString()}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [MIGRADO] Salva novas regras de rateio.
+ * Baseado em: RateioCrud_salvarNovasRegrasDeRateio
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {Array<object>} novasRegras - Array de { itemCotacao, setor, porcentagem }.
+ */
+async function salvarNovasRegrasDeRateio(sheets, novasRegras) {
+  if (!novasRegras || novasRegras.length === 0) {
+    return;
+  }
+  console.log(`[ConciliacaoNFCrud] Salvando ${novasRegras.length} novas regras de rateio.`);
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_FINANCEIRO, constants.ABA_FINANCEIRO_REGRAS_RATEIO);
+    const cabecalhos = dados[0] || ["Item da Cotação", "Setor", "Porcentagem"];
+    const dadosAtuais = dados.slice(1);
+
+    const colMap = {
+      item: cabecalhos.indexOf("Item da Cotação"),
+      setor: cabecalhos.indexOf("Setor"),
+      percent: cabecalhos.indexOf("Porcentagem")
+    };
+    if (Object.values(colMap).includes(-1)) {
+      throw new Error(`Colunas ("Item da Cotação", "Setor", "Porcentagem") não encontradas na aba "${constants.ABA_FINANCEIRO_REGRAS_RATEIO}".`);
+    }
+
+    const mapaExistente = new Set(dadosAtuais.map(linha => `${linha[colMap.item]}#${linha[colMap.setor]}`));
+    const linhasParaAdicionar = [];
+
+    novasRegras.forEach(regra => {
+      const chaveUnica = `${regra.itemCotacao}#${regra.setor}`;
+      if (!mapaExistente.has(chaveUnica)) {
+        const novaLinha = new Array(cabecalhos.length).fill('');
+        novaLinha[colMap.item] = regra.itemCotacao;
+        novaLinha[colMap.setor] = regra.setor;
+        novaLinha[colMap.percent] = regra.porcentagem;
+        linhasParaAdicionar.push(novaLinha);
+        mapaExistente.add(chaveUnica);
+      }
+    });
+
+    if (linhasParaAdicionar.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
+        range: constants.ABA_FINANCEIRO_REGRAS_RATEIO,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: linhasParaAdicionar },
+      });
+      console.log(`[ConciliacaoNFCrud] ${linhasParaAdicionar.length} novas regras de rateio salvas.`);
+    }
+  } catch (e) {
+    console.error(`ERRO em salvarNovasRegrasDeRateio: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [MIGRADO] Salva as linhas de contas a pagar.
+ * Baseado em: RateioCrud_salvarContasAPagar
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {Array<object>} linhasContasAPagar - Array de objetos de contas a pagar.
+ */
+async function salvarContasAPagar(sheets, linhasContasAPagar) {
+  if (!linhasContasAPagar || linhasContasAPagar.length === 0) {
+    return;
+  }
+  console.log(`[ConciliacaoNFCrud] Salvando ${linhasContasAPagar.length} linhas de Contas a Pagar.`);
+  try {
+    const cabecalhos = constants.CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR;
+    const linhasParaAdicionar = linhasContasAPagar.map(obj => mapObjectToRow(obj, cabecalhos));
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
+      range: constants.ABA_FINANCEIRO_CONTAS_A_PAGAR,
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: linhasParaAdicionar },
+    });
+    console.log(`[ConciliacaoNFCrud] ${linhasParaAdicionar.length} linhas salvas em Contas a Pagar.`);
+  } catch (e) {
+    console.error(`ERRO em salvarContasAPagar: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [MIGRADO] Atualiza o status do rateio na aba 'NotasFiscais'.
+ * Baseado em: RateioCrud_atualizarStatusRateio
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {string} chaveAcesso - A chave de acesso da NF.
+ * @param {string} novoStatus - O novo status (ex: "Concluído").
+ */
+async function atualizarStatusRateio(sheets, chaveAcesso, novoStatus) {
+  console.log(`[ConciliacaoNFCrud] Atualizando status de rateio para NF ${chaveAcesso}: '${novoStatus}'.`);
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_NF, constants.ABA_NF_NOTAS_FISCAIS);
+    const cabecalhos = dados[0];
+    const colMap = {
+      chave: cabecalhos.indexOf("Chave de Acesso"),
+      status: cabecalhos.indexOf("Status do Rateio")
+    };
+    if (Object.values(colMap).includes(-1)) {
+      throw new Error("Colunas 'Chave de Acesso' ou 'Status do Rateio' não encontradas em 'NotasFiscais'.");
+    }
+
+    const updateRequests = [];
+    const sheetId = await _getSheetIdByName(sheets, constants.ID_PLANILHA_NF, constants.ABA_NF_NOTAS_FISCAIS);
+
+    for (let i = 1; i < dados.length; i++) {
+      if (dados[i][colMap.chave] === chaveAcesso) {
+        updateRequests.push({
+          updateCells: {
+            rows: [{ values: [{ userEnteredValue: { stringValue: novoStatus } }] }],
+            fields: "userEnteredValue",
+            start: { sheetId: sheetId, rowIndex: i, columnIndex: colMap.status }
+          }
+        });
+        break; // Assume chave de acesso única
+      }
+    }
+
+    if (updateRequests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: constants.ID_PLANILHA_NF,
+        resource: { requests: updateRequests }
+      });
+    }
+    return true;
+  } catch (e) {
+    console.error(`ERRO em atualizarStatusRateio: ${e.toString()}\n${e.stack}`);
+    throw e;
+  }
+}
 
 // Exporta as funções para serem usadas pelo Controller
 module.exports = {
-  // Funções de Leitura
+  // Funções de Leitura (Já existentes)
   getNotasFiscais,
   getItensNF,
   getFaturasNF,
@@ -721,28 +1087,26 @@ module.exports = {
   getTributosTotaisNF,
   getRegrasRateio,
   getContasAPagar,
-  
-  // [NOVAS FUNÇÕES EXPORTADAS]
   obterCotacoesAbertas,
   obterMapeamentoConciliacao,
   obterTodosItensCotacoesAbertas,
   obterDadosGeraisDasNFs,
   obterSetoresUnicos,
 
-  // Funções de Escrita
-  updateNotasFiscais,
-  updateItensNF,
-  updateFaturasNF,
-  updateTransporteNF,
-  updateTributosTotaisNF,
-  updateContasAPagar,
+  // Funções de Escrita (NOVAS)
+  atualizarStatusNF,
+  atualizarMapeamentoConciliacao,
+  salvarAlteracoesEmLote,
+  salvarNovasRegrasDeRateio,
+  salvarContasAPagar,
+  atualizarStatusRateio,
 
-  // Funções de Verificação e Drive
+  // Funções de Verificação e Drive (Já existentes)
   findChaveAcesso,
   getXmlFiles,
   getXmlContent,
 
-  // Helpers (exportados para o Controller usar se precisar)
+  // Helpers (Já existentes)
   mapDataToObjects,
   mapObjectToRow,
   findHeaderIndices

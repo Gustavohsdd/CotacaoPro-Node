@@ -466,26 +466,139 @@ const getDadosPagina = async (req, res) => {
 
 
 /**
- * [NOVO - MIGRADO] Salva o lote de conciliações, rateios e atualizações de status.
+ * [COMPLETO - MIGRADO] Salva o lote de conciliações, rateios e atualizações de status.
  * (Endpoint: POST /conciliacaonf/salvar-lote)
  */
 const salvarLoteUnificado = async (req, res) => {
-  // (Esta função permanece a mesma do seu arquivo original, pois a lógica
-  // de implementação do salvamento ainda estava pendente)
   try {
-    const payload = req.body;
+    const dadosLote = req.body;
+    const { conciliacoes, itensCortados, novosMapeamentos, statusUpdates, rateios } = dadosLote;
     
-    // TODO: Implementar a lógica de salvamento em lote.
-    // Esta lógica é complexa e depende de *muitos* outros CRUDs.
+    console.log("[Controller] Iniciando salvamento de lote unificado (Conciliação + Rateio).");
+
+    // 1. Salvar alterações da Conciliação (na aba Cotações)
+    if (conciliacoes && conciliacoes.length > 0) {
+      // Esta função atualiza 'Faturado', 'Divergencia', 'Qtd Nota', 'Preço Nota', 'Número da Nota'
+      await crud.salvarAlteracoesEmLote(req.sheets, conciliacoes, itensCortados || []);
+      
+      // Atualiza o mapeamento para conciliação automática futura
+      await crud.atualizarMapeamentoConciliacao(req.sheets, novosMapeamentos || []);
+
+      console.log(`[Controller] ${conciliacoes.length} conciliação(ões) salvas.`);
+    }
+
+    // 2. Salvar atualizações de Status (Ex: Sem Pedido, Bonificação, NF Tipo B)
+    if (statusUpdates && statusUpdates.length > 0) {
+      // Agrupa por status para fazer menos chamadas
+      const updatesByStatus = statusUpdates.reduce((acc, update) => {
+        if (!acc[update.novoStatus]) acc[update.novoStatus] = [];
+        acc[update.novoStatus].push(update.chaveAcesso);
+        return acc;
+      }, {});
+      
+      for (const status in updatesByStatus) {
+        // Encontra o ID da cotação (se houver) para este lote de chaves
+        // A lógica assume que todas as chaves em um 'statusUpdate' pertencem à mesma cotação, se aplicável
+        let idCotacaoParaNF = null;
+        if (conciliacoes && conciliacoes.length > 0) {
+           const conc = conciliacoes.find(c => c.chavesAcessoNF.includes(updatesByStatus[status][0]));
+           if(conc) idCotacaoParaNF = conc.idCotacao;
+        }
+
+        // Atualiza o status na aba NotasFiscais
+        await crud.atualizarStatusNF(req.sheets, updatesByStatus[status], idCotacaoParaNF, status);
+        console.log(`[Controller] Status de ${updatesByStatus[status].length} NF(s) atualizado para '${status}'.`);
+      }
+    }
     
-    console.log('Recebido payload para salvar lote:', JSON.stringify(payload, null, 2));
+    // 3. Salvar dados do Rateio
+    if (rateios && rateios.length > 0) {
+        const todasAsLinhasContasAPagar = [];
+        const todasAsNovasRegras = [];
+        const todasAsChavesParaAtualizar = new Set();
+        
+        for (const dadosRateio of rateios) {
+            const { chaveAcesso, totaisPorSetor, novasRegras, numeroNF, mapaSetorParaItens } = dadosRateio;
+            todasAsChavesParaAtualizar.add(chaveAcesso);
 
-    // Simulação de sucesso
-    res.json({ success: true, message: "Lote salvo com sucesso (LÓGICA PENDENTE DE IMPLEMENTAÇÃO)." });
+            if (novasRegras && novasRegras.length > 0) {
+                todasAsNovasRegras.push(...novasRegras);
+            }
+            
+            // Busca as faturas desta NF específica
+            const faturas = await crud.getFaturasNF(req.sheets, [chaveAcesso]);
+            let valorTotalRateadoNota = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
 
-  } catch (err) {
-    console.error('Erro ao salvar lote unificado:', err);
-    res.status(500).json({ success: false, message: err.message });
+            // [LÓGICA DO GAS] Trata faturas existentes ou cria lançamento "À Vista"
+            if (faturas && faturas.length > 0) {
+                const numFaturasOriginais = faturas.length;
+                const numSetores = Object.keys(totaisPorSetor).length;
+                const totalNovosTitulosNota = numFaturasOriginais * numSetores;
+                let contadorParcelaNota = 1;
+
+                faturas.forEach(fatura => {
+                    const valorParcelaOriginal = parseFloat(fatura["Valor da Parcela"]) || 0;
+                    for (const setor in totaisPorSetor) {
+                        const resumoItens = mapaSetorParaItens[setor] ? mapaSetorParaItens[setor].join(', ') : `NF ${numeroNF}`;
+                        const numeroParcelaFormatado = `${contadorParcelaNota++}/${totalNovosTitulosNota}(Ref: ${fatura["Número da Parcela"]})`;
+                        
+                        // [CORREÇÃO] O valor por setor deve ser (ValorRateadoSetor / ValorTotalRateado) * ValorDaParcela
+                        const valorPorSetorCalculado = (valorTotalRateadoNota > 0.001) 
+                            ? (totaisPorSetor[setor] / valorTotalRateadoNota) * valorParcelaOriginal
+                            : 0;
+
+                        todasAsLinhasContasAPagar.push({
+                            'Chave de Acesso': chaveAcesso,
+                            'Número da Fatura': fatura["Número da Fatura"],
+                            'Número da Parcela': numeroParcelaFormatado,
+                            'Resumo dos Itens': resumoItens,
+                            'Data de Vencimento': fatura["Data de Vencimento"], // Já deve vir no formato de data/string
+                            'Valor da Parcela': valorParcelaOriginal,
+                            'Setor': setor,
+                            'Valor por Setor': valorPorSetorCalculado
+                        });
+                    }
+                });
+            } else { 
+                // [LÓGICA DO GAS] Pagamento à vista
+                const numSetores = Object.keys(totaisPorSetor).length;
+                let contadorParcelaNota = 1;
+
+                for (const setor in totaisPorSetor) {
+                    const resumoItens = mapaSetorParaItens[setor] ? mapaSetorParaItens[setor].join(', ') : `NF ${numeroNF}`;
+                    const numeroParcelaFormatado = `${contadorParcelaNota++}/${numSetores}(À Vista)`;
+                    
+                    todasAsLinhasContasAPagar.push({
+                        'Chave de Acesso': chaveAcesso,
+                        'Número da Fatura': numeroNF,
+                        'Número da Parcela': numeroParcelaFormatado,
+                        'Resumo dos Itens': resumoItens,
+                        'Data de Vencimento': new Date().toISOString(), // Data de hoje
+                        'Valor da Parcela': valorTotalRateadoNota,
+                        'Setor': setor,
+                        'Valor por Setor': totaisPorSetor[setor]
+                    });
+                }
+            }
+        }
+        
+        // Executa as operações de escrita do Rateio
+        await crud.salvarNovasRegrasDeRateio(req.sheets, todasAsNovasRegras);
+        await crud.salvarContasAPagar(req.sheets, todasAsLinhasContasAPagar);
+        
+        for (const chave of Array.from(todasAsChavesParaAtualizar)) {
+            await crud.atualizarStatusRateio(req.sheets, chave, "Concluído");
+        }
+        
+        console.log(`[Controller] ${rateios.length} rateio(s) salvos e status atualizados.`);
+    }
+
+    console.log("[Controller] Salvamento em lote unificado concluído com sucesso.");
+    res.json({ success: true, message: "Todas as alterações foram salvas com sucesso!" });
+
+  } catch (e) {
+    console.error(`ERRO em salvarLoteUnificado: ${e.toString()}\n${e.stack}`);
+    res.status(500).json({ success: false, message: e.message });
   }
 };
 
