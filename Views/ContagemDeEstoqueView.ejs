@@ -1,0 +1,419 @@
+<%# Migrado de Araujo-PTC/src/ContagemDeEstoqueView.html %>
+
+<%# Inclui o script principal que contém o helper de API Call e funções de parse %>
+<%- include('CotacaoIndividualScript') %>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Contagem de Estoque Mobile</title>
+  <style>
+    /* =============================================
+       Estilos Gerais
+    ============================================= */
+    body {
+      margin: 0;
+      background: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+      color: #1f2937;
+    }
+
+    /* =============================================
+       Search fixo no topo
+    ============================================= */
+    #ContagemDeEstoqueView_searchContainer {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 420px;
+      padding: 0.5rem 1rem;
+      background: #f3f4f6;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      z-index: 1000;
+      box-sizing: border-box;
+    }
+    #ContagemDeEstoqueView_searchInput {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    /* =============================================
+       Container principal
+    ============================================= */
+    #appContainer {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      /* empurra o conteúdo para baixo, evitando sobreposição do search */
+      padding: calc(1rem + 3.5rem) 1rem 1rem;
+      box-sizing: border-box;
+    }
+
+    /* =============================================
+       Tipografias e Cores
+    ============================================= */
+    #title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #4f46e5;
+    }
+    h2 {
+      margin: 1rem 0 0.5rem;
+      font-size: 1.25rem;
+      color: #374151;
+    }
+    h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.125rem;
+      color: #111827;
+    }
+
+    /* =============================================
+       Campos e Botão
+    ============================================= */
+    .campo {
+      margin-bottom: 0.75rem;
+    }
+    .campo label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+    .campo input,
+    .campo select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .produto-bloco {
+      background: #ffffff;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    #btnSalvar {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 0.375rem;
+      background: #4f46e5;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #btnSalvar:hover {
+      background: #4338ca;
+    }
+
+    /* =============================================
+       Ajustes para telas muito pequenas (≤360px)
+    ============================================= */
+    @media (max-width: 360px) {
+      #title { font-size: 1.25rem; }
+      h2 { font-size: 1.1rem; }
+      h3 { font-size: 1rem; }
+      .campo input,
+      .campo select,
+      #ContagemDeEstoqueView_searchInput {
+        padding: 0.4rem;
+        font-size: 0.9rem;
+      }
+      #btnSalvar {
+        padding: 0.6rem;
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="appContainer">
+    <div id="ContagemDeEstoqueView_searchContainer">
+      <input
+        type="search"
+        id="ContagemDeEstoqueView_searchInput"
+        placeholder="🔍 Buscar produto..."
+        autocomplete="off"
+      />
+    </div>
+
+    <div id="title">Contagem de Estoque</div>
+
+    <div class="campo">
+      <label for="filtroAgrupamento">Organizar por:</label>
+      <select id="filtroAgrupamento">
+        <option value="produto">Produto</option>
+        <option value="fornecedor">Fornecedor</option>
+        <option value="categoria">Categoria</option>
+      </select>
+    </div>
+
+    <div id="produtosContainer">Carregando...</div>
+
+    <button id="btnSalvar">Salvar Contagem</button>
+  </div>
+
+  <script>
+    const EJS_ID_COTACAO = '<%- typeof idCotacao !== "undefined" ? idCotacao : null %>';
+  </script>
+
+  <script>
+    let idCotacao = null;
+    let produtosOriginais = [];
+    let ContagemDeEstoqueView_searchTerm = '';
+
+    // 1) Pega idCotacao da URL (injetado pelo EJS)
+    try {
+      idCotacao = (typeof EJS_ID_COTACAO !== 'undefined' && EJS_ID_COTACAO !== 'null') ? EJS_ID_COTACAO : null;
+      if (!idCotacao) {
+        throw new Error('ID da Cotação não foi fornecido na URL.');
+      }
+      document.getElementById('title').textContent =
+        'Contagem de Estoque – Cotação ' + idCotacao;
+      ContagemDeEstoqueView_carregarDados();
+    } catch (e) {
+      console.error(e);
+      document.getElementById('title').textContent = 'Erro - Cotação Inválida';
+      document.getElementById('produtosContainer').textContent = 'Erro: ' + e.message;
+      document.getElementById('btnSalvar').disabled = true;
+    }
+
+
+    // 2) Carrega dados do servidor via API Fetch
+    function ContagemDeEstoqueView_carregarDados() {
+      document.getElementById('produtosContainer').textContent = 'Carregando...';
+      
+      // Usa o helper de API do CotacaoIndividualScript.ejs
+      CotacaoIndividualScript_apiCall('/api/cotacaoIndividual/obterDetalhes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idCotacao: idCotacao })
+      })
+      .then(ContagemDeEstoqueView_renderizarProdutos) // O objeto de resposta já é o { success: true, dados: [...] }
+      .catch(err => {
+        console.error(err);
+        document.getElementById('produtosContainer').textContent =
+          'Erro ao carregar dados: ' + err.message;
+      });
+    }
+
+    // 3) Renderiza blocos por produto principal, aplicando busca e agrupamento
+    function ContagemDeEstoqueView_renderizarProdutos(response) {
+      if (!response || !response.success) {
+        document.getElementById('produtosContainer').textContent =
+          'Erro: ' + (response ? response.message : "Resposta inválida do servidor.");
+        return;
+      }
+      produtosOriginais = response.dados;
+      const container = document.getElementById('produtosContainer');
+      container.innerHTML = '';
+
+      if (!produtosOriginais || produtosOriginais.length === 0) {
+        container.textContent = "Nenhum produto encontrado para esta cotação.";
+        return;
+      }
+
+      // 3.1) Extrai produtos principais
+      const produtosPrincipais = [
+        ...new Set(produtosOriginais.map(i => i.Produto))
+      ];
+
+      // 3.2) Monta dados de cada produto
+      const produtosData = produtosPrincipais.map(prod => {
+        const first = produtosOriginais.find(i => i.Produto === prod);
+        
+        // Usa a função global do CotacaoIndividualScript.ejs
+        const p = CotacaoIndividualScript_parsearStringEstoqueComprar(
+          first['Estoque Atual']
+        );
+        return {
+          Produto: prod,
+          Fornecedor: first.Fornecedor || '',
+          Categoria: first.Categoria || '',
+          EstoqueMinimo: first.EstoqueMinimoProdutoPrincipal || null,
+          estoqueAtual: p.estoqueAtual,
+          comprarSug: p.comprar
+        };
+      });
+
+      // 3.3) Aplica busca
+      const filtrados = produtosData.filter(item =>
+        item.Produto.toLowerCase().includes(ContagemDeEstoqueView_searchTerm)
+      );
+
+      // 3.4) Agrupa conforme filtro
+      const agrup = document.getElementById('filtroAgrupamento').value;
+      const grupos = {};
+      filtrados.forEach(item => {
+        let chave = item.Produto;
+        if (agrup === 'fornecedor') chave = item.Fornecedor || 'Sem Fornecedor';
+        if (agrup === 'categoria') chave = item.Categoria || 'Sem Categoria';
+        grupos[chave] = grupos[chave] || [];
+        grupos[chave].push(item);
+      });
+
+      // 3.5) Renderiza cada grupo
+      Object.keys(grupos).sort().forEach(grp => {
+        const titleEl = document.createElement('h2');
+        titleEl.textContent = grp;
+        container.appendChild(titleEl);
+
+        grupos[grp].forEach(item => {
+          const bloco = document.createElement('div');
+          bloco.className = 'produto-bloco';
+          bloco.innerHTML = `
+            <h3>${item.Produto}</h3>
+            <div class="campo">
+              <label>(Est. Mín. Atual: ${
+                item.EstoqueMinimo !== null ? item.EstoqueMinimo : '-'
+              })</label>
+            </div>
+            <div class="campo">
+              <label>Novo Estoque Mínimo</label>
+              <input
+                type="number"
+                class="input-est-min"
+                data-produto="${item.Produto}"
+                value="${
+                  item.EstoqueMinimo !== null ? item.EstoqueMinimo : ''
+                }"
+              >
+            </div>
+            <div class="campo">
+              <label>Estoque Contado</label>
+              <input
+                type="number"
+                class="input-est-contado"
+                data-produto="${item.Produto}"
+                value="${
+                  item.estoqueAtual !== null ? item.estoqueAtual : ''
+                }"
+              >
+            </div>
+            <div class="campo">
+              <label>Comprar (Sugestão)</label>
+              <input
+                type="number"
+                class="input-comprar"
+                data-produto="${item.Produto}"
+                value="${
+                  item.comprarSug !== null ? item.comprarSug : ''
+                }"
+              >
+            </div>
+          `;
+          container.appendChild(bloco);
+        });
+      });
+
+      // 4) Tab/Enter navega entre inputs do mesmo tipo
+      ['input-est-min', 'input-est-contado', 'input-comprar'].forEach(cls => {
+        const arr = Array.from(document.getElementsByClassName(cls));
+        arr.forEach((inp, i) => {
+          inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === 'Tab') {
+              e.preventDefault();
+              const nxt = arr[i + 1];
+              if (nxt) nxt.focus();
+            }
+          });
+        });
+      });
+    }
+
+    // 5) Eventos de UI
+    document
+      .getElementById('filtroAgrupamento')
+      .addEventListener('change', () =>
+        ContagemDeEstoqueView_renderizarProdutos({
+          success: true,
+          dados: produtosOriginais
+        })
+      );
+
+    document
+      .getElementById('ContagemDeEstoqueView_searchInput')
+      .addEventListener('input', e => {
+        ContagemDeEstoqueView_searchTerm = e.target.value.toLowerCase();
+        ContagemDeEstoqueView_renderizarProdutos({
+          success: true,
+          dados: produtosOriginais
+        });
+      });
+
+    document.getElementById('btnSalvar').addEventListener('click', () => {
+      const dados = [];
+      const produtosPrincipais = [
+        ...new Set(produtosOriginais.map(i => i.Produto))
+      ];
+      
+      produtosPrincipais.forEach(prod => {
+        const estMinElem = document.querySelector(`.input-est-min[data-produto="${prod}"]`);
+        const estCntElem = document.querySelector(`.input-est-contado[data-produto="${prod}"]`);
+        const cmpElem = document.querySelector(`.input-comprar[data-produto="${prod}"]`);
+
+        // Só processa se o elemento existir no DOM (pode ter sido filtrado pela busca)
+        if (estMinElem && estCntElem && cmpElem) {
+            const estMin = parseFloat(estMinElem.value) || null;
+            const estCnt = parseFloat(estCntElem.value) || null;
+            const cmp = parseFloat(cmpElem.value) || null;
+            
+            dados.push({
+              nomeProdutoPrincipal: prod,
+              novoEstoqueMinimoProdutoPrincipal: estMin,
+              estoqueAtualContagem: estCnt,
+              comprarSugestao: cmp
+            });
+        }
+      });
+
+      if (dados.length === 0) {
+        alert("Nenhum dado de produto visível para salvar. Limpe a busca se necessário.");
+        return;
+      }
+      
+      const btn = document.getElementById('btnSalvar');
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+
+      // Chama a API de Etapas para salvar a contagem
+      CotacaoIndividualScript_apiCall('/api/etapas/salvarContagem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idCotacao: idCotacao, dadosContagem: dados })
+      })
+      .then(resp => {
+        if (resp.success) {
+          alert(resp.message);
+          window.close();
+        } else {
+          alert('Erro: ' + resp.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Falha ao salvar contagem: ' + err.message);
+      })
+      .finally(() => {
+          btn.disabled = false;
+          btn.textContent = 'Salvar Contagem';
+      });
+    });
+  </script>
+</body>
+</html>
