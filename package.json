@@ -19,7 +19,8 @@
     "google-auth-library": "^10.5.0",
     "googleapis": "^166.0.0",
     "mime-types": "^3.0.1",
-    "puppeteer": "^24.30.0"
+    "puppeteer": "^24.30.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

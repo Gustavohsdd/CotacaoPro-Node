@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <style>
+    html, body {
+      height: 100vh;
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+    body { background-color: #f8f9fa; }
+    .main-container {
+      display: flex;
+      height: calc(100vh - 70px);
+    }
+    .loading-spinner { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.8); z-index: 1070; display: flex; justify-content: center; align-items: center; }
+
+    /* Painel Esquerdo */
+    #panel-esquerdo {
+      width: 450px;
+      min-width: 450px;
+      background-color: #fff;
+      border-right: 1px solid #dee2e6;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header { padding: 0.75rem; border-bottom: 1px solid #dee2e6; flex-shrink: 0; }
+    #nf-list-container { overflow-y: auto; flex-grow: 1; }
+    .nf-list-item { padding: 0.6rem 0.75rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s ease-in-out; }
+    .nf-list-item:hover { background-color: #f8f9fa; }
+    .nf-list-item.active { background-color: #e0eaff; border-right: 3px solid #0d6efd; }
+    .nf-list-item.staged { background-color: #d1e7dd; cursor: not-allowed; }
+    .nf-list-item .status-icon { color: #198754; }
+
+    /* Painel Direito */
+    #panel-direito {
+      flex-grow: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    #workspace-welcome { display: flex; justify-content: center; align-items: center; height: 100%; text-align: center; color: #6c757d; }
+    
+    /* [CORRIGIDO] Removida a estilização de grid daqui, pois o Bootstrap cuidará disso */
+    .comparison-column .list-group-item.selected-for-match { background-color: #ffc107 !important; }
+    .comparison-column .list-group-item.matched { background-color: #d1e7dd; cursor: not-allowed; opacity: 0.7; }
+    
+    .rateio-section {
+        background-color: #f7f7f9;
+        border-top: 1px dashed #ccc;
+    }
+    .total-percent-item.is-invalid { color: #dc3545 !important; }
+    .total-percent-item.is-valid { color: #198754 !important; }
+    .ajuste-info { font-size: 0.75rem; }
+
+    #accordion-fornecedores {
+    overflow-y: auto; /* Permite a barra de rolagem vertical */
+    flex-grow: 1;     /* Faz com que o container ocupe o espaço disponível */
+    }
+
+    .accordion-button-sm {
+      padding: 0.6rem 1rem;
+      font-size: 0.875rem;
+    }
+
+
+    .comparison-container {
+        height: 38vh; /* Define uma altura para a área de comparação */
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    .comparison-column {
+        height: 100%; /* Faz a coluna ocupar a altura do container */
+        display: flex;
+        flex-direction: column;
+    }
+    .comparison-column h5 {
+        flex-shrink: 0; /* Impede que o título da coluna encolha */
+    }
+    .comparison-column .list-group {
+        flex-grow: 1; /* Faz a lista de itens crescer para ocupar o espaço */
+        overflow-y: auto; /* Adiciona a barra de rolagem vertical */
+        min-height: 0; /* Correção essencial para rolagem em flexbox */
+    }
+  </style>
+</head>
+<body>
+  <div id="loader" class="loading-spinner d-none">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Carregando...</span>
+    </div>
+  </div>
+
+  <input type="file" id="xml-upload-input" multiple accept=".xml,.zip" style="display: none;">
+
+  <header class="navbar bg-primary text-white shadow-sm">
+    <div class="container-fluid">
+      <h3 class="mb-0">Central de Conciliação e Rateio</h3>
+      <div class="d-flex align-items-center">
+        <button id="btn-abrir-relatorio-rateio" class="btn btn-info text-white me-3" type="button" title="Abrir Relatório de Rateio Financeiro">
+            <i class="bi bi-file-earmark-bar-graph-fill"></i> <span class="d-none d-md-inline ms-1">Relatório Rateio</span>
+        </button>
+        <span class="navbar-text me-3 d-none d-md-inline">|</span> 
+        <button id="btn-upload-xml" class="btn btn-info text-white" type="button" title="Fazer upload de arquivos XML ou ZIP">
+          <i class="bi bi-upload"></i> <span class="d-none d-md-inline ms-1">Fazer Upload</span>
+        </button>
+        <button id="btn-salvar-lote" class="btn btn-success ms-3 d-none" type="button" title="Salvar todas as alterações pendentes de uma vez.">
+            <i class="bi bi-cloud-upload-fill"></i> <span id="save-batch-text">Salvar Alterações</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <aside id="panel-esquerdo">
+      <div class="panel-header">
+        <input type="text" id="search-input" class="form-control" placeholder="Buscar por Fornecedor, Nº da NF...">
+      </div>
+      
+        <div class="accordion accordion-flush" id="accordion-fornecedores">
+      </div>
+    </aside>
+
+    <main id="panel-direito">
+      <div id="workspace-welcome">
+        <div>
+          <i class="bi bi-file-earmark-check-fill" style="font-size: 4rem;"></i>
+          <h4 class="mt-3">Bem-vindo(a) à Área de Conciliação e Rateio</h4>
+          <p>Selecione uma Nota Fiscal na lista à esquerda para começar.</p>
+        </div>
+      </div>
+      <div id="workspace-content" class="d-none h-100 d-flex flex-column"></div>
+    </main>
+  </div>
+
+  <template id="template-nf-list-item">
+    <div class="nf-list-item">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <span class="status-icon me-1 d-none" title="Pronto para salvar"><i class="bi bi-check-circle-fill"></i></span>
+          <span class="nf-title fw-bold">NF 00000</span>
+          <span class="badge text-bg-secondary ms-2 staged-status-badge d-none"></span>
+        </div>
+        <small class="nf-total text-success fw-bold">R$ 0,00</small>
+      </div>
+      <div class="nf-details">
+        <span class="nf-fornecedor">Fornecedor</span> | <span class="nf-data">01/01/2025</span>
+      </div>
+    </div>
+  </template>
+
+  <template id="template-nf-item">
+     <a href="#" class="list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-between">
+            <div class="item-description"></div>
+        </div>
+        <small>Qtd: <strong class="original-qtd"></strong> | Preço: <strong class="original-preco"></strong></small>
+        <div class="ajuste-info text-muted fst-italic"></div>
+    </a>
+  </template>
+
+     <template id="template-workspace">
+    <div class="workspace-header">
+        <div class="row align-items-center">
+            <div class="col-md-5">
+                <div id="bloco-vincular-cotacao">
+                    <h4><i class="bi bi-link-45deg"></i> Vincular a uma Cotação</h4>
+                    <select class="form-select select-cotacao-fornecedor" disabled>
+                        <option selected disabled>Selecione a cotação...</option>
+                    </select>
+                </div>
+                
+                <div class="mt-2">
+                    <button id="btn-abrir-modal-fornecedor" class="btn btn-sm btn-outline-secondary" type="button" disabled>
+                        <i class="bi bi-person-plus-fill"></i> Cadastrar / Editar Fornecedor da NF
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <button id="btn-abrir-cadastro-itens" class="btn btn-sm btn-outline-info" type="button" disabled>
+                        <i class="bi bi-plus-circle-dotted"></i> Cadastrar Itens da NF
+                    </button>
+                </div>
+
+                <div class="sem-pedido-actions border-top mt-3 pt-3">
+                    <small class="text-muted d-block mb-2">Ou, se não houver pedido vinculado:</small>
+                    <div class="btn-group">
+                        <button id="btn-marcar-sem-pedido" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrow-right-circle-fill"></i> Iniciar Rateio Direto
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a id="btn-marcar-bonificacao" class="dropdown-item" href="#">
+                                    <i class="bi bi-gift-fill me-2"></i>Marcar como Bonificação
+                                </a>
+                            </li>
+                            <li>
+                                <a id="btn-marcar-tipo-b" class="dropdown-item" href="#">
+                                    <i class="bi bi-bookmark-star-fill me-2"></i>Marcar como NF Tipo B
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="p-2 border rounded">
+                  <div class="d-flex justify-content-between">
+                    <span>Total dos Produtos (NF):</span> 
+                    <strong class="total-produtos-valor text-body-secondary">R$ 0,00</strong>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span>(+) Total Impostos:</span> 
+                    <strong class="total-impostos-valor text-danger">R$ 0,00</strong>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span>(+) Outras Despesas:</span> 
+                    <strong class="total-outras-despesas-valor text-danger">R$ 0,00</strong>
+                  </div>
+                   <div class="d-flex justify-content-between">
+                    <span>(-) Total Desconto:</span> 
+                    <strong class="total-desconto-valor text-success">R$ 0,00</strong>
+                  </div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between fw-bold">
+                    <span>Total da Nota:</span> 
+                    <strong class="total-notas-valor text-primary">R$ 0,00</strong>
+                  </div>
+                   <hr class="my-1">
+                   <div class="d-flex justify-content-between">
+                    <span>Total Itens para Rateio:</span> 
+                    <strong class="total-conciliado-valor text-info">R$ 0,00</strong>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span>Diferença (Rateio vs NF):</span> 
+                    <strong class="diferenca-totais-valor text-warning">R$ 0,00</strong>
+                  </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row comparison-container d-none mt-3 gx-4">
+        <div class="col-md-6 comparison-column" id="cotacao-items-list">
+            <h5><i class="bi bi-clipboard2-data-fill text-primary"></i> Itens da Cotação</h5>
+            <div class="list-group"></div>
+        </div>
+        <div class="col-md-6 comparison-column" id="nf-items-list">
+            <h5><i class="bi bi-receipt-cutoff text-info"></i> Itens da NF</h5>
+            <div class="list-group"></div>
+        </div>
+    </div>
+    
+    <div class="matched-items-section mt-3">
+        <h5><i class="bi bi-check2-circle text-success"></i> Itens para Rateio</h5>
+        <div id="matched-items-container"></div>
+    </div>
+
+    <div id="rateio-summary-section" class="mt-auto pt-3 d-none">
+        <hr>
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="bi bi-bar-chart-fill text-primary"></i> Resumo do Rateio por Setor</h5>
+                <div id="resumo-setor-container"></div>
+                <p class="mt-2"><strong>Total Rateado:</strong> <span id="total-rateado" class="fw-bold"></span></p>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="bi bi-calendar-check-fill text-info"></i> Pré-visualização Contas a Pagar</h5>
+                <div id="faturas-preview-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="workspace-footer text-end mt-3 pt-3">
+      <button id="btn-concluir-conciliacao" class="btn btn-primary btn-lg" disabled>
+        <i class="bi bi-check-lg"></i> Concluir e Preparar para Salvar
+      </button>
+    </div>
+  </template>
+
+
+  <template id="template-matched-item">
+     <div class="card mb-2 matched-item-card">
+        <div class="card-body pb-0">
+            <div class="row">
+                <div class="col-7">
+                    <strong>
+                        Item Cotação:
+                        <span class="badge bg-warning text-dark no-rate-rule-badge d-none" title="Este item não possui regra de rateio automática. O rateio deverá ser informado manually."><i class="bi bi-exclamation-triangle-fill"></i> Sem Regra</span>
+                    </strong>
+                    <span class="item-cot-descricao"></span><br>
+                    <small class="text-muted"><strong>Item NF:</strong> <span class="item-nf-descricao"></span></small>
+                </div>
+                <div class="col-5 d-flex justify-content-end align-items-center">
+                    <div>
+                        <div class="text-end">Preço Unit.: <span class="divergencia-preco"></span></div>
+                        <div class="text-end">Qtd: <span class="divergencia-qtd"></span></div>
+                        <div class="text-end fw-bold">Dif. Total: <span class="divergencia-total-valor"></span></div>
+                    </div>
+                    <div class="d-flex flex-column ms-2">
+                        <button class="btn btn-sm btn-outline-danger py-0 px-2 mb-1 btn-desfazer-conciliacao" title="Desfazer Conciliação">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning py-0 px-2 mb-1 btn-reajustar-item" title="Corrigir Fator de Conversão">
+                            <i class="bi bi-box-seam"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#rateio-item-X" aria-expanded="false" title="Ver/Editar Rateio">
+                            <i class="bi bi-pie-chart-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+             <div class="fator-info text-muted fst-italic small text-center"></div>
+        </div>
+        <div class="collapse rateio-section" id="rateio-item-X">
+            <div class="p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Rateio Financeiro</h6>
+                    <small class="fw-bold total-percent-item">Total: 0%</small>
+                </div>
+                <div class="rateio-manual-linhas"></div>
+                <div class="rateio-automatico-info text-muted small"></div>
+                <button class="btn btn-outline-primary btn-sm mt-2 btn-add-setor" type="button">
+                    <i class="bi bi-plus-circle"></i> Adicionar Setor
+                </button>
+            </div>
+        </div>
+     </div>
+  </template>
+
+  <template id="template-rateio-row">
+    <div class="row gx-2 mb-1 align-items-center manual-rate-row">
+        <div class="col-6">
+            <input type="text" class="form-control form-control-sm input-setor" list="datalist-setores" placeholder="Nome do Setor">
+            </div>
+        <div class="col-4">
+            <div class="input-group input-group-sm">
+                <input type="number" class="form-control input-porcentagem" placeholder="%" min="0" max="100" step="0.01">
+                <span class="input-group-text">%</span>
+            </div>
+        </div>
+        <div class="col-2 text-end">
+            <button class="btn btn-sm btn-outline-danger btn-remove-setor py-0 px-1" type="button"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+    </template>
+  
+  <div class="modal fade" id="ajusteManualModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Ajuste Manual de Item (Fardo/Caixa)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-4">Use esta ferramenta quando a nota fiscal envia o preço de uma caixa/fardo. Informe quantas unidades vêm na embalagem para ajustar os valores para a comparação.</p>
+          
+          <h6>Item da Cotação (Referência)</h6>
+          <div class="row bg-light p-2 rounded mb-3">
+            <div class="col-md-8" id="ajuste-cot-descricao"></div>
+            <div class="col-md-2"><strong>Qtd:</strong> <span id="ajuste-cot-qtd"></span></div>
+            <div class="col-md-2"><strong>Preço:</strong> <span id="ajuste-cot-preco"></span></div>
+          </div>
+
+          <h6>Item da Nota Fiscal (Original)</h6>
+          <div class="row bg-light p-2 rounded mb-4">
+            <div class="col-md-8" id="ajuste-nf-descricao"></div>
+            <div class="col-md-2"><strong>Qtd:</strong> <span id="ajuste-nf-qtd"></span></div>
+            <div class="col-md-2"><strong>Preço:</strong> <span id="ajuste-nf-preco"></span></div>
+          </div>
+          <hr>
+          <h6>Ajuste</h6>
+          <div class="row align-items-center">
+            <div class="col-md-7">
+              <label for="ajuste-fator" class="form-label">A nota fiscal representa um fardo/caixa com:</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="ajuste-fator" value="1" min="0.01" step="any">
+                <span class="input-group-text">unidades dentro</span>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <div class="mt-3 p-2 border rounded bg-warning-subtle">
+                <div><strong>Nova Qtd p/ Comparar:</strong> <span id="ajuste-nova-qtd" class="fw-bold"></span></div>
+                <div><strong>Novo Preço p/ Comparar:</strong> <span id="ajuste-novo-preco" class="fw-bold"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-salvar-ajuste-manual">Aplicar Ajuste</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalCadastroFornecedorNF" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalCadastroFornecedorNFLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="form-cadastro-fornecedor-nf">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalCadastroFornecedorNFLabel">Dados do Fornecedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="cadastro-fornecedor-id" name="ID">
+          
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label for="cadastro-fornecedor-nome" class="form-label">Nome do Fornecedor*</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-nome" name="Fornecedor" required>
+            </div>
+            <div class="col-md-4">
+              <label for="cadastro-fornecedor-cnpj" class="form-label">CNPJ</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-cnpj" name="CNPJ">
+            </div>
+
+            <div class="col-md-6">
+              <label for="cadastro-fornecedor-categoria" class="form-label">Categoria</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-categoria" name="Categoria">
+            </div>
+            <div class="col-md-6">
+              <label for="cadastro-fornecedor-vendedor" class="form-label">Vendedor</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-vendedor" name="Vendedor">
+            </div>
+
+            <div class="col-md-6">
+              <label for="cadastro-fornecedor-telefone" class="form-label">Telefone</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-telefone" name="Telefone">
+            </div>
+            <div class="col-md-6">
+              <label for="cadastro-fornecedor-email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="cadastro-fornecedor-email" name="Email">
+            </div>
+            
+            <div class="col-md-4">
+                <label for="cadastro-fornecedor-dias-pedido" class="form-label">Dias de Pedido</label>
+                <input type="text" class="form-control" id="cadastro-fornecedor-dias-pedido" name="Dias de Pedido">
+            </div>
+            <div class="col-md-4">
+                <label for="cadastro-fornecedor-dias-entrega" class="form-label">Dias de Entrega</label>
+                <input type="text" class="form-control" id="cadastro-fornecedor-dias-entrega" name="Dias de Entrega">
+            </div>
+            <div class="col-md-4">
+                <label for="cadastro-fornecedor-dia-faturamento" class="form-label">Dia de Faturamento</label>
+                <input type="text" class="form-control" id="cadastro-fornecedor-dia-faturamento" name="Dia de Faturamento">
+            </div>
+
+            <div class="col-md-6">
+                <label for="cadastro-fornecedor-condicoes" class="form-label">Condições de Pagamento</label>
+                <input type="text" class="form-control" id="cadastro-fornecedor-condicoes" name="Condições de Pagamento">
+            </div>
+            <div class="col-md-6">
+                <label for="cadastro-fornecedor-pedido-minimo" class="form-label">Pedido Mínimo (R$)</label>
+                <input type="text" class="form-control" id="cadastro-fornecedor-pedido-minimo" name="Pedido Mínimo (R$)">
+            </div>
+
+            <div class="col-md-6">
+              <label for="cadastro-fornecedor-regime" class="form-label">Regime Tributário</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-regime" name="Regime Tributário">
+            </div>
+            <div class="col-md-6">
+              <label for="cadastro-fornecedor-financeiro" class="form-label">Contato Financeiro</label>
+              <input type="text" class="form-control" id="cadastro-fornecedor-financeiro" name="Contato Financeiro">
+            </div>
+          </div>
+          
+          <div id="modal-fornecedor-nf-feedback" class="alert mt-3 d-none"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-salvar-fornecedor-nf">
+              <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+              Salvar Fornecedor
+            </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+    <template id="template-item-cadastro-nf">
+    <div class="row gx-2 gy-2 p-3 border rounded mb-3 bg-light item-cadastro-row">
+        <div class="col-12">
+            <p class="mb-1 fw-bold text-primary border-bottom pb-1">Item Original da NF: <span class="original-nf-description"></span></p>
+        </div>
+
+        <div class="col-12">
+            <div class="row gx-2 gy-2">
+                <div class="col-md-6">
+                    <label class="form-label form-label-sm">SubProduto*</label>
+                    <input type="text" name="SubProduto" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label form-label-sm">Produto Vinculado*</label>
+                    <select name="Produto Vinculado" class="form-select form-select-sm select-produto-vinculado" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label form-label-sm">Categoria</label>
+                    <input type="text" name="Categoria" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label form-label-sm">Tamanho</label>
+                    <input type="text" name="Tamanho" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label form-label-sm">UN*</label>
+                    <input type="text" name="UN" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label form-label-sm">Fator</label>
+                    <input type="number" name="Fator" class="form-control form-control-sm" step="any">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label form-label-sm">Status</label>
+                    <select name="Status" class="form-select form-select-sm">
+                        <option value="Ativo" selected>Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 mt-3 text-end">
+            <small class="form-text feedback-salvar-individual me-3"></small>
+            <button type="button" class="btn btn-success btn-sm btn-salvar-subproduto-individual" style="min-width: 100px;">
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                <i class="bi bi-check-circle-fill"></i> Salvar
+            </button>
+        </div>
+    </div>
+</template>
+
+<div class="modal fade" id="modalCadastroItensNF" tabindex="-1" aria-labelledby="modalCadastroItensNFLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCadastroItensNFLabel">Cadastrar Itens da NF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <p class="mb-1"><strong>Instruções:</strong></p>
+                    <ul class="mb-0">
+                        <li>Preencha os dados para cada item que deseja cadastrar como um novo SubProduto.</li>
+                        <li>Vincule cada SubProduto a um Produto Principal. Se o produto não existir, selecione "Cadastrar Novo Produto...".</li>
+                        <li>O Fornecedor será automaticamente vinculado com base na NF selecionada.</li>
+                    </ul>
+                </div>
+                <h6 class="mt-4">NF: <span id="cadastro-itens-nf-numero" class="fw-normal"></span> | Fornecedor: <span id="cadastro-itens-fornecedor-nome" class="fw-normal"></span></h6>
+                <hr>
+                <form id="form-cadastro-itens-nf">
+                    <div id="container-itens-para-cadastro">
+                        </div>
+                </form>
+                <div id="feedback-cadastro-itens-nf" class="alert mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+
+
+<div class="modal fade" id="modalCadastroProdutoViaNF" tabindex="-1" aria-labelledby="modalCadastroProdutoViaNFLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+             <form id="form-cadastro-produto-nf">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCadastroProdutoViaNFLabel">Cadastrar Novo Produto Principal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+    <div class="col-md-8">
+        <label class="form-label">Produto*</label>
+        <input type="text" name="Produto" class="form-control" required>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Categoria</label>
+        <input type="text" name="Categoria" class="form-control">
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Tamanho</label>
+        <input type="text" name="Tamanho" class="form-control">
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">UN*</label>
+        <input type="text" name="UN" class="form-control" required>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Estoque Mínimo</label>
+        <input type="number" name="Estoque Minimo" class="form-control" step="any">
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Curva ABC</label>
+        <select name="ABC" class="form-select">
+            <option value="">N/A</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Status</label>
+        <select name="Status" class="form-select">
+            <option value="Ativo" selected>Ativo</option>
+            <option value="Inativo">Inativo</option>
+        </select>
+    </div>
+</div>
+                    <div id="feedback-cadastro-produto-nf" class="alert mt-3 d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-salvar-produto-nf">
+                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        Salvar Produto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  
+  <%- include('ConciliacaoNFScript') %>
+  
+</body>
+</html>
