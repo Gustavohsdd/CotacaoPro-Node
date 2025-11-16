@@ -1,10 +1,10 @@
 // CotacaoPro-Node/Controllers/ConciliacaoNFCrud.js
 // VERSÃO CORRIGIDA - Funções refatoradas para aceitar clientes 'sheets' e 'drive'
+// E ADICIONADAS AS FUNÇÕES DE LEITURA QUE FALTAVAM (MIGRADAS DO GAS)
 
-// [REMOVIDO] 'googleapis' e 'getAuth' não são mais necessários aqui.
 const constants = require('../config/constants');
-
-// [REMOVIDO] Clientes 'sheets' e 'drive' globais e não autenticados.
+// [NOVO] Importa os CRUDs necessários para buscar dados de outras abas
+const FornecedoresCRUD = require('./FornecedoresCRUD');
 
 // --- FUNÇÕES HELPER (Baseado em outros CRUDs do projeto) ---
 
@@ -21,7 +21,7 @@ function findHeaderIndices(headers, V) {
     if (index !== -1) {
       indices[headerName] = index;
     } else {
-      console.warn(`Cabeçalho não encontrado: ${headerName}`);
+      console.warn(`[ConciliacaoNFCrud] Cabeçalho não encontrado: ${headerName}`);
     }
   });
   return indices;
@@ -61,6 +61,27 @@ function mapObjectToRow(dataObject, headers) {
   return headers.map(header => dataObject[header] || ""); // Garante que a ordem seja mantida
 }
 
+/**
+ * [NOVO - HELPER] Busca todos os dados de uma aba.
+ * @param {object} sheets - Cliente da API Google Sheets.
+ * @param {string} spreadsheetId - ID da planilha.
+ * @param {string} nomeAba - Nome da aba a ser lida.
+ * @returns {Promise<Array<Array<string>>>} Dados brutos da planilha (incluindo cabeçalho).
+ */
+async function _obterDadosPlanilha(sheets, spreadsheetId, nomeAba) {
+  try {
+    console.log(`[ConciliacaoNFCrud] Lendo dados da aba: ${nomeAba}`);
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: nomeAba,
+    });
+    return response.data.values || [];
+  } catch (e) {
+    console.error(`[ConciliacaoNFCrud] Erro ao ler a aba ${nomeAba}: ${e.message}`);
+    throw new Error(`Falha ao ler dados da aba "${nomeAba}": ${e.message}`);
+  }
+}
+
 // --- FUNÇÕES DE LEITURA (GET) ---
 
 /**
@@ -74,6 +95,7 @@ async function getNotasFiscais(sheets) {
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_NOTAS_FISCAIS,
     });
+    // [CORREÇÃO] Usa os cabeçalhos corretos para mapear
     return mapDataToObjects(res.data.values, constants.CABECALHOS_NF_NOTAS_FISCAIS);
   } catch (err) {
     console.error('Erro ao buscar Notas Fiscais:', err);
@@ -84,10 +106,10 @@ async function getNotasFiscais(sheets) {
 /**
  * Busca os Itens de uma NF específica pela Chave de Acesso.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
- * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODOS os itens.
+ * @param {Array<string>} [chavesAcesso] - Array de Chaves de Acesso. Se omitida, retorna TODOS os itens.
  * @returns {Promise<Array<Object>>} - Um array de objetos de itens da NF.
  */
-async function getItensNF(sheets, chaveAcesso = null) {
+async function getItensNF(sheets, chavesAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: constants.ID_PLANILHA_NF,
@@ -96,14 +118,15 @@ async function getItensNF(sheets, chaveAcesso = null) {
     
     const allItens = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_ITENS);
     
-    if (chaveAcesso) {
+    if (chavesAcesso && Array.isArray(chavesAcesso)) {
+      const chavesSet = new Set(chavesAcesso);
       // Filtra os itens pela Chave de Acesso
-      return allItens.filter(item => item["Chave de Acesso"] === chaveAcesso);
+      return allItens.filter(item => chavesSet.has(item["Chave de Acesso"]));
     }
-    return allItens; // Retorna todos se chaveAcesso não for fornecida
+    return allItens; // Retorna todos se chavesAcesso não for fornecida
 
   } catch (err) {
-    console.error(`Erro ao buscar Itens da NF ${chaveAcesso || '(todos)'}:`, err);
+    console.error(`Erro ao buscar Itens da NF:`, err);
     throw err;
   }
 }
@@ -111,10 +134,10 @@ async function getItensNF(sheets, chaveAcesso = null) {
 /**
  * Busca as Faturas de uma NF específica pela Chave de Acesso.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
- * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODAS as faturas.
+ * @param {Array<string>} [chavesAcesso] - Array de Chaves de Acesso. Se omitida, retorna TODAS as faturas.
  * @returns {Promise<Array<Object>>} - Um array de objetos de faturas da NF.
  */
-async function getFaturasNF(sheets, chaveAcesso = null) {
+async function getFaturasNF(sheets, chavesAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: constants.ID_PLANILHA_NF,
@@ -123,14 +146,15 @@ async function getFaturasNF(sheets, chaveAcesso = null) {
     
     const allFaturas = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_FATURAS);
     
-    if (chaveAcesso) {
+    if (chavesAcesso && Array.isArray(chavesAcesso)) {
+      const chavesSet = new Set(chavesAcesso);
       // Filtra as faturas pela Chave de Acesso
-      return allFaturas.filter(fatura => fatura["Chave de Acesso"] === chaveAcesso);
+      return allFaturas.filter(fatura => chavesSet.has(fatura["Chave de Acesso"]));
     }
     return allFaturas;
 
   } catch (err) {
-    console.error(`Erro ao buscar Faturas da NF ${chaveAcesso || '(todas)'}:`, err);
+    console.error(`Erro ao buscar Faturas da NF:`, err);
     throw err;
   }
 }
@@ -138,10 +162,10 @@ async function getFaturasNF(sheets, chaveAcesso = null) {
 /**
  * Busca os dados de Transporte de uma NF específica pela Chave de Acesso.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
- * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODOS.
+ * @param {Array<string>} [chavesAcesso] - Array de Chaves de Acesso. Se omitida, retorna TODOS.
  * @returns {Promise<Array<Object>>} - Um array de objetos de transporte da NF.
  */
-async function getTransporteNF(sheets, chaveAcesso = null) {
+async function getTransporteNF(sheets, chavesAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: constants.ID_PLANILHA_NF,
@@ -150,14 +174,15 @@ async function getTransporteNF(sheets, chaveAcesso = null) {
     
     const allTransporte = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_TRANSPORTE);
     
-    if (chaveAcesso) {
+    if (chavesAcesso && Array.isArray(chavesAcesso)) {
+      const chavesSet = new Set(chavesAcesso);
       // Filtra os dados de transporte pela Chave de Acesso
-      return allTransporte.filter(transp => transp["Chave de Acesso"] === chaveAcesso);
+      return allTransporte.filter(transp => chavesSet.has(transp["Chave de Acesso"]));
     }
     return allTransporte;
 
   } catch (err) {
-    console.error(`Erro ao buscar Transporte da NF ${chaveAcesso || '(todos)'}:`, err);
+    console.error(`Erro ao buscar Transporte da NF:`, err);
     throw err;
   }
 }
@@ -165,10 +190,10 @@ async function getTransporteNF(sheets, chaveAcesso = null) {
 /**
  * Busca os Tributos Totais de uma NF específica pela Chave de Acesso.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
- * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODOS.
+ * @param {Array<string>} [chavesAcesso] - Array de Chaves de Acesso. Se omitida, retorna TODOS.
  * @returns {Promise<Array<Object>>} - Um array de objetos de tributos da NF.
  */
-async function getTributosTotaisNF(sheets, chaveAcesso = null) {
+async function getTributosTotaisNF(sheets, chavesAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: constants.ID_PLANILHA_NF,
@@ -177,14 +202,15 @@ async function getTributosTotaisNF(sheets, chaveAcesso = null) {
     
     const allTributos = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_TRIBUTOS_TOTAIS);
     
-    if (chaveAcesso) {
+    if (chavesAcesso && Array.isArray(chavesAcesso)) {
+      const chavesSet = new Set(chavesAcesso);
       // Filtra os tributos pela Chave de Acesso
-      return allTributos.filter(trib => trib["Chave de Acesso"] === chaveAcesso);
+      return allTributos.filter(trib => chavesSet.has(trib["Chave de Acesso"]));
     }
     return allTributos;
 
   } catch (err) {
-    console.error(`Erro ao buscar Tributos Totais da NF ${chaveAcesso || '(todos)'}:`, err);
+    console.error(`Erro ao buscar Tributos Totais da NF:`, err);
     throw err;
   }
 }
@@ -210,10 +236,10 @@ async function getRegrasRateio(sheets) {
 /**
  * Busca as Contas a Pagar de uma NF específica pela Chave de Acesso.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
- * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODAS.
+ * @param {Array<string>} [chavesAcesso] - Array de Chaves de Acesso. Se omitida, retorna TODAS.
  * @returns {Promise<Array<Object>>} - Um array de objetos de contas a pagar.
  */
-async function getContasAPagar(sheets, chaveAcesso = null) {
+async function getContasAPagar(sheets, chavesAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
@@ -222,20 +248,22 @@ async function getContasAPagar(sheets, chaveAcesso = null) {
     
     const allContas = mapDataToObjects(res.data.values, constants.CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR);
     
-    if (chaveAcesso) {
+    if (chavesAcesso && Array.isArray(chavesAcesso)) {
+       const chavesSet = new Set(chavesAcesso);
       // Filtra as contas pela Chave de Acesso
-      return allContas.filter(conta => conta["Chave de Acesso"] === chaveAcesso);
+      return allContas.filter(conta => chavesSet.has(conta["Chave de Acesso"]));
     }
     return allContas;
   } catch (err) {
-    console.error(`Erro ao buscar Contas a Pagar da NF ${chaveAcesso || '(todas)'}:`, err);
+    console.error(`Erro ao buscar Contas a Pagar da NF:`, err);
     throw err;
   }
 }
 
 
 // --- FUNÇÕES DE ESCRITA (UPDATE/INSERT) ---
-
+// (As funções de escrita: updateNotasFiscais, updateItensNF, etc. permanecem as mesmas)
+// ... (seu código de updateNotasFiscais, updateItensNF, etc. ...
 /**
  * Adiciona uma nova linha de Nota Fiscal na planilha.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
@@ -392,8 +420,10 @@ async function updateContasAPagar(sheets, dataObjects) {
   }
 }
 
-// --- FUNÇÕES DE VERIFICAÇÃO E DRIVE ---
 
+// --- FUNÇÕES DE VERIFICAÇÃO E DRIVE ---
+// (As funções findChaveAcesso, getXmlFiles, getXmlContent permanecem as mesmas)
+// ... (seu código de findChaveAcesso, getXmlFiles, etc. ...
 /**
  * Verifica se uma Chave de Acesso já existe na planilha de Notas Fiscais.
  * @param {object} sheets - Cliente autenticado do Google Sheets.
@@ -427,7 +457,6 @@ async function findChaveAcesso(sheets, chaveAcesso) {
 async function getXmlFiles(drive) {
   try {
     const res = await drive.files.list({
-      // [REMOVIDO] 'auth' não é necessário, 'drive' já está autenticado
       q: `'${constants.ID_PASTA_XML}' in parents and (mimeType='text/xml' or mimeType='application/xml') and trashed=false`,
       fields: 'files(id, name)',
       pageSize: 100, // Limite de arquivos por vez
@@ -448,7 +477,7 @@ async function getXmlFiles(drive) {
 async function getXmlContent(drive, fileId) {
   try {
     const res = await drive.files.get(
-      { fileId: fileId, alt: 'media' }, // [REMOVIDO] 'auth'
+      { fileId: fileId, alt: 'media' },
       { responseType: 'stream' } // Trata a resposta como stream
     );
 
@@ -467,6 +496,221 @@ async function getXmlContent(drive, fileId) {
   }
 }
 
+// ====================================================================
+// --- [NOVAS FUNÇÕES MIGRADAS DO ConciliacaoNFCrud.js (GAS)] ---
+// ====================================================================
+
+/**
+ * [NOVO - MIGRADO] Busca cotações abertas (Aguardando Faturamento ou Recebido Parcialmente).
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ */
+async function obterCotacoesAbertas(sheets) {
+  try {
+    // 1. Obter dados das Cotações e Fornecedores em paralelo
+    const [dadosCotacoes, dadosFornecedores] = await Promise.all([
+      _obterDadosPlanilha(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_COTACOES),
+      _obterDadosPlanilha(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_FORNECEDORES)
+    ]);
+
+    if (dadosCotacoes.length <= 1) return [];
+
+    // 2. Mapear CNPJ dos fornecedores
+    const cabecalhosForn = dadosFornecedores[0];
+    const colFornNome = cabecalhosForn.indexOf("Fornecedor");
+    const colFornCnpj = cabecalhosForn.indexOf("CNPJ");
+    const mapaFornecedores = dadosFornecedores.slice(1).reduce((map, row) => {
+      const nome = row[colFornNome];
+      const cnpj = row[colFornCnpj];
+      if (nome) map[nome.toString().trim()] = cnpj ? cnpj.toString().trim() : '';
+      return map;
+    }, {});
+
+    // 3. Processar cotações
+    const cabecalhos = dadosCotacoes[0];
+    const colId = cabecalhos.indexOf("ID da Cotação");
+    const colData = cabecalhos.indexOf("Data Abertura");
+    const colForn = cabecalhos.indexOf("Fornecedor");
+    const colStatus = cabecalhos.indexOf("Status da Cotação");
+
+    const cotacoesUnicas = {};
+    dadosCotacoes.slice(1).forEach(linha => {
+      const status = linha[colStatus];
+      const id = linha[colId];
+      const fornecedor = linha[colForn];
+
+      if (id && fornecedor && (status === 'Aguardando Faturamento' || status === 'Recebido Parcialmente')) {
+        const compositeKey = `${id}-${fornecedor}`;
+        if (!cotacoesUnicas[compositeKey]) {
+          const nomeFornecedorTrim = fornecedor.toString().trim();
+          cotacoesUnicas[compositeKey] = {
+            compositeKey: compositeKey,
+            idCotacao: id,
+            fornecedor: fornecedor,
+            fornecedorCnpj: mapaFornecedores[nomeFornecedorTrim] || '',
+            dataAbertura: linha[colData] ? new Date(linha[colData]).toLocaleDateString('pt-BR') : 'N/A' // Simples formatação
+          };
+        }
+      }
+    });
+
+    const resultado = Object.values(cotacoesUnicas);
+    resultado.sort((a, b) => {
+      if (b.idCotacao !== a.idCotacao) return b.idCotacao - a.idCotacao;
+      return a.fornecedor.localeCompare(b.fornecedor);
+    });
+    
+    return resultado;
+  } catch (e) {
+    console.error(`Erro em obterCotacoesAbertas: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [NOVO - MIGRADO] Busca o mapeamento de conciliação.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ */
+async function obterMapeamentoConciliacao(sheets) {
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_CONCILIACAO);
+    if (dados.length <= 1) return [];
+
+    const cabecalhos = dados[0];
+    const colItemCotacao = cabecalhos.indexOf("Item da Cotação");
+    const colDescricaoNF = cabecalhos.indexOf("Descrição Produto (NF)");
+
+    if (colItemCotacao === -1 || colDescricaoNF === -1) {
+      console.warn(`Colunas "Item da Cotação" ou "Descrição Produto (NF)" não encontradas na aba "${constants.ABA_CONCILIACAO}".`);
+      return [];
+    }
+
+    const mapeamento = dados.slice(1).map(linha => ({
+      itemCotacao: linha[colItemCotacao],
+      descricaoNF: linha[colDescricaoNF]
+    })).filter(item => item.itemCotacao && item.descricaoNF);
+    
+    return mapeamento;
+  } catch (e) {
+    console.error(`Erro em obterMapeamentoConciliacao: ${e.message}`);
+    return []; // Retorna vazio em caso de erro
+  }
+}
+
+/**
+ * [NOVO - MIGRADO] Busca todos os itens de cotações abertas.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {Array<object>} chavesCotacoes - Array de { idCotacao, fornecedor }.
+ */
+async function obterTodosItensCotacoesAbertas(sheets, chavesCotacoes) {
+  try {
+    const dados = await _obterDadosPlanilha(sheets, constants.ID_PLANILHA_PRINCIPAL, constants.ABA_COTACOES);
+    const cabecalhos = dados.shift();
+    const colMap = {};
+    const colunasNecessarias = ["ID da Cotação", "Fornecedor", "SubProduto", "Comprar", "Preço", "Fator", "Preço por Fator"];
+    colunasNecessarias.forEach(nome => { colMap[nome] = cabecalhos.indexOf(nome); });
+
+    const setCotacoes = new Set(chavesCotacoes.map(c => `${c.idCotacao}-${c.fornecedor}`));
+    const itens = [];
+
+    for (const linha of dados) {
+      const id = linha[colMap["ID da Cotação"]];
+      const fornecedor = linha[colMap["Fornecedor"]];
+      const compositeKey = `${id}-${fornecedor}`;
+
+      if (setCotacoes.has(compositeKey)) {
+        const qtdComprar = parseFloat(String(linha[colMap["Comprar"]]).replace(',', '.'));
+        if (!isNaN(qtdComprar) && qtdComprar > 0) {
+          itens.push({
+            idCotacao: id,
+            fornecedor: fornecedor,
+            subProduto: linha[colMap["SubProduto"]],
+            qtdComprar: qtdComprar,
+            preco: parseFloat(String(linha[colMap["Preço"]]).replace(',', '.')) || 0,
+            fator: parseFloat(String(linha[colMap["Fator"]]).replace(',', '.')) || 1,
+            precoPorFator: parseFloat(String(linha[colMap["Preço por Fator"]]).replace(',', '.')) || 0
+          });
+        }
+      }
+    }
+    return itens;
+  } catch (e) {
+    console.error(`Erro em obterTodosItensCotacoesAbertas: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [NOVO - MIGRADO] Combina Tributos e Faturas
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {Array<string>} chavesAcessoNF - Array de Chaves de Acesso.
+ */
+async function obterDadosGeraisDasNFs(sheets, chavesAcessoNF) {
+  try {
+    // 1. Busca os totais dos tributos
+    const [dadosTrib, dadosFat] = await Promise.all([
+      getTributosTotaisNF(sheets, chavesAcessoNF),
+      getFaturasNF(sheets, chavesAcessoNF)
+    ]);
+
+    const resultadosMap = {};
+
+    // Mapeia os tributos
+    for (const tributo of dadosTrib) {
+      const chaveAtual = tributo["Chave de Acesso"];
+      resultadosMap[chaveAtual] = {
+        chaveAcesso: chaveAtual,
+        totalBaseCalculoIcms: parseFloat(tributo["Total Base Cálculo ICMS"]) || 0,
+        totalValorIcms: parseFloat(tributo["Total Valor ICMS"]) || 0,
+        totalValorIcmsSt: parseFloat(tributo["Total Valor ICMS ST"]) || 0,
+        totalValorProdutos: parseFloat(tributo["Total Valor Produtos"]) || 0,
+        totalValorFrete: parseFloat(tributo["Total Valor Frete"]) || 0,
+        totalValorSeguro: parseFloat(tributo["Total Valor Seguro"]) || 0,
+        totalValorDesconto: parseFloat(tributo["Total Valor Desconto"]) || 0,
+        totalValorIpi: parseFloat(tributo["Total Valor IPI"]) || 0,
+        totalValorPis: parseFloat(tributo["Total Valor PIS"]) || 0,
+        totalValorCofins: parseFloat(tributo["Total Valor COFINS"]) || 0,
+        totalOutrasDespesas: parseFloat(tributo["Total Outras Despesas"]) || 0,
+        valorTotalNf: parseFloat(tributo["Valor Total da NF"]) || 0,
+        faturas: [] // Inicializa
+      };
+    }
+
+    // Agrupa as faturas
+    for (const fatura of dadosFat) {
+      const chaveAtual = fatura["Chave de Acesso"];
+      if (resultadosMap[chaveAtual]) {
+        resultadosMap[chaveAtual].faturas.push({
+          numeroFatura: fatura["Número da Fatura"],
+          numeroParcela: fatura["Número da Parcela"],
+          dataVencimento: fatura["Data de Vencimento"], // Já deve ser string
+          valorParcela: parseFloat(fatura["Valor da Parcela"]) || 0
+        });
+      }
+    }
+    
+    return Object.values(resultadosMap);
+  } catch (e) {
+    console.error(`Erro em obterDadosGeraisDasNFs: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+/**
+ * [NOVO - MIGRADO] Busca setores únicos das regras de rateio.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ */
+async function obterSetoresUnicos(sheets) {
+  try {
+    const regras = await getRegrasRateio(sheets);
+    const setores = new Set(regras.map(r => r["Setor"]));
+    return Array.from(setores).filter(Boolean); // Remove nulos/vazios
+  } catch (e) {
+    console.error(`Erro em obterSetoresUnicos: ${e.message}\n${e.stack}`);
+    throw e;
+  }
+}
+
+
 // Exporta as funções para serem usadas pelo Controller
 module.exports = {
   // Funções de Leitura
@@ -477,6 +721,13 @@ module.exports = {
   getTributosTotaisNF,
   getRegrasRateio,
   getContasAPagar,
+  
+  // [NOVAS FUNÇÕES EXPORTADAS]
+  obterCotacoesAbertas,
+  obterMapeamentoConciliacao,
+  obterTodosItensCotacoesAbertas,
+  obterDadosGeraisDasNFs,
+  obterSetoresUnicos,
 
   // Funções de Escrita
   updateNotasFiscais,
