@@ -1,8 +1,7 @@
 // CotacaoPro-Node/Controllers/ConciliacaoNFController.js
-// VERSÃO FINAL E COMPLETA - Migrado de Araujo-PTC e dos arquivos completos fornecidos
+// VERSÃO CORRIGIDA - Remove autenticação local e usa req.sheets/req.drive
 
-const { google } = require('googleapis');
-const { getAuth } = require('../cotacaopro-node-service-account.json');
+// [REMOVIDO] Não precisamos mais do 'googleapis' nem do 'getAuth' aqui.
 const crud = require('./ConciliacaoNFCrud'); // O ConciliacaoNFCrud.js que migramos
 const constants = require('../config/constants');
 const { parseStringPromise } = require('xml2js');
@@ -16,10 +15,10 @@ const subProdutosCRUD = require('./SubProdutosCRUD');
 // const rateioCrud = require('./RateioCrud'); // O seu 'RateioCrud.js' original
 // const mapeamentoCRUD = require('./MapeamentoConciliacaoCRUD'); // O seu 'Mapeamento...CRUD.js' original
 
-const drive = google.drive('v3');
+// [REMOVIDO] O 'drive' agora virá do req.drive
 
 // --- FUNÇÕES HELPER (extrairDadosNF, prepararDadosParaPlanilha, _safeGet) ---
-// (Estas funções são as mesmas que eu já te enviei na migração anterior do Controller)
+// (Estas funções permanecem inalteradas)
 
 /**
  * Busca de forma segura um valor aninhado em um objeto (resultado do xml2js).
@@ -228,14 +227,14 @@ function prepararDadosParaPlanilha(dadosNF) {
 
 /**
  * Cria as entradas de Contas a Pagar com base nas faturas e regras de rateio.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets (de req.sheets).
  * @param {Array<Object>} faturas - Array de faturas extraídas (do XML).
  * @param {string} chaveAcesso - Chave de acesso da NF.
  * @param {Array<Object>} itensNF - Itens da NF (do XML) para resumo.
  */
-async function criarContasAPagar(auth, faturas, chaveAcesso, itensNF) {
+async function criarContasAPagar(sheets, faturas, chaveAcesso, itensNF) {
   try {
-    const regrasRateio = await crud.getRegrasRateio(auth);
+    const regrasRateio = await crud.getRegrasRateio(sheets);
     if (regrasRateio.length === 0) {
       console.warn('Nenhuma regra de rateio encontrada. Contas a Pagar não será gerado.');
       return;
@@ -256,7 +255,7 @@ async function criarContasAPagar(auth, faturas, chaveAcesso, itensNF) {
       }
     }
     if (contasAPagar.length > 0) {
-      await crud.updateContasAPagar(auth, contasAPagar);
+      await crud.updateContasAPagar(sheets, contasAPagar);
       console.log(`Contas a Pagar geradas para a NF ${chaveAcesso}`);
     }
   } catch (err) {
@@ -271,17 +270,13 @@ async function criarContasAPagar(auth, faturas, chaveAcesso, itensNF) {
  * (Endpoint: POST /conciliacaonf/processar)
  */
 const processarXMLs = async (req, res) => {
-  let auth;
-  try { auth = await getAuth(); } catch (err) {
-    console.error('Erro de autenticação:', err);
-    return res.status(500).json({ error: 'Falha na autenticação com Google API.' });
-  }
-
+  // [REMOVIDO] A autenticação agora vem de req.sheets e req.drive
   const logs = [];
   let arquivosProcessados = 0, arquivosIgnorados = 0, arquivosComErro = 0;
 
   try {
-    const files = await crud.getXmlFiles(auth);
+    // [CORRIGIDO] Passa o req.drive (cliente autenticado) para o CRUD
+    const files = await crud.getXmlFiles(req.drive);
     if (files.length === 0) {
       return res.json({ message: 'Nenhum arquivo XML encontrado para processar.' });
     }
@@ -291,34 +286,39 @@ const processarXMLs = async (req, res) => {
       const fileId = file.id; const fileName = file.name;
       try {
         console.log(`Processando arquivo: ${fileName} (ID: ${fileId})`);
-        const xmlContent = await crud.getXmlContent(auth, fileId);
+        // [CORRIGIDO] Passa req.drive
+        const xmlContent = await crud.getXmlContent(req.drive, fileId);
         const dadosNF = await extrairDadosNF(xmlContent);
         const chaveAcesso = dadosNF.geral.chaveAcesso;
         if (!chaveAcesso) throw new Error(`Não foi possível extrair a Chave de Acesso do arquivo ${fileName}`);
 
-        const existe = await crud.findChaveAcesso(auth, chaveAcesso);
+        // [CORRIGIDO] Passa req.sheets
+        const existe = await crud.findChaveAcesso(req.sheets, chaveAcesso);
         if (existe) {
           logs.push(`Arquivo ${fileName} (Chave: ${chaveAcesso}) já processado. Ignorando.`);
           arquivosIgnorados++;
         } else {
           const dadosPlanilha = prepararDadosParaPlanilha(dadosNF);
+          // [CORRIGIDO] Passa req.sheets
           await Promise.all([
-            crud.updateNotasFiscais(auth, dadosPlanilha.NotasFiscais),
-            crud.updateItensNF(auth, dadosPlanilha.Itens),
-            crud.updateFaturasNF(auth, dadosPlanilha.Faturas),
-            crud.updateTransporteNF(auth, dadosPlanilha.Transporte),
-            crud.updateTributosTotaisNF(auth, dadosPlanilha.TributosTotais)
+            crud.updateNotasFiscais(req.sheets, dadosPlanilha.NotasFiscais),
+            crud.updateItensNF(req.sheets, dadosPlanilha.Itens),
+            crud.updateFaturasNF(req.sheets, dadosPlanilha.Faturas),
+            crud.updateTransporteNF(req.sheets, dadosPlanilha.Transporte),
+            crud.updateTributosTotaisNF(req.sheets, dadosPlanilha.TributosTotais)
           ]);
           logs.push(`Arquivo ${fileName} (Chave: ${chaveAcesso}) salvo nas planilhas.`);
-          await criarContasAPagar(auth, dadosNF.faturas, chaveAcesso, dadosNF.itens);
+          // [CORRIGIDO] Passa req.sheets
+          await criarContasAPagar(req.sheets, dadosNF.faturas, chaveAcesso, dadosNF.itens);
           arquivosProcessados++;
         }
         
         if (constants.ID_PASTA_XML_PROCESSADOS) {
-          const fileMetadata = await drive.files.get({ auth: auth, fileId: fileId, fields: 'parents' });
+          // [CORRIGIDO] Usa req.drive
+          const fileMetadata = await req.drive.files.get({ fileId: fileId, fields: 'parents' });
           const previousParents = fileMetadata.data.parents.join(',');
-          await drive.files.update({
-            auth: auth, fileId: fileId,
+          await req.drive.files.update({
+            fileId: fileId,
             addParents: constants.ID_PASTA_XML_PROCESSADOS,
             removeParents: previousParents,
             fields: 'id, parents'
@@ -348,12 +348,7 @@ const processarXMLs = async (req, res) => {
  * (Endpoint: POST /conciliacaonf/upload-xmls)
  */
 const uploadArquivos = async (req, res) => {
-  let auth;
-  try { auth = await getAuth(); } catch (err) {
-    console.error('Erro de autenticação:', err);
-    return res.status(500).json({ success: false, message: 'Falha na autenticação com Google API.' });
-  }
-
+  // [REMOVIDO] A autenticação agora vem de req.sheets e req.drive
   const arquivos = req.body.files;
   if (!arquivos || arquivos.length === 0) {
     return res.status(400).json({ success: false, message: "Nenhum arquivo recebido." });
@@ -373,30 +368,29 @@ const uploadArquivos = async (req, res) => {
       const chaveAcesso = dadosNF.geral.chaveAcesso;
       if (!chaveAcesso) throw new Error(`Não foi possível extrair a Chave de Acesso do arquivo ${fileName}`);
 
-      // 3. Verificar duplicidade
-      const existe = await crud.findChaveAcesso(auth, chaveAcesso);
+      // 3. Verificar duplicidade (Passando req.sheets)
+      const existe = await crud.findChaveAcesso(req.sheets, chaveAcesso);
       if (existe) {
         logs.push(`Arquivo ${fileName} (Chave: ${chaveAcesso}) já processado. Ignorando.`);
         arquivosDuplicados++;
       } else {
-        // 4. Salvar dados nas planilhas (reutilizando funções)
+        // 4. Salvar dados nas planilhas (Passando req.sheets)
         const dadosPlanilha = prepararDadosParaPlanilha(dadosNF);
         await Promise.all([
-          crud.updateNotasFiscais(auth, dadosPlanilha.NotasFiscais),
-          crud.updateItensNF(auth, dadosPlanilha.Itens),
-          crud.updateFaturasNF(auth, dadosPlanilha.Faturas),
-          crud.updateTransporteNF(auth, dadosPlanilha.Transporte),
-          crud.updateTributosTotaisNF(auth, dadosPlanilha.TributosTotais)
+          crud.updateNotasFiscais(req.sheets, dadosPlanilha.NotasFiscais),
+          crud.updateItensNF(req.sheets, dadosPlanilha.Itens),
+          crud.updateFaturasNF(req.sheets, dadosPlanilha.Faturas),
+          crud.updateTransporteNF(req.sheets, dadosPlanilha.Transporte),
+          crud.updateTributosTotaisNF(req.sheets, dadosPlanilha.TributosTotais)
         ]);
         logs.push(`Arquivo ${fileName} (Chave: ${chaveAcesso}) salvo nas planilhas.`);
 
-        // 5. Criar Contas a Pagar (reutilizando função)
-        await criarContasAPagar(auth, dadosNF.faturas, chaveAcesso, dadosNF.itens);
+        // 5. Criar Contas a Pagar (Passando req.sheets)
+        await criarContasAPagar(req.sheets, dadosNF.faturas, chaveAcesso, dadosNF.itens);
 
-        // 6. Salvar o XML no Drive (na pasta de processados)
+        // 6. Salvar o XML no Drive (na pasta de processados) (Usando req.drive)
         if (constants.ID_PASTA_XML_PROCESSADOS) {
-          await drive.files.create({
-            auth: auth,
+          await req.drive.files.create({
             resource: {
               name: fileName,
               parents: [constants.ID_PASTA_XML_PROCESSADOS]
@@ -428,9 +422,9 @@ const uploadArquivos = async (req, res) => {
  */
 const getDadosPagina = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     
-    // 1. Obter todos os dados brutos em paralelo
+    // 1. Obter todos os dados brutos em paralelo (passando req.sheets)
     const [
       notasFiscais, 
       todosItensNF, 
@@ -442,20 +436,21 @@ const getDadosPagina = async (req, res) => {
       // todosItensCotacao,
       // mapeamentoConciliacao
     ] = await Promise.all([
-      crud.getNotasFiscais(auth),
-      crud.getItensNF(auth), // Sem chave, obtém todos
-      crud.getTributosTotaisNF(auth), // Sem chave, obtém todos
-      crud.getFaturasNF(auth), // Sem chave, obtém todos
-      crud.getRegrasRateio(auth),
-      // cotacoesCRUD.obterCotacoesAbertas(auth),
-      // cotacoesCRUD.obterTodosItensCotacoes(auth),
-      // mapeamentoCRUD.getMapeamento(auth)
+      crud.getNotasFiscais(req.sheets),
+      crud.getItensNF(req.sheets), // Sem chave, obtém todos
+      crud.getTributosTotaisNF(req.sheets), // Sem chave, obtém todos
+      crud.getFaturasNF(req.sheets), // Sem chave, obtém todos
+      crud.getRegrasRateio(req.sheets),
+      // cotacoesCRUD.obterCotacoesAbertas(req.sheets),
+      // cotacoesCRUD.obterTodosItensCotacoes(req.sheets),
+      // mapeamentoCRUD.getMapeamento(req.sheets)
     ]);
 
     // [Simulação] Substitua pelos dados reais dos CRUDs acima
-    const cotacoes = await cotacoesCRUD.getAll(auth); 
-    const todosItensCotacao = await cotacoesCRUD.getAllItens(auth);
-    const mapeamentoConciliacao = []; //await mapeamentoCRUD.getMapeamento(auth);
+    // Assumindo que os outros CRUDs também esperam 'sheets'
+    const cotacoes = await cotacoesCRUD.getAll(req.sheets); 
+    const todosItensCotacao = await cotacoesCRUD.getAllItens(req.sheets);
+    const mapeamentoConciliacao = []; //await mapeamentoCRUD.getMapeamento(req.sheets);
 
 
     // 2. Processar e filtrar os dados (lógica do GAS)
@@ -552,19 +547,19 @@ const getDadosPagina = async (req, res) => {
  */
 const salvarLoteUnificado = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     const payload = req.body;
 
     // TODO: Implementar a lógica de salvamento em lote.
     // Esta lógica é complexa e depende de *muitos* outros CRUDs.
     // Você precisará migrar as funções:
-    // - CotacoesCRUD.atualizarCotacoesComNF (payload.conciliacoes)
-    // - CotacoesCRUD.marcarItensComoCortados (payload.itensCortados)
-    // - MapeamentoConciliacaoCRUD.salvarMapeamentos (payload.novosMapeamentos)
-    // - ConciliacaoNFCrud.atualizarStatusNF (payload.statusUpdates)
-    // - RateioCrud.salvarNovasRegras (payload.rateios)
-    // - ConciliacaoNFCrud.salvarContasAPagar (payload.rateios)
-    // - ConciliacaoNFCrud.atualizarStatusRateio (payload.rateios)
+    // - CotacoesCRUD.atualizarCotacoesComNF (req.sheets, payload.conciliacoes)
+    // - CotacoesCRUD.marcarItensComoCortados (req.sheets, payload.itensCortados)
+    // - MapeamentoConciliacaoCRUD.salvarMapeamentos (req.sheets, payload.novosMapeamentos)
+    // - ConciliacaoNFCrud.atualizarStatusNF (req.sheets, payload.statusUpdates)
+    // - RateioCrud.salvarNovasRegras (req.sheets, payload.rateios)
+    // - ConciliacaoNFCrud.salvarContasAPagar (req.sheets, payload.rateios)
+    // - ConciliacaoNFCrud.atualizarStatusRateio (req.sheets, payload.rateios)
 
     console.log('Recebido payload para salvar lote:', JSON.stringify(payload, null, 2));
 
@@ -583,11 +578,12 @@ const salvarLoteUnificado = async (req, res) => {
  */
 const buscarFornecedorPorCnpj = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     const cnpj = req.params.cnpj;
     
     // Assumindo que seu FornecedoresCRUD tem uma função 'buscarPorCnpj'
-    const fornecedor = await fornecedoresCRUD.buscarPorCnpj(auth, cnpj);
+    // [CORRIGIDO] Passa req.sheets
+    const fornecedor = await fornecedoresCRUD.buscarPorCnpj(req.sheets, cnpj);
     
     res.json({ success: true, dados: fornecedor }); // Retorna o fornecedor ou null/undefined
   } catch (err) {
@@ -602,11 +598,12 @@ const buscarFornecedorPorCnpj = async (req, res) => {
  */
 const salvarFornecedorViaNF = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     const dadosFornecedor = req.body;
 
     // Assumindo que seu FornecedoresCRUD tem uma função 'salvar'
-    const resultado = await fornecedoresCRUD.salvar(auth, dadosFornecedor);
+    // [CORRIGIDO] Passa req.sheets
+    const resultado = await fornecedoresCRUD.salvar(req.sheets, dadosFornecedor);
     
     res.json({ success: true, message: "Fornecedor salvo com sucesso!", dados: resultado });
   } catch (err) {
@@ -621,11 +618,12 @@ const salvarFornecedorViaNF = async (req, res) => {
  */
 const salvarProdutoViaNF = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     const dadosProduto = req.body;
     
     // Assumindo que seu ProdutosCRUD tem uma função 'salvar'
-    const produtoSalvo = await produtosCRUD.salvar(auth, dadosProduto);
+    // [CORRIGIDO] Passa req.sheets
+    const produtoSalvo = await produtosCRUD.salvar(req.sheets, dadosProduto);
     
     res.json({ success: true, produto: produtoSalvo });
   } catch (err) {
@@ -640,20 +638,21 @@ const salvarProdutoViaNF = async (req, res) => {
  */
 const obterDadosParaCadastroItens = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     const { chaveAcesso } = req.params;
 
-    const nf = (await crud.getNotasFiscais(auth)).find(n => n['Chave de Acesso'] === chaveAcesso);
+    const nf = (await crud.getNotasFiscais(req.sheets)).find(n => n['Chave de Acesso'] === chaveAcesso);
     if (!nf) {
       return res.status(404).json({ success: false, message: 'NF não encontrada.' });
     }
 
     const cnpj = nf['CNPJ Emitente'];
     
+    // [CORRIGIDO] Passa req.sheets para todas as chamadas
     const [itensNF, fornecedor, produtos] = await Promise.all([
-      crud.getItensNF(auth, chaveAcesso),
-      fornecedoresCRUD.buscarPorCnpj(auth, cnpj),
-      produtosCRUD.getAll(auth) // Assumindo que ProdutosCRUD tem 'getAll'
+      crud.getItensNF(req.sheets, chaveAcesso),
+      fornecedoresCRUD.buscarPorCnpj(req.sheets, cnpj),
+      produtosCRUD.getAll(req.sheets) // Assumindo que ProdutosCRUD tem 'getAll'
     ]);
 
     res.json({
@@ -680,11 +679,12 @@ const obterDadosParaCadastroItens = async (req, res) => {
  */
 const salvarSubProdutosViaNF = async (req, res) => {
   try {
-    const auth = await getAuth();
+    // [REMOVIDO] A autenticação agora vem de req.sheets
     const dadosLote = req.body; // { fornecedorId, subProdutos: [...] }
     
     // Assumindo que seu SubProdutosCRUD tem 'cadastrarMultiplosSubProdutos'
-    const resultado = await subProdutosCRUD.cadastrarMultiplosSubProdutos(auth, dadosLote);
+    // [CORRIGIDO] Passa req.sheets
+    const resultado = await subProdutosCRUD.cadastrarMultiplosSubProdutos(req.sheets, dadosLote);
     
     res.json({ success: true, message: "Subprodutos salvos com sucesso.", ...resultado });
   } catch (err) {

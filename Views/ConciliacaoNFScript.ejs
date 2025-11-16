@@ -61,8 +61,8 @@
         // Mostra o loader e busca os dados iniciais
         toggleLoader(true);
 
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch('/conciliacaonf/dados-pagina')
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch('/api/conciliacaonf/dados-pagina')
             .then(handleResponse)
             .then(onDadosIniciaisSuccess) // onDadosIniciaisSuccess espera a estrutura { success: true, dados: {...} }
             .catch(onFailure);
@@ -82,7 +82,6 @@
         $('#btn-abrir-relatorio-rateio').on('click', onAbrirRelatorioRateioClick);
         // Painel Esquerdo
         $('#search-input').on('input', onSearchInputChange);
-
         $('#accordion-fornecedores').on('click', '.nf-list-item:not(.staged)', onNfListItemClick);
 
         // Painel Direito (Delegated events)
@@ -125,7 +124,6 @@
         panelDireito.on('click', '.btn-desfazer-conciliacao', ConciliacaoNFScript_onDesfazerConciliacaoClick); // <-- NOVA LINHA ADICIONADA AQUI
         $('#btn-salvar-ajuste-manual').on('click', onBtnSalvarAjusteManualClick);
         $('#ajuste-fator').on('input', calcularVisualizacaoAjuste);
-
         // Marca que os listeners foram anexados com sucesso.
         ConciliacaoNFScript_listenersAnexados = true;
     }
@@ -137,8 +135,8 @@
         $('#workspace-content').addClass('d-none').empty();
         $('#workspace-welcome').removeClass('d-none');
         
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch('/conciliacaonf/dados-pagina')
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch('/api/conciliacaonf/dados-pagina')
             .then(handleResponse)
             .then(onDadosIniciaisSuccess)
             .catch(onFailure);
@@ -146,7 +144,7 @@
 
     // ... (onMarcarTipoBClick permanece a mesma) ...
     function onMarcarTipoBClick(event) { 
-        event.preventDefault(); 
+        event.preventDefault();
         const nfInfo = $('#workspace-content').data('active-nf');
         if (!nfInfo || !confirm(`Tem certeza que deseja marcar a NF ${nfInfo.numeroNF} como 'NF Tipo B'? Esta ação não poderá ser desfeita após salvar.`)) {
             return;
@@ -203,11 +201,11 @@
         }));
         Promise.all(filePromises)
             .then(fileObjects => {
-                // [MIGRADO] Substituído google.script.run por fetch
-                fetch('/conciliacaonf/upload-xmls', {
+                // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+                fetch('/api/conciliacaonf/upload-xmls', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: fileObjects }) // Envia os arquivos como JSON
+                     body: JSON.stringify({ files: fileObjects }) // Envia os arquivos como JSON
                 })
                 .then(handleResponse)
                 .then(onUploadSuccess)
@@ -255,7 +253,7 @@
                 <div id="collapse-${idAccordion}" class="accordion-collapse collapse show" aria-labelledby="heading-${idAccordion}">
                     <div class="accordion-body p-0 list-group list-group-flush">
                         </div>
-                </div>
+                 </div>
             </div>
             `);
             const bodyAccordion = accordionItem.find('.accordion-body');
@@ -289,6 +287,7 @@
             accordionItem.find('.nf-list-item').each(function () {
                 const item = $(this);
                 const nfInfo = item.data('nf-info');
+                
                 const fornecedorNome = nfInfo.nomeEmitente.toLowerCase();
                 const nfNumero = String(nfInfo.numeroNF);
                 const itemVisivel = fornecedorNome.includes(searchTerm) || nfNumero.includes(searchTerm);
@@ -369,20 +368,82 @@
     }
 
     // ... (Todo o bloco "LÓGICA DE CONCILIAÇÃO, AJUSTE E RATEIO" permanece o mesmo) ...
-    function onCotacaoItemClick(e) { e.preventDefault(); const itemEl = $(this); if (selectedCotacaoItem && selectedCotacaoItem[0] === itemEl[0]) { return; } $('#cotacao-items-list .list-group-item').removeClass('selected-for-match'); itemEl.addClass('selected-for-match'); selectedCotacaoItem = itemEl; }
-    function onNfItemClick(e) { e.preventDefault(); const itemEl = $(this); if (itemEl.hasClass('matched')) { return; } if ($(e.target).closest('.btn-ajuste-manual').length > 0) return; if (!selectedCotacaoItem) { alert("Selecione primeiro um item da Cotação para ligar."); return; } _ConciliacaoNFScript_vincularItemNF(selectedCotacaoItem, itemEl); }
-    function _ConciliacaoNFScript_atualizarAgregadosDoCard(card) { const info = card.data('conciliacao-info'); if (!info || !info.itensNF_Original || info.itensNF_Original.length === 0) return; let totalQtdAgregada = 0; let totalValorAgregado = 0; info.itensNF_Original.forEach(itemNF => { const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === itemNF.numeroItem); const ajuste = itemOriginalEl.data('ajuste-manual') || { fator: 1 }; const qtdAjustada = itemNF.qtdNF * ajuste.fator; const precoAjustado = itemNF.precoNF / ajuste.fator; totalQtdAgregada += qtdAjustada; totalValorAgregado += qtdAjustada * precoAjustado; }); const precoMedioPonderado = totalQtdAgregada > 0 ? totalValorAgregado / totalQtdAgregada : 0; info.itemNF_Agregada = { qtdNF: totalQtdAgregada, precoNF: precoMedioPonderado }; _atualizarVisualMatchedCard(card); }
-    function _ConciliacaoNFScript_vincularItemNF(cotacaoItemEl, nfItemEl) { if (!cotacaoItemEl || !nfItemEl || nfItemEl.hasClass('matched')) return; const itemCotInfo = cotacaoItemEl.data('item-info'); const itemNfInfo = nfItemEl.data('item-info'); let matchedCard = null; $('.matched-item-card').each(function () { const card = $(this); if (card.data('conciliacao-info').itemCot.subProduto === itemCotInfo.subProduto) { matchedCard = card; return false; } }); if (matchedCard) { const conciliacaoInfo = matchedCard.data('conciliacao-info'); const isAlreadyAdded = conciliacaoInfo.itensNF_Original.some(item => item.numeroItem === itemNfInfo.numeroItem); if (isAlreadyAdded) { console.warn(`Item da NF ${itemNfInfo.numeroItem} já está no card. Ignorando.`); return; } conciliacaoInfo.itensNF_Original.push(itemNfInfo); } else { const template = $('#template-matched-item').prop('content').cloneNode(true); matchedCard = $(template.querySelector('.matched-item-card')); const novaConciliacaoInfo = { itemCot: itemCotInfo, itensNF_Original: [itemNfInfo], itemNF_Agregada: {} }; matchedCard.data('conciliacao-info', novaConciliacaoInfo); $('#matched-items-container').append(matchedCard); _popularRateioDoCard(matchedCard); } nfItemEl.addClass('matched'); _ConciliacaoNFScript_atualizarAgregadosDoCard(matchedCard); recalcularErenderizarResumoRateio(); }
-    function tentarConciliacaoAutomatica() { $('#cotacao-items-list .list-group-item:not(.matched)').each(function () { const cotItemEl = $(this); const cotItem = cotItemEl.data('item-info'); const mapeamentos = mapaConciliacao.filter(m => m.itemCotacao === cotItem.subProduto); if (mapeamentos.length > 0) { mapeamentos.forEach(mapeamento => { $('#nf-items-list .list-group-item:not(.matched)').each(function () { const nfItemEl = $(this); if (nfItemEl.data('item-info').descricaoNF === mapeamento.descricaoNF) { _ConciliacaoNFScript_vincularItemNF(cotItemEl, nfItemEl); } }); }); } }); }
-    function _atualizarVisualMatchedCard(card) { const info = card.data('conciliacao-info'); if (!info || !info.itemNF_Agregada) return; const descricoesNF = info.itensNF_Original.map(item => `(Item ${item.numeroItem}) ${item.descricaoNF}`).join('<br>'); card.find('.item-cot-descricao').text(info.itemCot.subProduto); card.find('.item-nf-descricao').html(descricoesNF); const diffPreco = info.itemNF_Agregada.precoNF - info.itemCot.preco; const diffQtd = info.itemNF_Agregada.qtdNF - info.itemCot.qtdComprar; const totalValorCotacao = info.itemCot.qtdComprar * info.itemCot.preco; const totalValorNF = info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF; const diffTotalValor = totalValorNF - totalValorCotacao; card.find('.divergencia-preco').html(Math.abs(diffPreco) < 0.01 ? `<span class="badge text-bg-success">OK</span>` : `<span class="badge text-bg-danger">${formatarMoeda(diffPreco)}</span>`); card.find('.divergencia-qtd').html(Math.abs(diffQtd) < 0.001 ? `<span class="badge text-bg-success">OK</span>` : `<span class="badge text-bg-warning">${diffQtd > 0 ? '+' : ''}${diffQtd.toFixed(2)}</span>`); card.find('.divergencia-total-valor').html(Math.abs(diffTotalValor) < 0.01 ? `<span class="text-success">${formatarMoeda(diffTotalValor)}</span>` : `<span class="text-danger">${formatarMoeda(diffTotalValor)}</span>`); const fatorInfoEl = card.find('.fator-info'); const ajusteButton = card.find('.btn-reajustar-item'); if (info.itensNF_Original.length > 1) { ajusteButton.prop('disabled', true).attr('title', 'Ajuste não disponível para múltiplos itens da NF vinculados.'); fatorInfoEl.empty(); } else { ajusteButton.prop('disabled', false).attr('title', 'Corrigir Fator de Conversão'); const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === info.itensNF_Original[0].numeroItem); const ajuste = itemOriginalEl.data('ajuste-manual'); if (ajuste) { fatorInfoEl.html(`<i class="bi bi-box-seam"></i> Fator ${ajuste.fator} aplicado.`); } else { fatorInfoEl.empty(); } } }
-    function _popularRateioDoCard(card) { const info = card.data('conciliacao-info'); if (!info) return; const uniqueId = "rateio-item-" + new Date().getTime() + Math.random(); card.find('.collapse').attr('id', uniqueId); card.find('[data-bs-target^="#rateio-item-"]').attr('data-bs-target', '#' + uniqueId); const regrasDoItem = regrasRateio.filter(r => r.itemCotacao === info.itemCot.subProduto); const autoInfoContainer = card.find('.rateio-automatico-info'); const noRuleBadge = card.find('.no-rate-rule-badge'); if (regrasDoItem.length > 0) { noRuleBadge.addClass('d-none'); card.find('.btn-add-setor').hide(); let infoText = '<strong>Rateio Automático:</strong> '; regrasDoItem.forEach(regra => { infoText += `${regra.porcentagem}% ${regra.setor}; `; }); autoInfoContainer.html(infoText); card.data('rateio-info', { isAutomatico: true, regras: regrasDoItem }); } else { noRuleBadge.removeClass('d-none'); card.data('rateio-info', { isAutomatico: false, regras: [] }); onAdicionarSetorManualClick({ target: card.find('.btn-add-setor')[0] }); } onPorcentagemOuSetorChange({ target: card.find('.rateio-section')[0] }); }
-    function onBtnReajustarItemClick(e) { e.preventDefault(); e.stopPropagation(); activeItemForAdjustment = $(this).closest('.matched-item-card'); const info = activeItemForAdjustment.data('conciliacao-info'); const itemNF_Original = info.itensNF_Original[0]; $('#ajuste-cot-descricao').text(info.itemCot.subProduto); $('#ajuste-cot-qtd').text(info.itemCot.qtdComprar.toFixed(2)); $('#ajuste-cot-preco').text(formatarMoeda(info.itemCot.preco)); $('#ajuste-nf-descricao').text(itemNF_Original.descricaoNF); $('#ajuste-nf-qtd').text(itemNF_Original.qtdNF.toFixed(2)); $('#ajuste-nf-preco').text(formatarMoeda(itemNF_Original.precoNF)); const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === itemNF_Original.numeroItem); const ajusteExistente = itemOriginalEl.data('ajuste-manual'); $('#ajuste-fator').val(ajusteExistente ? ajusteExistente.fator : 1); calcularVisualizacaoAjuste(); ajusteModalInstance.show(); }
-    function calcularVisualizacaoAjuste() { if (!activeItemForAdjustment || !activeItemForAdjustment.hasClass('matched-item-card')) return; const itensNF_Original_Array = activeItemForAdjustment.data('conciliacao-info').itensNF_Original; const itemNF_Original = itensNF_Original_Array[0]; if (!itemNF_Original) return; const fator = parseFloat($('#ajuste-fator').val()) || 1; if (fator <= 0) return; const novaQtd = itemNF_Original.qtdNF * fator; const novoPreco = itemNF_Original.precoNF / fator; $('#ajuste-nova-qtd').text(novaQtd.toFixed(4)); $('#ajuste-novo-preco').text(formatarMoeda(novoPreco)); }
-    function onBtnSalvarAjusteManualClick() { const fator = parseFloat($('#ajuste-fator').val()); if (!fator || fator <= 0) { alert("Insira um fator válido (número maior que zero)."); return; } if (activeItemForAdjustment && activeItemForAdjustment.hasClass('matched-item-card')) { const info = activeItemForAdjustment.data('conciliacao-info'); const itemNF_Original_Info = info.itensNF_Original[0]; const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === itemNF_Original_Info.numeroItem); if (itemOriginalEl.length > 0) { const dadosAjustados = { fator: fator }; itemOriginalEl.data('ajuste-manual', dadosAjustados); _ConciliacaoNFScript_atualizarAgregadosDoCard(activeItemForAdjustment); recalcularErenderizarResumoRateio(); } } ajusteModalInstance.hide(); }
-    function onAdicionarSetorManualClick(event) { const card = $(event.target).closest('.matched-item-card'); if (card.data('rateio-info').isAutomatico) return; const linhasContainer = card.find('.rateio-manual-linhas'); const template = $('#template-rateio-row').prop('content').cloneNode(true); linhasContainer.append(template); }
-    function onRemoverSetorManualClick(event) { $(event.target).closest('.manual-rate-row').remove(); onPorcentagemOuSetorChange(event); }
-    function onPorcentagemOuSetorChange(event) { const card = $(event.target).closest('.matched-item-card'); let totalPercent = 0; if (card.data('rateio-info').isAutomatico) { totalPercent = card.data('rateio-info').regras.reduce((sum, r) => sum + r.porcentagem, 0); } else { card.find('.input-porcentagem').each(function () { totalPercent += parseFloat($(this).val()) || 0; }); } const totalEl = card.find('.total-percent-item'); totalEl.text(`Total: ${totalPercent.toFixed(2)}%`).removeClass('is-invalid is-valid'); if (Math.abs(totalPercent - 100) > 0.01) { totalEl.addClass('is-invalid'); } else { totalEl.addClass('is-valid'); } recalcularErenderizarResumoRateio(); }
-    function recalcularErenderizarResumoRateio() { const nfInfo = $('#workspace-content').data('active-nf'); if (!nfInfo) return; const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso); if (!totaisNF) return; const totalImpostos = (totaisNF.totalValorIcms || 0) + (totaisNF.totalValorIcmsSt || 0) + (totaisNF.totalValorIpi || 0) + (totaisNF.totalValorPis || 0) + (totaisNF.totalValorCofins || 0); $('.total-produtos-valor').text(formatarMoeda(totaisNF.totalValorProdutos || 0)); $('.total-impostos-valor').text(formatarMoeda(totalImpostos)); $('.total-outras-despesas-valor').text(formatarMoeda(totaisNF.totalOutrasDespesas || 0)); $('.total-desconto-valor').text(formatarMoeda(totaisNF.totalValorDesconto || 0)); $('.total-notas-valor').text(formatarMoeda(totaisNF.valorTotalNf)); let totalConciliadoBruto = 0; const mapaSetorParaItens = {}; $('.matched-item-card').each(function () { const info = $(this).data('conciliacao-info'); if (info && info.itemNF_Agregada) { totalConciliadoBruto += info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF; } }); $('.total-conciliado-valor').text(formatarMoeda(totalConciliadoBruto)); $('.diferenca-totais-valor').text(formatarMoeda(totaisNF.valorTotalNf - totalConciliadoBruto)); const totaisPorSetor = {}; const custosAdicionais = totaisNF.valorTotalNf - totalConciliadoBruto; $('.matched-item-card').each(function () { const card = $(this); const concInfo = card.data('conciliacao-info'); const rateioInfo = card.data('rateio-info'); if (!concInfo || !concInfo.itemNF_Agregada || !rateioInfo) return; const valorBrutoItem = concInfo.itemNF_Agregada.qtdNF * concInfo.itemNF_Agregada.precoNF; const proporcaoItem = totalConciliadoBruto > 0.01 ? valorBrutoItem / totalConciliadoBruto : 0; const custoEfetivoItem = valorBrutoItem + (custosAdicionais * proporcaoItem); const aplicarRateio = (setor, porcentagem) => { if (!setor || !porcentagem) return; setor = setor.trim(); totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (porcentagem / 100)); if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set(); mapaSetorParaItens[setor].add(concInfo.itemCot.subProduto); }; if (rateioInfo.isAutomatico) { rateioInfo.regras.forEach(regra => aplicarRateio(regra.setor, regra.porcentagem)); } else { card.find('.manual-rate-row').each(function () { aplicarRateio($(this).find('.input-setor').val(), parseFloat($(this).find('.input-porcentagem').val()) || 0); }); } }); const resumoContainer = $('#resumo-setor-container').empty(); let totalCalculado = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0); let resumoHtml = '<ul class="list-group list-group-flush">'; Object.keys(totaisPorSetor).sort().forEach(setor => { resumoHtml += `<li class="list-group-item d-flex justify-content-between"><span>${setor}</span> <strong>${formatarMoeda(totaisPorSetor[setor])}</strong></li>`; }); resumoHtml += '</ul>'; resumoContainer.html(resumoHtml); $('#total-rateado').text(formatarMoeda(totalCalculado)); const faturasContainer = $('#faturas-preview-container').empty(); const faturas = totaisNF.faturas || []; const numFaturasOriginais = faturas.length > 0 ? faturas.length : 1; const numSetores = Object.keys(totaisPorSetor).length; const totalNovosTitulos = numFaturasOriginais * numSetores; if (totalNovosTitulos > 0 && totalCalculado > 0.001) { faturasContainer.append(`<h6>Serão criados ${totalNovosTitulos} novo(s) título(s):</h6>`); let faturasHtml = '<ul class="list-group list-group-flush small">'; if (faturas.length > 0) { let novoNumeroParcela = 1; faturas.forEach(fatura => { Object.keys(totaisPorSetor).sort().forEach(setor => { const valorRateadoParcela = (totaisPorSetor[setor] / totalCalculado) * fatura.valorParcela; const numeroParcelaFormatado = `${novoNumeroParcela++}/${totalNovosTitulos} (Ref: ${fatura.numeroParcela})`; const vencimento = new Date(fatura.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }); faturasHtml += `<li class="list-group-item"> <div class="d-flex w-100 justify-content-between"> <span>${setor} - Parc. ${numeroParcelaFormatado}</span> <strong>${formatarMoeda(valorRateadoParcela)}</strong> </div> <div class="text-muted">Venc: ${vencimento}</div> </li>`; }); }); } else { Object.keys(totaisPorSetor).sort().forEach(setor => { const valorRateado = totaisPorSetor[setor]; faturasHtml += `<li class="list-group-item"> <div class="d-flex w-100 justify-content-between"> <span>${setor}</span> <strong>${formatarMoeda(valorRateado)}</strong> </div> <div class="text-muted">Pagamento à Vista</div> </li>`; }); } faturasHtml += '</ul>'; faturasContainer.html(faturasHtml); } else { faturasContainer.html('<p class="text-muted small">Nenhuma pré-visualização disponível.</p>'); } }
+    function onCotacaoItemClick(e) { e.preventDefault();
+        const itemEl = $(this); if (selectedCotacaoItem && selectedCotacaoItem[0] === itemEl[0]) { return; } $('#cotacao-items-list .list-group-item').removeClass('selected-for-match'); itemEl.addClass('selected-for-match'); selectedCotacaoItem = itemEl;
+    }
+    function onNfItemClick(e) { e.preventDefault(); const itemEl = $(this); if (itemEl.hasClass('matched')) { return;
+    } if ($(e.target).closest('.btn-ajuste-manual').length > 0) return; if (!selectedCotacaoItem) { alert("Selecione primeiro um item da Cotação para ligar."); return;
+    } _ConciliacaoNFScript_vincularItemNF(selectedCotacaoItem, itemEl); }
+    function _ConciliacaoNFScript_atualizarAgregadosDoCard(card) { const info = card.data('conciliacao-info');
+    if (!info || !info.itensNF_Original || info.itensNF_Original.length === 0) return; let totalQtdAgregada = 0; let totalValorAgregado = 0;
+    info.itensNF_Original.forEach(itemNF => { const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === itemNF.numeroItem); const ajuste = itemOriginalEl.data('ajuste-manual') || { fator: 1 }; const qtdAjustada = itemNF.qtdNF * ajuste.fator; const precoAjustado = itemNF.precoNF / ajuste.fator; totalQtdAgregada += qtdAjustada; totalValorAgregado += qtdAjustada * precoAjustado; });
+    const precoMedioPonderado = totalQtdAgregada > 0 ? totalValorAgregado / totalQtdAgregada : 0; info.itemNF_Agregada = { qtdNF: totalQtdAgregada, precoNF: precoMedioPonderado };
+    _atualizarVisualMatchedCard(card); }
+    function _ConciliacaoNFScript_vincularItemNF(cotacaoItemEl, nfItemEl) { if (!cotacaoItemEl || !nfItemEl || nfItemEl.hasClass('matched')) return; const itemCotInfo = cotacaoItemEl.data('item-info');
+    const itemNfInfo = nfItemEl.data('item-info'); let matchedCard = null; $('.matched-item-card').each(function () { const card = $(this); if (card.data('conciliacao-info').itemCot.subProduto === itemCotInfo.subProduto) { matchedCard = card; return false; } });
+    if (matchedCard) { const conciliacaoInfo = matchedCard.data('conciliacao-info'); const isAlreadyAdded = conciliacaoInfo.itensNF_Original.some(item => item.numeroItem === itemNfInfo.numeroItem);
+    if (isAlreadyAdded) { console.warn(`Item da NF ${itemNfInfo.numeroItem} já está no card. Ignorando.`); return; } conciliacaoInfo.itensNF_Original.push(itemNfInfo);
+    } else { const template = $('#template-matched-item').prop('content').cloneNode(true); matchedCard = $(template.querySelector('.matched-item-card'));
+    const novaConciliacaoInfo = { itemCot: itemCotInfo, itensNF_Original: [itemNfInfo], itemNF_Agregada: {} }; matchedCard.data('conciliacao-info', novaConciliacaoInfo); $('#matched-items-container').append(matchedCard); _popularRateioDoCard(matchedCard); } nfItemEl.addClass('matched'); _ConciliacaoNFScript_atualizarAgregadosDoCard(matchedCard); recalcularErenderizarResumoRateio();
+    }
+    function tentarConciliacaoAutomatica() { $('#cotacao-items-list .list-group-item:not(.matched)').each(function () { const cotItemEl = $(this); const cotItem = cotItemEl.data('item-info'); const mapeamentos = mapaConciliacao.filter(m => m.itemCotacao === cotItem.subProduto); if (mapeamentos.length > 0) { mapeamentos.forEach(mapeamento => { $('#nf-items-list .list-group-item:not(.matched)').each(function () { const nfItemEl = $(this); if (nfItemEl.data('item-info').descricaoNF === mapeamento.descricaoNF) { _ConciliacaoNFScript_vincularItemNF(cotItemEl, nfItemEl); } }); }); } });
+    }
+    function _atualizarVisualMatchedCard(card) { const info = card.data('conciliacao-info'); if (!info || !info.itemNF_Agregada) return;
+    const descricoesNF = info.itensNF_Original.map(item => `(Item ${item.numeroItem}) ${item.descricaoNF}`).join('<br>'); card.find('.item-cot-descricao').text(info.itemCot.subProduto); card.find('.item-nf-descricao').html(descricoesNF); const diffPreco = info.itemNF_Agregada.precoNF - info.itemCot.preco;
+    const diffQtd = info.itemNF_Agregada.qtdNF - info.itemCot.qtdComprar; const totalValorCotacao = info.itemCot.qtdComprar * info.itemCot.preco; const totalValorNF = info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF;
+    const diffTotalValor = totalValorNF - totalValorCotacao; card.find('.divergencia-preco').html(Math.abs(diffPreco) < 0.01 ? `<span class="badge text-bg-success">OK</span>` : `<span class="badge text-bg-danger">${formatarMoeda(diffPreco)}</span>`);
+    card.find('.divergencia-qtd').html(Math.abs(diffQtd) < 0.001 ? `<span class="badge text-bg-success">OK</span>` : `<span class="badge text-bg-warning">${diffQtd > 0 ? '+' : ''}${diffQtd.toFixed(2)}</span>`);
+    card.find('.divergencia-total-valor').html(Math.abs(diffTotalValor) < 0.01 ? `<span class="text-success">${formatarMoeda(diffTotalValor)}</span>` : `<span class="text-danger">${formatarMoeda(diffTotalValor)}</span>`); const fatorInfoEl = card.find('.fator-info'); const ajusteButton = card.find('.btn-reajustar-item');
+    if (info.itensNF_Original.length > 1) { ajusteButton.prop('disabled', true).attr('title', 'Ajuste não disponível para múltiplos itens da NF vinculados.'); fatorInfoEl.empty();
+    } else { ajusteButton.prop('disabled', false).attr('title', 'Corrigir Fator de Conversão'); const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === info.itensNF_Original[0].numeroItem);
+    const ajuste = itemOriginalEl.data('ajuste-manual'); if (ajuste) { fatorInfoEl.html(`<i class="bi bi-box-seam"></i> Fator ${ajuste.fator} aplicado.`); } else { fatorInfoEl.empty();
+    } } }
+    function _popularRateioDoCard(card) { const info = card.data('conciliacao-info'); if (!info) return;
+    const uniqueId = "rateio-item-" + new Date().getTime() + Math.random(); card.find('.collapse').attr('id', uniqueId); card.find('[data-bs-target^="#rateio-item-"]').attr('data-bs-target', '#' + uniqueId);
+    const regrasDoItem = regrasRateio.filter(r => r.itemCotacao === info.itemCot.subProduto); const autoInfoContainer = card.find('.rateio-automatico-info'); const noRuleBadge = card.find('.no-rate-rule-badge');
+    if (regrasDoItem.length > 0) { noRuleBadge.addClass('d-none'); card.find('.btn-add-setor').hide(); let infoText = '<strong>Rateio Automático:</strong> ';
+    regrasDoItem.forEach(regra => { infoText += `${regra.porcentagem}% ${regra.setor}; `; }); autoInfoContainer.html(infoText); card.data('rateio-info', { isAutomatico: true, regras: regrasDoItem });
+    } else { noRuleBadge.removeClass('d-none'); card.data('rateio-info', { isAutomatico: false, regras: [] }); onAdicionarSetorManualClick({ target: card.find('.btn-add-setor')[0] }); } onPorcentagemOuSetorChange({ target: card.find('.rateio-section')[0] });
+    }
+    function onBtnReajustarItemClick(e) { e.preventDefault(); e.stopPropagation(); activeItemForAdjustment = $(this).closest('.matched-item-card'); const info = activeItemForAdjustment.data('conciliacao-info'); const itemNF_Original = info.itensNF_Original[0];
+    $('#ajuste-cot-descricao').text(info.itemCot.subProduto); $('#ajuste-cot-qtd').text(info.itemCot.qtdComprar.toFixed(2)); $('#ajuste-cot-preco').text(formatarMoeda(info.itemCot.preco)); $('#ajuste-nf-descricao').text(itemNF_Original.descricaoNF); $('#ajuste-nf-qtd').text(itemNF_Original.qtdNF.toFixed(2)); $('#ajuste-nf-preco').text(formatarMoeda(itemNF_Original.precoNF)); const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === itemNF_Original.numeroItem); const ajusteExistente = itemOriginalEl.data('ajuste-manual');
+    $('#ajuste-fator').val(ajusteExistente ? ajusteExistente.fator : 1); calcularVisualizacaoAjuste(); ajusteModalInstance.show(); }
+    function calcularVisualizacaoAjuste() { if (!activeItemForAdjustment || !activeItemForAdjustment.hasClass('matched-item-card')) return;
+    const itensNF_Original_Array = activeItemForAdjustment.data('conciliacao-info').itensNF_Original; const itemNF_Original = itensNF_Original_Array[0]; if (!itemNF_Original) return; const fator = parseFloat($('#ajuste-fator').val()) || 1;
+    if (fator <= 0) return; const novaQtd = itemNF_Original.qtdNF * fator; const novoPreco = itemNF_Original.precoNF / fator; $('#ajuste-nova-qtd').text(novaQtd.toFixed(4)); $('#ajuste-novo-preco').text(formatarMoeda(novoPreco));
+    }
+    function onBtnSalvarAjusteManualClick() { const fator = parseFloat($('#ajuste-fator').val());
+    if (!fator || fator <= 0) { alert("Insira um fator válido (número maior que zero)."); return;
+    } if (activeItemForAdjustment && activeItemForAdjustment.hasClass('matched-item-card')) { const info = activeItemForAdjustment.data('conciliacao-info'); const itemNF_Original_Info = info.itensNF_Original[0];
+    const itemOriginalEl = $(`#nf-items-list .list-group-item`).filter((i, el) => $(el).data('item-info').numeroItem === itemNF_Original_Info.numeroItem);
+    if (itemOriginalEl.length > 0) { const dadosAjustados = { fator: fator }; itemOriginalEl.data('ajuste-manual', dadosAjustados); _ConciliacaoNFScript_atualizarAgregadosDoCard(activeItemForAdjustment); recalcularErenderizarResumoRateio(); } } ajusteModalInstance.hide();
+    }
+    function onAdicionarSetorManualClick(event) { const card = $(event.target).closest('.matched-item-card'); if (card.data('rateio-info').isAutomatico) return; const linhasContainer = card.find('.rateio-manual-linhas');
+    const template = $('#template-rateio-row').prop('content').cloneNode(true); linhasContainer.append(template); }
+    function onRemoverSetorManualClick(event) { $(event.target).closest('.manual-rate-row').remove(); onPorcentagemOuSetorChange(event);
+    }
+    function onPorcentagemOuSetorChange(event) { const card = $(event.target).closest('.matched-item-card'); let totalPercent = 0;
+    if (card.data('rateio-info').isAutomatico) { totalPercent = card.data('rateio-info').regras.reduce((sum, r) => sum + r.porcentagem, 0);
+    } else { card.find('.input-porcentagem').each(function () { totalPercent += parseFloat($(this).val()) || 0; }); } const totalEl = card.find('.total-percent-item'); totalEl.text(`Total: ${totalPercent.toFixed(2)}%`).removeClass('is-invalid is-valid');
+    if (Math.abs(totalPercent - 100) > 0.01) { totalEl.addClass('is-invalid'); } else { totalEl.addClass('is-valid'); } recalcularErenderizarResumoRateio();
+    }
+    function recalcularErenderizarResumoRateio() { const nfInfo = $('#workspace-content').data('active-nf'); if (!nfInfo) return;
+    const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso); if (!totaisNF) return;
+    const totalImpostos = (totaisNF.totalValorIcms || 0) + (totaisNF.totalValorIcmsSt || 0) + (totaisNF.totalValorIpi || 0) + (totaisNF.totalValorPis || 0) + (totaisNF.totalValorCofins || 0);
+    $('.total-produtos-valor').text(formatarMoeda(totaisNF.totalValorProdutos || 0)); $('.total-impostos-valor').text(formatarMoeda(totalImpostos)); $('.total-outras-despesas-valor').text(formatarMoeda(totaisNF.totalOutrasDespesas || 0)); $('.total-desconto-valor').text(formatarMoeda(totaisNF.totalValorDesconto || 0)); $('.total-notas-valor').text(formatarMoeda(totaisNF.valorTotalNf)); let totalConciliadoBruto = 0; const mapaSetorParaItens = {};
+    $('.matched-item-card').each(function () { const info = $(this).data('conciliacao-info'); if (info && info.itemNF_Agregada) { totalConciliadoBruto += info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF; } }); $('.total-conciliado-valor').text(formatarMoeda(totalConciliadoBruto));
+    $('.diferenca-totais-valor').text(formatarMoeda(totaisNF.valorTotalNf - totalConciliadoBruto)); const totaisPorSetor = {}; const custosAdicionais = totaisNF.valorTotalNf - totalConciliadoBruto;
+    $('.matched-item-card').each(function () { const card = $(this); const concInfo = card.data('conciliacao-info'); const rateioInfo = card.data('rateio-info'); if (!concInfo || !concInfo.itemNF_Agregada || !rateioInfo) return; const valorBrutoItem = concInfo.itemNF_Agregada.qtdNF * concInfo.itemNF_Agregada.precoNF; const proporcaoItem = totalConciliadoBruto > 0.01 ? valorBrutoItem / totalConciliadoBruto : 0; const custoEfetivoItem = valorBrutoItem + (custosAdicionais * proporcaoItem); const aplicarRateio = (setor, porcentagem) => { if (!setor || !porcentagem) return; setor = setor.trim(); totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (porcentagem / 100)); if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set(); mapaSetorParaItens[setor].add(concInfo.itemCot.subProduto); }; if (rateioInfo.isAutomatico) { rateioInfo.regras.forEach(regra => aplicarRateio(regra.setor, regra.porcentagem)); } else { card.find('.manual-rate-row').each(function () { aplicarRateio($(this).find('.input-setor').val(), parseFloat($(this).find('.input-porcentagem').val()) ||
+    0); }); } }); const resumoContainer = $('#resumo-setor-container').empty(); let totalCalculado = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
+    let resumoHtml = '<ul class="list-group list-group-flush">'; Object.keys(totaisPorSetor).sort().forEach(setor => { resumoHtml += `<li class="list-group-item d-flex justify-content-between"><span>${setor}</span> <strong>${formatarMoeda(totaisPorSetor[setor])}</strong></li>`; }); resumoHtml += '</ul>';
+    resumoContainer.html(resumoHtml); $('#total-rateado').text(formatarMoeda(totalCalculado)); const faturasContainer = $('#faturas-preview-container').empty(); const faturas = totaisNF.faturas || []; const numFaturasOriginais = faturas.length > 0 ?
+    faturas.length : 1; const numSetores = Object.keys(totaisPorSetor).length; const totalNovosTitulos = numFaturasOriginais * numSetores;
+    if (totalNovosTitulos > 0 && totalCalculado > 0.001) { faturasContainer.append(`<h6>Serão criados ${totalNovosTitulos} novo(s) título(s):</h6>`);
+    let faturasHtml = '<ul class="list-group list-group-flush small">'; if (faturas.length > 0) { let novoNumeroParcela = 1;
+    faturas.forEach(fatura => { Object.keys(totaisPorSetor).sort().forEach(setor => { const valorRateadoParcela = (totaisPorSetor[setor] / totalCalculado) * fatura.valorParcela; const numeroParcelaFormatado = `${novoNumeroParcela++}/${totalNovosTitulos} (Ref: ${fatura.numeroParcela})`; const vencimento = new Date(fatura.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }); faturasHtml += `<li class="list-group-item"> <div class="d-flex w-100 justify-content-between"> <span>${setor} - Parc. ${numeroParcelaFormatado}</span> <strong>${formatarMoeda(valorRateadoParcela)}</strong> </div> <div class="text-muted">Venc: ${vencimento}</div> </li>`; }); });
+    } else { Object.keys(totaisPorSetor).sort().forEach(setor => { const valorRateado = totaisPorSetor[setor]; faturasHtml += `<li class="list-group-item"> <div class="d-flex w-100 justify-content-between"> <span>${setor}</span> <strong>${formatarMoeda(valorRateado)}</strong> </div> <div class="text-muted">Pagamento à Vista</div> </li>`; });
+    } faturasHtml += '</ul>'; faturasContainer.html(faturasHtml); } else { faturasContainer.html('<p class="text-muted small">Nenhuma pré-visualização disponível.</p>');
+    } }
 
     // ... (onBtnConcluirConciliacaoClick permanece a mesma) ...
     function onBtnConcluirConciliacaoClick() {
@@ -412,12 +473,12 @@
                 quantidadeNota: info.itemNF_Agregada.qtdNF,
                 precoNota: info.itemNF_Agregada.precoNF,
                 divergenciaNota: formatarMoeda(info.itemNF_Agregada.precoNF - info.itemCot.preco)
-            });
+             });
             info.itensNF_Original.forEach(itemNF => {
                 conciliacaoPayload.novosMapeamentos.push({
                     itemCotacao: info.itemCot.subProduto,
                     descricaoNF: itemNF.descricaoNF,
-                    gtin: itemNF.gtin || ''
+                     gtin: itemNF.gtin || ''
                 });
             });
         });
@@ -451,7 +512,7 @@
                     const setor = $(this).find('.input-setor').val().trim();
                     const porcentagem = parseFloat($(this).find('.input-porcentagem').val()) || 0;
                     aplicarRateio(setor, porcentagem);
-                    if (setor && porcentagem > 0) novasRegras.push({ itemCotacao: concInfo.itemCot.subProduto, setor, porcentagem });
+                     if (setor && porcentagem > 0) novasRegras.push({ itemCotacao: concInfo.itemCot.subProduto, setor, porcentagem });
                 });
             }
         });
@@ -489,10 +550,10 @@
             acc.statusUpdates.push(...(current.statusUpdates || []));
             acc.rateios.push(...(current.rateios || []));
             return acc;
-        }, { conciliacoes: [], itensCortados: [], novosMapeamentos: [], statusUpdates: [], rateios: [] });
-        
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch('/conciliacaonf/salvar-lote', {
+        }, { 
+            conciliacoes: [], itensCortados: [], novosMapeamentos: [], statusUpdates: [], rateios: [] });
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch('/api/conciliacaonf/salvar-lote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payloadFinal)
@@ -508,40 +569,37 @@
     }
     
     // ... (atualizarBotaoSalvarLote permanece a mesma) ...
-    function atualizarBotaoSalvarLote() { const btn = $('#btn-salvar-lote'); const count = stagedPayloads.length; if (count > 0) { btn.find('#save-batch-text').text(`Salvar ${count} Alteração(ões)`); btn.removeClass('d-none'); } else { btn.addClass('d-none'); } }
+    function atualizarBotaoSalvarLote() { const btn = $('#btn-salvar-lote');
+    const count = stagedPayloads.length; if (count > 0) { btn.find('#save-batch-text').text(`Salvar ${count} Alteração(ões)`); btn.removeClass('d-none'); } else { btn.addClass('d-none');
+    } }
 
     // ===== FUNÇÕES UTILITÁRIAS =====
     
     // ... (toggleLoader e formatarMoeda permanecem as mesmas) ...
-    function toggleLoader(show) { $('#loader').toggleClass('d-none', !show); }
-    function formatarMoeda(valor) { if (typeof valor !== 'number' || isNaN(valor)) return "R$ 0,00"; return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    function toggleLoader(show) { $('#loader').toggleClass('d-none', !show);
+    }
+    function formatarMoeda(valor) { if (typeof valor !== 'number' || isNaN(valor)) return "R$ 0,00";
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
     
+    /**
+     * [FUNÇÃO CORRIGIDA]
+     * A lógica de `fetch('/funcoes/url-webapp'...)` estava errada.
+     * Esta função não precisa chamar a API, ela só precisa abrir a view correta
+     * do lado do cliente, que é `/view/relatoriorateio`.
+     */
     function onAbrirRelatorioRateioClick() {
-        toggleLoader(true);
-        
-        // [MIGRADO] Substituído google.script.run por fetch
-        // Esta função agora chama um endpoint que deve retornar a URL
-        fetch('/funcoes/url-webapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ view: 'relatoriorateio' })
-        })
-        .then(handleResponse)
-        .then(response => {
-            toggleLoader(false);
-            if (response.success && response.url) {
-                window.open(response.url, '_blank');
-            } else {
-                onFailure({ message: response.message || 'Não foi possível obter a URL do relatório.' });
-            }
-        })
-        .catch(onFailure);
+        // Esta view é renderizada pelo servidor na rota /view/relatoriorateio
+        // Apenas precisamos abrir essa URL.
+        console.log("Abrindo /view/relatoriorateio em nova aba...");
+        const url = window.location.origin + '/view/relatoriorateio';
+        window.open(url, '_blank');
+        // Não é necessário loader, pois abre em nova aba.
     }
 
     // ... (onMarcarBonificacaoClick permanece a mesma) ...
     function onMarcarBonificacaoClick(event) { 
-        event.preventDefault(); 
+        event.preventDefault();
         const nfInfo = $('#workspace-content').data('active-nf');
         if (!nfInfo || !confirm(`Tem certeza que deseja marcar a NF ${nfInfo.numeroNF} como 'Bonificação'? Esta ação não poderá ser desfeita após salvar.`)) {
             return;
@@ -578,13 +636,14 @@
                 qtdComprar: itemNF.qtdNF,
                 preco: itemNF.precoNF
             };
+            
             const cardTemplate = $('#template-matched-item').prop('content').cloneNode(true);
             const card = $(cardTemplate.querySelector('.matched-item-card'));
             card.data('conciliacao-info', {
                 itemCot: itemCotSintetico,
                 itensNF_Original: [itemNF],
                 itemNF_Agregada: {
-                    qtdNF: itemNF.qtdNF,
+                     qtdNF: itemNF.qtdNF,
                     precoNF: itemNF.precoNF
                 }
             });
@@ -641,7 +700,7 @@
                     const setor = $(this).find('.input-setor').val().trim();
                     const porcentagem = parseFloat($(this).find('.input-porcentagem').val()) || 0;
                     aplicarRateio(setor, porcentagem);
-                    if (setor && porcentagem > 0) novasRegras.push({ itemCotacao: concInfo.itensNF_Original[0].descricaoNF, setor, porcentagem });
+                     if (setor && porcentagem > 0) novasRegras.push({ itemCotacao: concInfo.itensNF_Original[0].descricaoNF, setor, porcentagem });
                 });
             }
         });
@@ -674,9 +733,8 @@
         }
         const btn = $('#btn-abrir-modal-fornecedor');
         btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Buscando...');
-
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch(`/conciliacaonf/fornecedor/${encodeURIComponent(nfInfo.cnpjEmitente)}`)
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch(`/api/conciliacaonf/fornecedor/${encodeURIComponent(nfInfo.cnpjEmitente)}`)
             .then(handleResponse) // handleResponse tratará o JSON
             .then(function (response) {
                 // A resposta de sucesso (fornecedor) deve estar em response.dados
@@ -734,9 +792,8 @@
                 dadosFornecedor[item.name] = item.value;
             }
         });
-
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch('/conciliacaonf/salvar-fornecedor', {
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch('/api/conciliacaonf/salvar-fornecedor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosFornecedor)
@@ -760,8 +817,14 @@
     }
 
     // ... (Funções de máscara e formatação permanecem as mesmas) ...
-    function ConciliacaoNFScript_mascaraCnpj(value) { if (!value) return ""; return value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').slice(0, 18); }
-    function ConciliacaoNFScript_mascaraTelefone(value) { if (!value) return ""; value = value.replace(/\D/g, ''); if (value.length > 11) value = value.slice(0, 11); if (value.length > 10) { value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3'); } else if (value.length > 6) { value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3'); } else if (value.length > 2) { value = value.replace(/^(\d{2})(\d*)/, '($1) $2'); } else if (value.length > 0) { value = value.replace(/^(\d*)/, '($1'); } return value; }
+    function ConciliacaoNFScript_mascaraCnpj(value) { if (!value) return "";
+    return value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').slice(0, 18); }
+    function ConciliacaoNFScript_mascaraTelefone(value) { if (!value) return "";
+    value = value.replace(/\D/g, ''); if (value.length > 11) value = value.slice(0, 11);
+    if (value.length > 10) { value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+    } else if (value.length > 6) { value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    } else if (value.length > 2) { value = value.replace(/^(\d{2})(\d*)/, '($1) $2');
+    } else if (value.length > 0) { value = value.replace(/^(\d*)/, '($1'); } return value; }
     function ConciliacaoNFScript_formatarMoedaInput(inputElement) { let value = inputElement.value.replace(/\D/g, ''); if (value === '') { inputElement.value = ''; return; } const numero = parseInt(value, 10) / 100; inputElement.value = numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
     function ConciliacaoNFScript_obterValorMoedaCru(formattedValue) { if (!formattedValue) return ''; return formattedValue.replace('R$', '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.'); }
 
@@ -769,10 +832,11 @@
     function onAbrirCadastroItensClick() {
         const nfInfo = $('#workspace-content').data('active-nf');
         if (!nfInfo) return;
+    
         toggleLoader(true);
 
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch(`/conciliacaonf/dados-cadastro-itens/${encodeURIComponent(nfInfo.chaveAcesso)}`)
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch(`/api/conciliacaonf/dados-cadastro-itens/${encodeURIComponent(nfInfo.chaveAcesso)}`)
             .then(handleResponse)
             .then(function (response) {
                 toggleLoader(false);
@@ -790,7 +854,7 @@
                     if (info && info.itensNF_Original) {
                         info.itensNF_Original.forEach(item => itensConciliadosDescricoes.add(item.descricaoNF));
                     }
-                });
+                 });
                 const itensParaCadastrar = itensNF.filter(item => !itensConciliadosDescricoes.has(item.descricaoNF));
                 if (itensParaCadastrar.length === 0) {
                     container.html('<div class="alert alert-warning">Todos os itens desta NF já foram conciliados ou estão em processo de conciliação. Não há novos itens para cadastrar.</div>');
@@ -820,8 +884,10 @@
     // ... (onProdutoVinculadoChange permanece a mesma) ...
     function onProdutoVinculadoChange() {
         if ($(this).val() === '--CADASTRAR-NOVO--') {
-            selectQueAbriuModalProduto = $(this); // Salva a referência do select que disparou a ação
-            $('#form-cadastro-produto-nf')[0].reset(); // Limpa o formulário do mini-modal
+            selectQueAbriuModalProduto = $(this);
+            // Salva a referência do select que disparou a ação
+            $('#form-cadastro-produto-nf')[0].reset();
+            // Limpa o formulário do mini-modal
             $('#feedback-cadastro-produto-nf').addClass('d-none').text('');
             modalCadastroProdutoViaNFInstance.show();
         }
@@ -835,9 +901,8 @@
         spinner.removeClass('d-none');
         const feedbackDiv = $('#feedback-cadastro-produto-nf').addClass('d-none');
         const dadosProduto = Object.fromEntries(new FormData(event.target));
-
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch('/conciliacaonf/salvar-produto-via-nf', {
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch('/api/conciliacaonf/salvar-produto-via-nf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosProduto)
@@ -845,12 +910,12 @@
         .then(handleResponse)
         .then(function (response) {
             btnSalvar.prop('disabled', false);
-            spinner.addClass('d-none');
+             spinner.addClass('d-none');
             if (response && response.success && response.produto) {
                 modalCadastroProdutoViaNFInstance.hide();
                 const novaOpcao = new Option(response.produto.Produto, response.produto.ID, false, false);
                 $('.select-produto-vinculado').each(function () {
-                    $(this).find('option[value="--CADASTRAR-NOVO--"]').before(novaOpcao.cloneNode(true));
+                     $(this).find('option[value="--CADASTRAR-NOVO--"]').before(novaOpcao.cloneNode(true));
                 });
                 if (selectQueAbriuModalProduto) {
                     selectQueAbriuModalProduto.select2('destroy');
@@ -903,9 +968,8 @@
             fornecedorId: $('#cadastro-itens-fornecedor-nome').data('fornecedor-id'),
             subProdutos: [subProdutoData] // Envia um array com apenas um item
         };
-
-        // [MIGRADO] Substituído google.script.run por fetch
-        fetch('/conciliacaonf/salvar-subprodutos-via-nf', {
+        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        fetch('/api/conciliacaonf/salvar-subprodutos-via-nf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosLote)
@@ -944,12 +1008,12 @@
                 const nfItemElement = $('#nf-items-list .list-group-item').filter(function () {
                     const itemData = $(this).data('item-info');
                     return itemData && itemData.numeroItem === itemNF_Original.numeroItem;
-                });
+                 });
                 if (nfItemElement.length > 0) {
                     nfItemElement.removeClass('matched');
                     nfItemElement.removeData('ajuste-manual');
                     nfItemElement.find('.ajuste-info').empty();
-                }
+                 }
             });
         }
         matchedCard.remove();

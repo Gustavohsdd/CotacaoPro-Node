@@ -1,12 +1,10 @@
 // CotacaoPro-Node/Controllers/ConciliacaoNFCrud.js
-// Migrado de Araujo-PTC/src/ConciliacaoNFCrud.js
+// VERSÃO CORRIGIDA - Funções refatoradas para aceitar clientes 'sheets' e 'drive'
 
-const { google } = require('googleapis');
-const { getAuth } = require('../cotacaopro-node-service-account.json');
+// [REMOVIDO] 'googleapis' e 'getAuth' não são mais necessários aqui.
 const constants = require('../config/constants');
 
-const sheets = google.sheets('v4');
-const drive = google.drive('v3');
+// [REMOVIDO] Clientes 'sheets' e 'drive' globais e não autenticados.
 
 // --- FUNÇÕES HELPER (Baseado em outros CRUDs do projeto) ---
 
@@ -67,13 +65,12 @@ function mapObjectToRow(dataObject, headers) {
 
 /**
  * Busca todas as Notas Fiscais da planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @returns {Promise<Array<Object>>} - Um array de objetos de notas fiscais.
  */
-async function getNotasFiscais(auth) {
+async function getNotasFiscais(sheets) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_NOTAS_FISCAIS,
     });
@@ -86,109 +83,120 @@ async function getNotasFiscais(auth) {
 
 /**
  * Busca os Itens de uma NF específica pela Chave de Acesso.
- * @param {Object} auth - Cliente de autenticação do Google.
- * @param {string} chaveAcesso - A Chave de Acesso da NF.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODOS os itens.
  * @returns {Promise<Array<Object>>} - Um array de objetos de itens da NF.
  */
-async function getItensNF(auth, chaveAcesso) {
+async function getItensNF(sheets, chaveAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_ITENS,
     });
     
     const allItens = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_ITENS);
     
-    // Filtra os itens pela Chave de Acesso
-    return allItens.filter(item => item["Chave de Acesso"] === chaveAcesso);
+    if (chaveAcesso) {
+      // Filtra os itens pela Chave de Acesso
+      return allItens.filter(item => item["Chave de Acesso"] === chaveAcesso);
+    }
+    return allItens; // Retorna todos se chaveAcesso não for fornecida
+
   } catch (err) {
-    console.error(`Erro ao buscar Itens da NF ${chaveAcesso}:`, err);
+    console.error(`Erro ao buscar Itens da NF ${chaveAcesso || '(todos)'}:`, err);
     throw err;
   }
 }
 
 /**
  * Busca as Faturas de uma NF específica pela Chave de Acesso.
- * @param {Object} auth - Cliente de autenticação do Google.
- * @param {string} chaveAcesso - A Chave de Acesso da NF.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODAS as faturas.
  * @returns {Promise<Array<Object>>} - Um array de objetos de faturas da NF.
  */
-async function getFaturasNF(auth, chaveAcesso) {
+async function getFaturasNF(sheets, chaveAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_FATURAS,
     });
     
     const allFaturas = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_FATURAS);
     
-    // Filtra as faturas pela Chave de Acesso
-    return allFaturas.filter(fatura => fatura["Chave de Acesso"] === chaveAcesso);
+    if (chaveAcesso) {
+      // Filtra as faturas pela Chave de Acesso
+      return allFaturas.filter(fatura => fatura["Chave de Acesso"] === chaveAcesso);
+    }
+    return allFaturas;
+
   } catch (err) {
-    console.error(`Erro ao buscar Faturas da NF ${chaveAcesso}:`, err);
+    console.error(`Erro ao buscar Faturas da NF ${chaveAcesso || '(todas)'}:`, err);
     throw err;
   }
 }
 
 /**
  * Busca os dados de Transporte de uma NF específica pela Chave de Acesso.
- * @param {Object} auth - Cliente de autenticação do Google.
- * @param {string} chaveAcesso - A Chave de Acesso da NF.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODOS.
  * @returns {Promise<Array<Object>>} - Um array de objetos de transporte da NF.
  */
-async function getTransporteNF(auth, chaveAcesso) {
+async function getTransporteNF(sheets, chaveAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_TRANSPORTE,
     });
     
     const allTransporte = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_TRANSPORTE);
     
-    // Filtra os dados de transporte pela Chave de Acesso
-    return allTransporte.filter(transp => transp["Chave de Acesso"] === chaveAcesso);
+    if (chaveAcesso) {
+      // Filtra os dados de transporte pela Chave de Acesso
+      return allTransporte.filter(transp => transp["Chave de Acesso"] === chaveAcesso);
+    }
+    return allTransporte;
+
   } catch (err) {
-    console.error(`Erro ao buscar Transporte da NF ${chaveAcesso}:`, err);
+    console.error(`Erro ao buscar Transporte da NF ${chaveAcesso || '(todos)'}:`, err);
     throw err;
   }
 }
 
 /**
  * Busca os Tributos Totais de uma NF específica pela Chave de Acesso.
- * @param {Object} auth - Cliente de autenticação do Google.
- * @param {string} chaveAcesso - A Chave de Acesso da NF.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODOS.
  * @returns {Promise<Array<Object>>} - Um array de objetos de tributos da NF.
  */
-async function getTributosTotaisNF(auth, chaveAcesso) {
+async function getTributosTotaisNF(sheets, chaveAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_TRIBUTOS_TOTAIS,
     });
     
     const allTributos = mapDataToObjects(res.data.values, constants.CABECALHOS_NF_TRIBUTOS_TOTAIS);
     
-    // Filtra os tributos pela Chave de Acesso
-    return allTributos.filter(trib => trib["Chave de Acesso"] === chaveAcesso);
+    if (chaveAcesso) {
+      // Filtra os tributos pela Chave de Acesso
+      return allTributos.filter(trib => trib["Chave de Acesso"] === chaveAcesso);
+    }
+    return allTributos;
+
   } catch (err) {
-    console.error(`Erro ao buscar Tributos Totais da NF ${chaveAcesso}:`, err);
+    console.error(`Erro ao buscar Tributos Totais da NF ${chaveAcesso || '(todos)'}:`, err);
     throw err;
   }
 }
 
 /**
  * Busca todas as Regras de Rateio da planilha Financeiro.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @returns {Promise<Array<Object>>} - Um array de objetos de regras de rateio.
  */
-async function getRegrasRateio(auth) {
+async function getRegrasRateio(sheets) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
       range: constants.ABA_FINANCEIRO_REGRAS_RATEIO,
     });
@@ -201,24 +209,26 @@ async function getRegrasRateio(auth) {
 
 /**
  * Busca as Contas a Pagar de uma NF específica pela Chave de Acesso.
- * @param {Object} auth - Cliente de autenticação do Google.
- * @param {string} chaveAcesso - A Chave de Acesso da NF.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
+ * @param {string} [chaveAcesso] - A Chave de Acesso da NF. Se omitida, retorna TODAS.
  * @returns {Promise<Array<Object>>} - Um array de objetos de contas a pagar.
  */
-async function getContasAPagar(auth, chaveAcesso) {
+async function getContasAPagar(sheets, chaveAcesso = null) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
       range: constants.ABA_FINANCEIRO_CONTAS_A_PAGAR,
     });
     
     const allContas = mapDataToObjects(res.data.values, constants.CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR);
     
-    // Filtra as contas pela Chave de Acesso
-    return allContas.filter(conta => conta["Chave de Acesso"] === chaveAcesso);
+    if (chaveAcesso) {
+      // Filtra as contas pela Chave de Acesso
+      return allContas.filter(conta => conta["Chave de Acesso"] === chaveAcesso);
+    }
+    return allContas;
   } catch (err) {
-    console.error(`Erro ao buscar Contas a Pagar da NF ${chaveAcesso}:`, err);
+    console.error(`Erro ao buscar Contas a Pagar da NF ${chaveAcesso || '(todas)'}:`, err);
     throw err;
   }
 }
@@ -228,15 +238,14 @@ async function getContasAPagar(auth, chaveAcesso) {
 
 /**
  * Adiciona uma nova linha de Nota Fiscal na planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {Object} dataObject - O objeto contendo os dados da NF.
  * @returns {Promise<Object>} - O resultado da operação de append.
  */
-async function updateNotasFiscais(auth, dataObject) {
+async function updateNotasFiscais(sheets, dataObject) {
   try {
     const row = mapObjectToRow(dataObject, constants.CABECALHOS_NF_NOTAS_FISCAIS);
     const res = await sheets.spreadsheets.values.append({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_NOTAS_FISCAIS,
       valueInputOption: 'USER_ENTERED',
@@ -254,17 +263,16 @@ async function updateNotasFiscais(auth, dataObject) {
 
 /**
  * Adiciona novas linhas de Itens da NF na planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {Array<Object>} dataObjects - Um array de objetos, um para cada item.
  * @returns {Promise<Object>} - O resultado da operação de append.
  */
-async function updateItensNF(auth, dataObjects) {
+async function updateItensNF(sheets, dataObjects) {
   try {
     const rows = dataObjects.map(obj => mapObjectToRow(obj, constants.CABECALHOS_NF_ITENS));
     if (rows.length === 0) return;
 
     const res = await sheets.spreadsheets.values.append({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_ITENS,
       valueInputOption: 'USER_ENTERED',
@@ -282,17 +290,16 @@ async function updateItensNF(auth, dataObjects) {
 
 /**
  * Adiciona novas linhas de Faturas da NF na planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {Array<Object>} dataObjects - Um array de objetos, um para cada fatura.
  * @returns {Promise<Object>} - O resultado da operação de append.
  */
-async function updateFaturasNF(auth, dataObjects) {
+async function updateFaturasNF(sheets, dataObjects) {
   try {
     const rows = dataObjects.map(obj => mapObjectToRow(obj, constants.CABECALHOS_NF_FATURAS));
     if (rows.length === 0) return;
 
     const res = await sheets.spreadsheets.values.append({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_FATURAS,
       valueInputOption: 'USER_ENTERED',
@@ -310,15 +317,14 @@ async function updateFaturasNF(auth, dataObjects) {
 
 /**
  * Adiciona uma nova linha de Transporte da NF na planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {Object} dataObject - O objeto contendo os dados de transporte.
  * @returns {Promise<Object>} - O resultado da operação de append.
  */
-async function updateTransporteNF(auth, dataObject) {
+async function updateTransporteNF(sheets, dataObject) {
   try {
     const row = mapObjectToRow(dataObject, constants.CABECALHOS_NF_TRANSPORTE);
     const res = await sheets.spreadsheets.values.append({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_TRANSPORTE,
       valueInputOption: 'USER_ENTERED',
@@ -336,15 +342,14 @@ async function updateTransporteNF(auth, dataObject) {
 
 /**
  * Adiciona uma nova linha de Tributos Totais da NF na planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {Object} dataObject - O objeto contendo os tributos totais.
  * @returns {Promise<Object>} - O resultado da operação de append.
  */
-async function updateTributosTotaisNF(auth, dataObject) {
+async function updateTributosTotaisNF(sheets, dataObject) {
   try {
     const row = mapObjectToRow(dataObject, constants.CABECALHOS_NF_TRIBUTOS_TOTAIS);
     const res = await sheets.spreadsheets.values.append({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       range: constants.ABA_NF_TRIBUTOS_TOTAIS,
       valueInputOption: 'USER_ENTERED',
@@ -362,17 +367,16 @@ async function updateTributosTotaisNF(auth, dataObject) {
 
 /**
  * Adiciona novas linhas de Contas a Pagar na planilha.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {Array<Object>} dataObjects - Um array de objetos, um para cada conta.
  * @returns {Promise<Object>} - O resultado da operação de append.
  */
-async function updateContasAPagar(auth, dataObjects) {
+async function updateContasAPagar(sheets, dataObjects) {
   try {
     const rows = dataObjects.map(obj => mapObjectToRow(obj, constants.CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR));
     if (rows.length === 0) return;
     
     const res = await sheets.spreadsheets.values.append({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_FINANCEIRO,
       range: constants.ABA_FINANCEIRO_CONTAS_A_PAGAR,
       valueInputOption: 'USER_ENTERED',
@@ -392,14 +396,13 @@ async function updateContasAPagar(auth, dataObjects) {
 
 /**
  * Verifica se uma Chave de Acesso já existe na planilha de Notas Fiscais.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} sheets - Cliente autenticado do Google Sheets.
  * @param {string} chaveAcesso - A Chave de Acesso a ser verificada.
  * @returns {Promise<boolean>} - True se a chave existe, False caso contrário.
  */
-async function findChaveAcesso(auth, chaveAcesso) {
+async function findChaveAcesso(sheets, chaveAcesso) {
   try {
     const res = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: constants.ID_PLANILHA_NF,
       // Busca apenas a coluna A (Chave de Acesso)
       range: `${constants.ABA_NF_NOTAS_FISCAIS}!A2:A`, 
@@ -418,13 +421,13 @@ async function findChaveAcesso(auth, chaveAcesso) {
 
 /**
  * Lista os arquivos XML da pasta de importação no Google Drive.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} drive - Cliente autenticado do Google Drive.
  * @returns {Promise<Array<Object>>} - Um array de objetos de arquivos (id, name).
  */
-async function getXmlFiles(auth) {
+async function getXmlFiles(drive) {
   try {
     const res = await drive.files.list({
-      auth,
+      // [REMOVIDO] 'auth' não é necessário, 'drive' já está autenticado
       q: `'${constants.ID_PASTA_XML}' in parents and (mimeType='text/xml' or mimeType='application/xml') and trashed=false`,
       fields: 'files(id, name)',
       pageSize: 100, // Limite de arquivos por vez
@@ -438,14 +441,14 @@ async function getXmlFiles(auth) {
 
 /**
  * Obtém o conteúdo de um arquivo XML do Google Drive pelo ID.
- * @param {Object} auth - Cliente de autenticação do Google.
+ * @param {object} drive - Cliente autenticado do Google Drive.
  * @param {string} fileId - O ID do arquivo no Drive.
  * @returns {Promise<string>} - O conteúdo do arquivo XML como string.
  */
-async function getXmlContent(auth, fileId) {
+async function getXmlContent(drive, fileId) {
   try {
     const res = await drive.files.get(
-      { auth, fileId: fileId, alt: 'media' },
+      { fileId: fileId, alt: 'media' }, // [REMOVIDO] 'auth'
       { responseType: 'stream' } // Trata a resposta como stream
     );
 
@@ -486,5 +489,10 @@ module.exports = {
   // Funções de Verificação e Drive
   findChaveAcesso,
   getXmlFiles,
-  getXmlContent
+  getXmlContent,
+
+  // Helpers (exportados para o Controller usar se precisar)
+  mapDataToObjects,
+  mapObjectToRow,
+  findHeaderIndices
 };
