@@ -507,31 +507,129 @@
     }
 
     function recalcularErenderizarResumoRateio() {
-        const nfInfo = $('#workspace-content').data('active-nf'); if (!nfInfo) return;
-        const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso); if (!totaisNF) return;
-        const totalImpostos = (totaisNF.totalValorIcms || 0) + (totaisNF.totalValorIcmsSt || 0) + (totaisNF.totalValorIpi || 0) + (totaisNF.totalValorPis || 0) + (totaisNF.totalValorCofins || 0);
-        $('.total-produtos-valor').text(formatarMoeda(totaisNF.totalValorProdutos || 0)); $('.total-impostos-valor').text(formatarMoeda(totalImpostos)); $('.total-outras-despesas-valor').text(formatarMoeda(totaisNF.totalOutrasDespesas || 0)); $('.total-desconto-valor').text(formatarMoeda(totaisNF.totalValorDesconto || 0)); $('.total-notas-valor').text(formatarMoeda(totaisNF.valorTotalNf)); let totalConciliadoBruto = 0; const mapaSetorParaItens = {};
-        $('.matched-item-card').each(function () { const info = $(this).data('conciliacao-info'); if (info && info.itemNF_Agregada) { totalConciliadoBruto += info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF; } }); $('.total-conciliado-valor').text(formatarMoeda(totalConciliadoBruto));
-        $('.diferenca-totais-valor').text(formatarMoeda(totaisNF.valorTotalNf - totalConciliadoBruto)); const totaisPorSetor = {}; const custosAdicionais = totaisNF.valorTotalNf - totalConciliadoBruto;
+        const nfInfo = $('#workspace-content').data('active-nf');
+        if (!nfInfo) return;
+        const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso);
+        if (!totaisNF) return;
+
+        // --- INÍCIO DA MODIFICAÇÃO: Cálculo e Exibição dos Totais Detalhados ---
+
+        // 1. Calcula o total de impostos somando os campos individuais
+        const totalImpostos = (totaisNF.totalValorIcms || 0) +
+            (totaisNF.totalValorIcmsSt || 0) +
+            (totaisNF.totalValorIpi || 0) +
+            (totaisNF.totalValorPis || 0) +
+            (totaisNF.totalValorCofins || 0);
+
+        // 2. Preenche os novos campos no painel de resumo financeiro
+        $('.total-produtos-valor').text(formatarMoeda(totaisNF.totalValorProdutos || 0));
+        $('.total-impostos-valor').text(formatarMoeda(totalImpostos));
+        $('.total-outras-despesas-valor').text(formatarMoeda(totaisNF.totalOutrasDespesas || 0));
+        $('.total-desconto-valor').text(formatarMoeda(totaisNF.totalValorDesconto || 0));
+        $('.total-notas-valor').text(formatarMoeda(totaisNF.valorTotalNf));
+
+        // --- FIM DA MODIFICAÇÃO ---
+
+        // Cálculos Gerais (Lógica existente mantida)
+        let totalConciliadoBruto = 0;
+        const mapaSetorParaItens = {};
         $('.matched-item-card').each(function () {
-            const card = $(this); const concInfo = card.data('conciliacao-info'); const rateioInfo = card.data('rateio-info'); if (!concInfo || !concInfo.itemNF_Agregada || !rateioInfo) return; const valorBrutoItem = concInfo.itemNF_Agregada.qtdNF * concInfo.itemNF_Agregada.precoNF; const proporcaoItem = totalConciliadoBruto > 0.01 ? valorBrutoItem / totalConciliadoBruto : 0; const custoEfetivoItem = valorBrutoItem + (custosAdicionais * proporcaoItem); const aplicarRateio = (setor, porcentagem) => { if (!setor || !porcentagem) return; setor = setor.trim(); totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (porcentagem / 100)); if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set(); mapaSetorParaItens[setor].add(concInfo.itemCot.subProduto); }; if (rateioInfo.isAutomatico) { rateioInfo.regras.forEach(regra => aplicarRateio(regra.setor, regra.porcentagem)); } else {
+            const info = $(this).data('conciliacao-info');
+            if (info && info.itemNF_Agregada) {
+                totalConciliadoBruto += info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF;
+            }
+        });
+
+        $('.total-conciliado-valor').text(formatarMoeda(totalConciliadoBruto));
+        $('.diferenca-totais-valor').text(formatarMoeda(totaisNF.valorTotalNf - totalConciliadoBruto));
+
+        // Cálculos de Rateio (Lógica existente mantida)
+        const totaisPorSetor = {};
+        const custosAdicionais = totaisNF.valorTotalNf - totalConciliadoBruto;
+        $('.matched-item-card').each(function () {
+            const card = $(this);
+            const concInfo = card.data('conciliacao-info');
+            const rateioInfo = card.data('rateio-info');
+
+            if (!concInfo || !concInfo.itemNF_Agregada || !rateioInfo) return;
+
+            const valorBrutoItem = concInfo.itemNF_Agregada.qtdNF * concInfo.itemNF_Agregada.precoNF;
+            const proporcaoItem = totalConciliadoBruto > 0.01 ? valorBrutoItem / totalConciliadoBruto : 0;
+            const custoEfetivoItem = valorBrutoItem + (custosAdicionais * proporcaoItem);
+            const aplicarRateio = (setor, porcentagem) => {
+                if (!setor || !porcentagem) return;
+                setor = setor.trim();
+                // --- INÍCIO DA CORREÇÃO 1 ---
+                // Garante que a porcentagem seja um número antes de calcular
+                const percNumerico = parseFloat(porcentagem) || 0;
+                totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
+                // --- FIM DA CORREÇÃO 1 ---
+                if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
+                mapaSetorParaItens[setor].add(concInfo.itemCot.subProduto);
+            };
+            if (rateioInfo.isAutomatico) {
+                // --- INÍCIO DA CORREÇÃO 2 ---
+                // Lê as chaves corretas: "Setor" e "Porcentagem"
+                rateioInfo.regras.forEach(regra => aplicarRateio(regra["Setor"], regra["Porcentagem"]));
+                // --- FIM DA CORREÇÃO 2 ---
+            } else {
                 card.find('.manual-rate-row').each(function () {
-                    aplicarRateio($(this).find('.input-setor').val(), parseFloat($(this).find('.input-porcentagem').val()) ||
-                        0);
+                    aplicarRateio($(this).find('.input-setor').val(), parseFloat($(this).find('.input-porcentagem').val()) || 0);
                 });
             }
-        }); const resumoContainer = $('#resumo-setor-container').empty(); let totalCalculado = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
-        let resumoHtml = '<ul class="list-group list-group-flush">'; Object.keys(totaisPorSetor).sort().forEach(setor => { resumoHtml += `<li class="list-group-item d-flex justify-content-between"><span>${setor}</span> <strong>${formatarMoeda(totaisPorSetor[setor])}</strong></li>`; }); resumoHtml += '</ul>';
-        resumoContainer.html(resumoHtml); $('#total-rateado').text(formatarMoeda(totalCalculado)); const faturasContainer = $('#faturas-preview-container').empty(); const faturas = totaisNF.faturas || []; const numFaturasOriginais = faturas.length > 0 ?
-            faturas.length : 1; const numSetores = Object.keys(totaisPorSetor).length; const totalNovosTitulos = numFaturasOriginais * numSetores;
+        });
+
+        // Renderiza Resumo do Rateio (Lógica existente mantida)
+        const resumoContainer = $('#resumo-setor-container').empty();
+        let totalCalculado = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
+        let resumoHtml = '<ul class="list-group list-group-flush">';
+        Object.keys(totaisPorSetor).sort().forEach(setor => {
+            resumoHtml += `<li class="list-group-item d-flex justify-content-between"><span>${setor}</span> <strong>${formatarMoeda(totaisPorSetor[setor])}</strong></li>`;
+        });
+        resumoHtml += '</ul>';
+        resumoContainer.html(resumoHtml);
+        $('#total-rateado').text(formatarMoeda(totalCalculado));
+
+        // Renderiza a Pré-visualização do Contas a Pagar (Lógica existente mantida)
+        const faturasContainer = $('#faturas-preview-container').empty();
+        const faturas = totaisNF.faturas || [];
+        const numFaturasOriginais = faturas.length > 0 ? faturas.length : 1;
+        const numSetores = Object.keys(totaisPorSetor).length;
+        const totalNovosTitulos = numFaturasOriginais * numSetores;
+
         if (totalNovosTitulos > 0 && totalCalculado > 0.001) {
             faturasContainer.append(`<h6>Serão criados ${totalNovosTitulos} novo(s) título(s):</h6>`);
-            let faturasHtml = '<ul class="list-group list-group-flush small">'; if (faturas.length > 0) {
+            let faturasHtml = '<ul class="list-group list-group-flush small">';
+            if (faturas.length > 0) {
                 let novoNumeroParcela = 1;
-                faturas.forEach(fatura => { Object.keys(totaisPorSetor).sort().forEach(setor => { const valorRateadoParcela = (totaisPorSetor[setor] / totalCalculado) * fatura.valorParcela; const numeroParcelaFormatado = `${novoNumeroParcela++}/${totalNovosTitulos} (Ref: ${fatura.numeroParcela})`; const vencimento = new Date(fatura.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }); faturasHtml += `<li class="list-group-item"> <div class="d-flex w-100 justify-content-between"> <span>${setor} - Parc. ${numeroParcelaFormatado}</span> <strong>${formatarMoeda(valorRateadoParcela)}</strong> </div> <div class="text-muted">Venc: ${vencimento}</div> </li>`; }); });
-            } else {
-                Object.keys(totaisPorSetor).sort().forEach(setor => { const valorRateado = totaisPorSetor[setor]; faturasHtml += `<li class="list-group-item"> <div class="d-flex w-100 justify-content-between"> <span>${setor}</span> <strong>${formatarMoeda(valorRateado)}</strong> </div> <div class="text-muted">Pagamento à Vista</div> </li>`; });
-            } faturasHtml += '</ul>'; faturasContainer.html(faturasHtml);
+                faturas.forEach(fatura => {
+                    Object.keys(totaisPorSetor).sort().forEach(setor => {
+                        const valorRateadoParcela = (totaisPorSetor[setor] / totalCalculado) * fatura.valorParcela;
+                        const numeroParcelaFormatado = `${novoNumeroParcela++}/${totalNovosTitulos} (Ref: ${fatura.numeroParcela})`;
+                        const vencimento = new Date(fatura.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                        faturasHtml += `<li class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <span>${setor} - Parc. ${numeroParcelaFormatado}</span>
+                        <strong>${formatarMoeda(valorRateadoParcela)}</strong>
+                    </div>
+                    <div class="text-muted">Venc: ${vencimento}</div>
+                </li>`;
+                    });
+                });
+            } else { // Pagamento à vista
+                Object.keys(totaisPorSetor).sort().forEach(setor => {
+                    const valorRateado = totaisPorSetor[setor];
+                    faturasHtml += `<li class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <span>${setor}</span>
+                    <strong>${formatarMoeda(valorRateado)}</strong>
+                </div>
+                <div class="text-muted">Pagamento à Vista</div>
+            </li>`;
+                });
+            }
+            faturasHtml += '</ul>';
+            faturasContainer.html(faturasHtml);
         } else {
             faturasContainer.html('<p class="text-muted small">Nenhuma pré-visualização disponível.</p>');
         }
@@ -547,17 +645,22 @@
             }
         });
         if (erroValidacao) return;
+
         const workspace = $('#workspace-content');
         const nfInfo = workspace.data('active-nf');
         const compositeKey = workspace.find('.select-cotacao-fornecedor').val();
+
+        // ===== CORREÇÃO DE VALIDAÇÃO APLICADA AQUI =====
         if (!compositeKey) {
             alert('Erro: Nenhuma cotação foi selecionada. Por favor, vincule a NF a uma cotação antes de concluir.');
             return;
         }
         const [idCotacao, ...nomeFornecedorParts] = compositeKey.split('-');
         const nomeFornecedor = nomeFornecedorParts.join('-');
+
         const conciliacaoPayload = { idCotacao, nomeFornecedor, numeroNF: nfInfo.numeroNF, chavesAcessoNF: [nfInfo.chaveAcesso], itensConciliados: [], novosMapeamentos: [] };
         const itensCortados = [];
+
         $('.matched-item-card').each(function () {
             const info = $(this).data('conciliacao-info');
             conciliacaoPayload.itensConciliados.push({
@@ -574,15 +677,18 @@
                 });
             });
         });
+
         $('#cotacao-items-list .list-group-item:not(.matched)').each(function () {
             itensCortados.push({ idCotacao, nomeFornecedor, subProduto: $(this).data('item-info').subProduto });
         });
+
         const totaisPorSetor = {};
         const novasRegras = [];
         const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso);
         const totalConciliadoBruto = conciliacaoPayload.itensConciliados.reduce((sum, item) => sum + (item.quantidadeNota * item.precoNota), 0);
         const custosAdicionais = totaisNF.valorTotalNf - totalConciliadoBruto;
         const mapaSetorParaItens = {};
+
         $('.matched-item-card').each(function () {
             const card = $(this);
             const concInfo = card.data('conciliacao-info');
@@ -590,15 +696,22 @@
             const valorBrutoItem = concInfo.itemNF_Agregada.qtdNF * concInfo.itemNF_Agregada.precoNF;
             const proporcaoItem = totalConciliadoBruto > 0.01 ? valorBrutoItem / totalConciliadoBruto : 0;
             const custoEfetivoItem = valorBrutoItem + (custosAdicionais * proporcaoItem);
+
             const aplicarRateio = (setor, porcentagem) => {
                 if (!setor || !porcentagem) return;
                 setor = setor.trim();
-                totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (porcentagem / 100));
+                // --- INÍCIO DA CORREÇÃO ---
+                const percNumerico = parseFloat(porcentagem) || 0;
+                totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
+                // --- FIM DA CORREÇÃO ---
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
                 mapaSetorParaItens[setor].add(concInfo.itemCot.subProduto);
             };
+
             if (rateioInfo.isAutomatico) {
-                rateioInfo.regras.forEach(regra => aplicarRateio(regra.setor, regra.porcentagem));
+                // --- INÍCIO DA CORREÇÃO ---
+                rateioInfo.regras.forEach(regra => aplicarRateio(regra["Setor"], regra["Porcentagem"]));
+                // --- FIM DA CORREÇÃO ---
             } else {
                 card.find('.manual-rate-row').each(function () {
                     const setor = $(this).find('.input-setor').val().trim();
@@ -608,9 +721,11 @@
                 });
             }
         });
+
         for (const setor in mapaSetorParaItens) {
             mapaSetorParaItens[setor] = Array.from(mapaSetorParaItens[setor]);
         }
+
         const rateioPayload = {
             chaveAcesso: nfInfo.chaveAcesso,
             totaisPorSetor,
@@ -618,6 +733,7 @@
             numeroNF: nfInfo.numeroNF,
             mapaSetorParaItens: mapaSetorParaItens
         };
+
         stagedPayloads.push({
             conciliacoes: [conciliacaoPayload],
             itensCortados,
@@ -625,6 +741,7 @@
             rateios: [rateioPayload],
             statusUpdates: []
         });
+
         $(`.nf-list-item`).filter((i, el) => $(el).data('nf-info').chaveAcesso === nfInfo.chaveAcesso)
             .addClass('staged').removeClass('active').find('.status-icon').removeClass('d-none');
         workspace.addClass('d-none').empty();
@@ -767,45 +884,65 @@
             }
         });
         if (erroValidacao) return;
+
         const workspace = $('#workspace-content');
         const nfInfo = workspace.data('active-nf');
+
         const totaisPorSetor = {};
         const novasRegras = [];
         const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso);
+
         const totalItensBruto = $('.matched-item-card').toArray().reduce((sum, el) => {
             const info = $(el).data('conciliacao-info');
             return sum + (info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF);
         }, 0);
+
         const custosAdicionais = totaisNF.valorTotalNf - totalItensBruto;
         const mapaSetorParaItens = {};
+
         $('.matched-item-card').each(function () {
             const card = $(this);
             const concInfo = card.data('conciliacao-info');
             const rateioInfo = card.data('rateio-info');
+
             const valorBrutoItem = concInfo.itemNF_Agregada.qtdNF * concInfo.itemNF_Agregada.precoNF;
             const proporcaoItem = totalItensBruto > 0.01 ? valorBrutoItem / totalItensBruto : 0;
             const custoEfetivoItem = valorBrutoItem + (custosAdicionais * proporcaoItem);
+
             const aplicarRateio = (setor, porcentagem) => {
                 if (!setor || !porcentagem) return;
                 setor = setor.trim();
-                totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (porcentagem / 100));
+                // --- INÍCIO DA CORREÇÃO ---
+                const percNumerico = parseFloat(porcentagem) || 0;
+                totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
+                // --- FIM DA CORREÇÃO ---
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
+
+                // ===== CORREÇÃO APLICADA AQUI =====
+                // Acessa o primeiro elemento do array antes de pegar a descrição.
                 mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF);
             };
+
             if (rateioInfo.isAutomatico) {
-                rateioInfo.regras.forEach(regra => aplicarRateio(regra.setor, regra.porcentagem));
+                // --- INÍCIO DA CORREÇÃO ---
+                rateioInfo.regras.forEach(regra => aplicarRateio(regra["Setor"], regra["Porcentagem"]));
+                // --- FIM DA CORREÇÃO ---
             } else {
                 card.find('.manual-rate-row').each(function () {
                     const setor = $(this).find('.input-setor').val().trim();
                     const porcentagem = parseFloat($(this).find('.input-porcentagem').val()) || 0;
                     aplicarRateio(setor, porcentagem);
+
+                    // Corrigido para usar a descrição do item da NF, não da cotação
                     if (setor && porcentagem > 0) novasRegras.push({ itemCotacao: concInfo.itensNF_Original[0].descricaoNF, setor, porcentagem });
                 });
             }
         });
+
         for (const setor in mapaSetorParaItens) {
             mapaSetorParaItens[setor] = Array.from(mapaSetorParaItens[setor]);
         }
+
         const rateioPayload = {
             chaveAcesso: nfInfo.chaveAcesso,
             totaisPorSetor,
@@ -813,10 +950,12 @@
             numeroNF: nfInfo.numeroNF,
             mapaSetorParaItens: mapaSetorParaItens
         };
+
         stagedPayloads.push({
             rateios: [rateioPayload],
             statusUpdates: [{ chaveAcesso: nfInfo.chaveAcesso, novoStatus: 'Conciliada (Sem Pedido)' }]
         });
+
         $(`.nf-list-item`).filter((i, el) => $(el).data('nf-info').chaveAcesso === nfInfo.chaveAcesso)
             .addClass('staged').removeClass('active').find('.status-icon').removeClass('d-none');
         workspace.addClass('d-none').empty();
