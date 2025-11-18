@@ -26,9 +26,9 @@ const { parseStringPromise } = require('xml2js');
 function _safeGet(obj, path, defaultValue = '') {
   try {
     const keys = path.split('.').flatMap(key => {
-      const match = key.match(/(\w+)\[(\d+)\]/); 
+      const match = key.match(/(\w+)\[(\d+)\]/);
       if (match) {
-        return [match[1], parseInt(match[2])]; 
+        return [match[1], parseInt(match[2])];
       }
       return key;
     });
@@ -396,16 +396,16 @@ const getDadosPagina = async (req, res) => {
     // [CORRIGIDO] Passa req.sheets para o crud
     const cotacoes = await crud.obterCotacoesAbertas(req.sheets);
     const notasFiscais = await crud.getNotasFiscais(req.sheets); // Pega todas as NFs
-    
+
     // 2. Filtra NFs pendentes (lógica movida do GAS para cá)
     const notasFiscaisPendentes = notasFiscais
       .filter(nf => nf['Status da Conciliação'] === 'Pendente')
       .map(nf => ({ // Mapeia para o formato que o frontend espera
-          chaveAcesso: nf['Chave de Acesso'],
-          numeroNF: nf['Número NF'],
-          nomeEmitente: nf['Nome Emitente'],
-          cnpjEmitente: nf['CNPJ Emitente'],
-          dataEmissao: nf['Data e Hora Emissão'] ? new Date(nf['Data e Hora Emissão']).toLocaleDateString('pt-BR') : 'N/A'
+        chaveAcesso: nf['Chave de Acesso'],
+        numeroNF: nf['Número NF'],
+        nomeEmitente: nf['Nome Emitente'],
+        cnpjEmitente: nf['CNPJ Emitente'],
+        dataEmissao: nf['Data e Hora Emissão'] ? new Date(nf['Data e Hora Emissão']).toLocaleDateString('pt-BR') : 'N/A'
       }));
 
     // 3. Obtém as chaves para as próximas buscas
@@ -428,18 +428,18 @@ const getDadosPagina = async (req, res) => {
       crud.getRegrasRateio(req.sheets),
       crud.obterSetoresUnicos(req.sheets) // Função migrada
     ]);
-    
+
     // 5. Mapeia os dados para o formato que o frontend espera
     // (O frontend espera os dados brutos do CRUD, então as conversões são mínimas)
-    
+
     const itensNFFormatado = todosOsItensNF.map(item => ({
-        chaveAcesso: item['Chave de Acesso'],
-        numeroItem: item['Número do Item'],
-        descricaoNF: item['Descrição Produto (NF)'],
-        gtin: item['GTIN/EAN (Cód. Barras)'],
-        qtdNF: parseFloat(item['Quantidade Comercial']) || 0,
-        precoNF: parseFloat(item['Valor Unitário Comercial']) || 0,
-        unidadeComercial: item['Unidade Comercial']
+      chaveAcesso: item['Chave de Acesso'],
+      numeroItem: item['Número do Item'],
+      descricaoNF: item['Descrição Produto (NF)'],
+      gtin: item['GTIN/EAN (Cód. Barras)'],
+      qtdNF: parseFloat(item['Quantidade Comercial']) || 0,
+      precoNF: parseFloat(item['Valor Unitário Comercial']) || 0,
+      unidadeComercial: item['Unidade Comercial']
     }));
 
     console.log(`[Controller] Dados carregados: ${cotacoes.length} cotações, ${notasFiscaisPendentes.length} NFs, ${regrasRateio.length} regras, ${setoresUnicos.length} setores.`);
@@ -466,143 +466,6 @@ const getDadosPagina = async (req, res) => {
 
 
 /**
- * [COMPLETO - MIGRADO] Salva o lote de conciliações, rateios e atualizações de status.
- * (Endpoint: POST /conciliacaonf/salvar-lote)
- */
-const salvarLoteUnificado = async (req, res) => {
-  try {
-    const dadosLote = req.body;
-    const { conciliacoes, itensCortados, novosMapeamentos, statusUpdates, rateios } = dadosLote;
-    
-    console.log("[Controller] Iniciando salvamento de lote unificado (Conciliação + Rateio).");
-
-    // 1. Salvar alterações da Conciliação (na aba Cotações)
-    if (conciliacoes && conciliacoes.length > 0) {
-      // Esta função atualiza 'Faturado', 'Divergencia', 'Qtd Nota', 'Preço Nota', 'Número da Nota'
-      await crud.salvarAlteracoesEmLote(req.sheets, conciliacoes, itensCortados || []);
-      
-      // Atualiza o mapeamento para conciliação automática futura
-      await crud.atualizarMapeamentoConciliacao(req.sheets, novosMapeamentos || []);
-
-      console.log(`[Controller] ${conciliacoes.length} conciliação(ões) salvas.`);
-    }
-
-    // 2. Salvar atualizações de Status (Ex: Sem Pedido, Bonificação, NF Tipo B)
-    if (statusUpdates && statusUpdates.length > 0) {
-      // Agrupa por status para fazer menos chamadas
-      const updatesByStatus = statusUpdates.reduce((acc, update) => {
-        if (!acc[update.novoStatus]) acc[update.novoStatus] = [];
-        acc[update.novoStatus].push(update.chaveAcesso);
-        return acc;
-      }, {});
-      
-      for (const status in updatesByStatus) {
-        // Encontra o ID da cotação (se houver) para este lote de chaves
-        // A lógica assume que todas as chaves em um 'statusUpdate' pertencem à mesma cotação, se aplicável
-        let idCotacaoParaNF = null;
-        if (conciliacoes && conciliacoes.length > 0) {
-           const conc = conciliacoes.find(c => c.chavesAcessoNF.includes(updatesByStatus[status][0]));
-           if(conc) idCotacaoParaNF = conc.idCotacao;
-        }
-
-        // Atualiza o status na aba NotasFiscais
-        await crud.atualizarStatusNF(req.sheets, updatesByStatus[status], idCotacaoParaNF, status);
-        console.log(`[Controller] Status de ${updatesByStatus[status].length} NF(s) atualizado para '${status}'.`);
-      }
-    }
-    
-    // 3. Salvar dados do Rateio
-    if (rateios && rateios.length > 0) {
-        const todasAsLinhasContasAPagar = [];
-        const todasAsNovasRegras = [];
-        const todasAsChavesParaAtualizar = new Set();
-        
-        for (const dadosRateio of rateios) {
-            const { chaveAcesso, totaisPorSetor, novasRegras, numeroNF, mapaSetorParaItens } = dadosRateio;
-            todasAsChavesParaAtualizar.add(chaveAcesso);
-
-            if (novasRegras && novasRegras.length > 0) {
-                todasAsNovasRegras.push(...novasRegras);
-            }
-            
-            // Busca as faturas desta NF específica
-            const faturas = await crud.getFaturasNF(req.sheets, [chaveAcesso]);
-            let valorTotalRateadoNota = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
-
-            // [LÓGICA DO GAS] Trata faturas existentes ou cria lançamento "À Vista"
-            if (faturas && faturas.length > 0) {
-                const numFaturasOriginais = faturas.length;
-                const numSetores = Object.keys(totaisPorSetor).length;
-                const totalNovosTitulosNota = numFaturasOriginais * numSetores;
-                let contadorParcelaNota = 1;
-
-                faturas.forEach(fatura => {
-                    const valorParcelaOriginal = parseFloat(fatura["Valor da Parcela"]) || 0;
-                    for (const setor in totaisPorSetor) {
-                        const resumoItens = mapaSetorParaItens[setor] ? mapaSetorParaItens[setor].join(', ') : `NF ${numeroNF}`;
-                        const numeroParcelaFormatado = `${contadorParcelaNota++}/${totalNovosTitulosNota}(Ref: ${fatura["Número da Parcela"]})`;
-                        
-                        // [CORREÇÃO] O valor por setor deve ser (ValorRateadoSetor / ValorTotalRateado) * ValorDaParcela
-                        const valorPorSetorCalculado = (valorTotalRateadoNota > 0.001) 
-                            ? (totaisPorSetor[setor] / valorTotalRateadoNota) * valorParcelaOriginal
-                            : 0;
-
-                        todasAsLinhasContasAPagar.push({
-                            'Chave de Acesso': chaveAcesso,
-                            'Número da Fatura': fatura["Número da Fatura"],
-                            'Número da Parcela': numeroParcelaFormatado,
-                            'Resumo dos Itens': resumoItens,
-                            'Data de Vencimento': fatura["Data de Vencimento"], // Já deve vir no formato de data/string
-                            'Valor da Parcela': valorParcelaOriginal,
-                            'Setor': setor,
-                            'Valor por Setor': valorPorSetorCalculado
-                        });
-                    }
-                });
-            } else { 
-                // [LÓGICA DO GAS] Pagamento à vista
-                const numSetores = Object.keys(totaisPorSetor).length;
-                let contadorParcelaNota = 1;
-
-                for (const setor in totaisPorSetor) {
-                    const resumoItens = mapaSetorParaItens[setor] ? mapaSetorParaItens[setor].join(', ') : `NF ${numeroNF}`;
-                    const numeroParcelaFormatado = `${contadorParcelaNota++}/${numSetores}(À Vista)`;
-                    
-                    todasAsLinhasContasAPagar.push({
-                        'Chave de Acesso': chaveAcesso,
-                        'Número da Fatura': numeroNF,
-                        'Número da Parcela': numeroParcelaFormatado,
-                        'Resumo dos Itens': resumoItens,
-                        'Data de Vencimento': new Date().toISOString(), // Data de hoje
-                        'Valor da Parcela': valorTotalRateadoNota,
-                        'Setor': setor,
-                        'Valor por Setor': totaisPorSetor[setor]
-                    });
-                }
-            }
-        }
-        
-        // Executa as operações de escrita do Rateio
-        await crud.salvarNovasRegrasDeRateio(req.sheets, todasAsNovasRegras);
-        await crud.salvarContasAPagar(req.sheets, todasAsLinhasContasAPagar);
-        
-        for (const chave of Array.from(todasAsChavesParaAtualizar)) {
-            await crud.atualizarStatusRateio(req.sheets, chave, "Concluído");
-        }
-        
-        console.log(`[Controller] ${rateios.length} rateio(s) salvos e status atualizados.`);
-    }
-
-    console.log("[Controller] Salvamento em lote unificado concluído com sucesso.");
-    res.json({ success: true, message: "Todas as alterações foram salvas com sucesso!" });
-
-  } catch (e) {
-    console.error(`ERRO em salvarLoteUnificado: ${e.toString()}\n${e.stack}`);
-    res.status(500).json({ success: false, message: e.message });
-  }
-};
-
-/**
  * [NOVO - MIGRADO] Busca um fornecedor pelo CNPJ.
  * (Endpoint: GET /conciliacaonf/fornecedor/:cnpj)
  */
@@ -613,7 +476,7 @@ const buscarFornecedorPorCnpj = async (req, res) => {
     // [CORREÇÃO] Precisamos importar o FornecedoresCRUD
     const FornecedoresCRUD = require('./FornecedoresCRUD');
     const fornecedor = await FornecedoresCRUD.getFornecedorPorCnpj(req.sheets, req.ID_PLANILHA_PRINCIPAL, cnpj); // Assumindo que o FornecedoresCRUD tem essa função
-    
+
     res.json({ success: true, dados: fornecedor });
   } catch (err) {
     console.error('Erro ao buscar fornecedor por CNPJ:', err);
@@ -631,7 +494,7 @@ const salvarFornecedorViaNF = async (req, res) => {
     const dadosFornecedor = req.body;
     const FornecedoresCRUD = require('./FornecedoresCRUD'); // Importa
     const resultado = await FornecedoresCRUD.salvarFornecedor(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosFornecedor); // Assumindo que o FornecedoresCRUD tem 'salvarFornecedor'
-    
+
     res.json({ success: true, message: "Fornecedor salvo com sucesso!", dados: resultado });
   } catch (err) {
     console.error('Erro ao salvar fornecedor:', err);
@@ -649,7 +512,7 @@ const salvarProdutoViaNF = async (req, res) => {
     const dadosProduto = req.body;
     const ProdutosCRUD = require('./ProdutosCRUD'); // Importa
     const produtoSalvo = await ProdutosCRUD.criarNovoProduto(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosProduto); // Assumindo 'criarNovoProduto'
-    
+
     res.json({ success: true, produto: produtoSalvo });
   } catch (err) {
     console.error('Erro ao salvar produto:', err);
@@ -674,7 +537,7 @@ const obterDadosParaCadastroItens = async (req, res) => {
       return res.status(404).json({ success: false, message: 'NF não encontrada.' });
     }
     const cnpj = nf['CNPJ Emitente'];
-    
+
     const [itensNF, fornecedor, produtos] = await Promise.all([
       crud.getItensNF(req.sheets, [chaveAcesso]),
       FornecedoresCRUD.getFornecedorPorCnpj(req.sheets, req.ID_PLANILHA_PRINCIPAL, cnpj), // Assumindo
@@ -689,7 +552,7 @@ const obterDadosParaCadastroItens = async (req, res) => {
           unidadeComercial: item['Unidade Comercial']
         })),
         fornecedor: fornecedor,
-        produtos: produtos 
+        produtos: produtos
       }
     });
 
@@ -709,7 +572,7 @@ const salvarSubProdutosViaNF = async (req, res) => {
     const dadosLote = req.body; // { fornecedorId, subProdutos: [...] }
     const SubProdutosCRUD = require('./SubProdutosCRUD'); // Importa
     const resultado = await SubProdutosCRUD.cadastrarMultiplosSubProdutos(req.sheets, req.ID_PLANILHA_PRINCIPAL, dadosLote); // Assumindo
-    
+
     res.json({ success: true, message: "Subprodutos salvos com sucesso.", ...resultado });
   } catch (err) {
     console.error('Erro ao salvar subprodutos:', err);
@@ -717,12 +580,237 @@ const salvarSubProdutosViaNF = async (req, res) => {
   }
 };
 
+/**
+ * [NOVO] Conclui a conciliação de uma ÚNICA Nota Fiscal imediatamente.
+ * Realiza conciliação de itens, mapeamentos, rateio financeiro e atualização de status.
+ * (Endpoint: POST /conciliacaonf/concluir)
+ */
+const concluirConciliacao = async (req, res) => {
+  try {
+    const { conciliacao, rateio, itensCortados, novosMapeamentos } = req.body;
+
+    console.log(`[Controller] Concluindo conciliação da NF: ${conciliacao.numeroNF} (Chave: ${conciliacao.chavesAcessoNF[0]})`);
+
+    // 1. Salvar alterações da Conciliação (Itens combinados e Cortados)
+    // Reutilizamos a função de lote passando arrays com um único item ou os itens específicos desta operação
+    if (conciliacao) {
+      await crud.salvarAlteracoesEmLote(req.sheets, [conciliacao], itensCortados || []);
+    }
+
+    // 2. Salvar Novos Mapeamentos
+    if (novosMapeamentos && novosMapeamentos.length > 0) {
+      await crud.atualizarMapeamentoConciliacao(req.sheets, novosMapeamentos);
+    }
+
+    // 3. Processar e Salvar o Rateio (Contas a Pagar)
+    if (rateio) {
+      const { chaveAcesso, totaisPorSetor, novasRegras, numeroNF, mapaSetorParaItens } = rateio;
+
+      // Salva novas regras de rateio se houver
+      if (novasRegras && novasRegras.length > 0) {
+        await crud.salvarNovasRegrasDeRateio(req.sheets, novasRegras);
+      }
+
+      // Busca faturas reais ou gera parcela única
+      const faturas = await crud.getFaturasNF(req.sheets, [chaveAcesso]);
+      const linhasContasAPagar = [];
+      let valorTotalRateadoNota = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
+
+      if (faturas && faturas.length > 0) {
+        // Lógica para notas com faturas (boletos)
+        const numFaturasOriginais = faturas.length;
+        const numSetores = Object.keys(totaisPorSetor).length;
+        const totalNovosTitulosNota = numFaturasOriginais * numSetores;
+        let contadorParcelaNota = 1;
+
+        faturas.forEach(fatura => {
+          const valorParcelaOriginal = parseFloat(fatura["Valor da Parcela"]) || 0;
+          // Ordena setores para manter consistência visual
+          Object.keys(totaisPorSetor).sort().forEach(setor => {
+            // Garante que mapaSetorParaItens[setor] seja tratado como array
+            let resumoItensTexto = `NF ${numeroNF}`;
+            if (mapaSetorParaItens && mapaSetorParaItens[setor]) {
+              const itensSetor = Array.isArray(mapaSetorParaItens[setor]) ? mapaSetorParaItens[setor] : [mapaSetorParaItens[setor]];
+              resumoItensTexto = itensSetor.join(', ');
+            }
+
+            const numeroParcelaFormatado = `${contadorParcelaNota++}/${totalNovosTitulosNota} (Ref: ${fatura["Número da Parcela"]})`;
+
+            // Cálculo proporcional: (ValorRateadoSetor / ValorTotalNota) * ValorParcela
+            const valorPorSetorCalculado = (valorTotalRateadoNota > 0.001)
+              ? (totaisPorSetor[setor] / valorTotalRateadoNota) * valorParcelaOriginal
+              : 0;
+
+            linhasContasAPagar.push({
+              'Chave de Acesso': chaveAcesso,
+              'Número da Fatura': fatura["Número da Fatura"],
+              'Número da Parcela': numeroParcelaFormatado,
+              'Resumo dos Itens': resumoItensTexto,
+              'Data de Vencimento': fatura["Data de Vencimento"],
+              'Valor da Parcela': valorParcelaOriginal,
+              'Setor': setor,
+              'Valor por Setor': valorPorSetorCalculado
+            });
+          });
+        });
+      } else {
+        // Lógica para pagamento à vista (sem faturas)
+        const numSetores = Object.keys(totaisPorSetor).length;
+        let contadorParcelaNota = 1;
+
+        Object.keys(totaisPorSetor).sort().forEach(setor => {
+          let resumoItensTexto = `NF ${numeroNF}`;
+          if (mapaSetorParaItens && mapaSetorParaItens[setor]) {
+            const itensSetor = Array.isArray(mapaSetorParaItens[setor]) ? mapaSetorParaItens[setor] : [mapaSetorParaItens[setor]];
+            resumoItensTexto = itensSetor.join(', ');
+          }
+
+          const numeroParcelaFormatado = `${contadorParcelaNota++}/${numSetores} (À Vista)`;
+
+          linhasContasAPagar.push({
+            'Chave de Acesso': chaveAcesso,
+            'Número da Fatura': numeroNF,
+            'Número da Parcela': numeroParcelaFormatado,
+            'Resumo dos Itens': resumoItensTexto,
+            'Data de Vencimento': new Date().toLocaleDateString('pt-BR'), // Data de hoje
+            'Valor da Parcela': valorTotalRateadoNota,
+            'Setor': setor,
+            'Valor por Setor': totaisPorSetor[setor]
+          });
+        });
+      }
+
+      // Salva no Financeiro
+      if (linhasContasAPagar.length > 0) {
+        await crud.salvarContasAPagar(req.sheets, linhasContasAPagar);
+      }
+
+      // Atualiza status do rateio na aba NotasFiscais
+      await crud.atualizarStatusRateio(req.sheets, chaveAcesso, "Concluído");
+    }
+
+    // 4. Atualizar Status da NF para Conciliada (Se houve conciliação de itens)
+    // Se foi apenas um rateio sem pedido ("Sem Pedido"), o status vem no rateioPayload ou é tratado separadamente
+    // Mas para o fluxo padrão de "Concluir Conciliação", definimos como "Conciliada"
+    if (conciliacao) {
+      await crud.atualizarStatusNF(req.sheets, [conciliacao.chavesAcessoNF[0]], conciliacao.idCotacao, "Conciliada");
+    }
+
+    console.log(`[Controller] Conciliação da NF ${conciliacao?.numeroNF || rateio?.numeroNF} concluída com sucesso.`);
+    res.json({ success: true, message: "Conciliação salva com sucesso!" });
+
+  } catch (e) {
+    console.error(`ERRO em concluirConciliacao: ${e.toString()}\n${e.stack}`);
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+/**
+ * [NOVO] Atualiza o status de uma ÚNICA nota fiscal imediatamente.
+ * Usado para marcar como "Bonificação", "Sem Pedido", "NF Tipo B", etc.
+ * (Endpoint: POST /conciliacaonf/atualizar-status)
+ */
+const atualizarStatusNF = async (req, res) => {
+    try {
+        const { chaveAcesso, novoStatus, rateio } = req.body;
+        if (!chaveAcesso || !novoStatus) {
+            throw new Error("Chave de acesso e novo status são obrigatórios.");
+        }
+
+        console.log(`[Controller] Atualizando status da NF ${chaveAcesso} para '${novoStatus}'.`);
+
+        // 1. Atualiza o status na aba NotasFiscais
+        await crud.atualizarStatusNF(req.sheets, [chaveAcesso], null, novoStatus);
+
+        // 2. Se houver payload de rateio (caso "Sem Pedido"), processa o rateio
+        if (rateio) {
+            console.log(`[Controller] Processando rateio direto para a NF ${rateio.numeroNF}.`);
+            const { totaisPorSetor, novasRegras, numeroNF, mapaSetorParaItens } = rateio;
+
+             if (novasRegras && novasRegras.length > 0) {
+                await crud.salvarNovasRegrasDeRateio(req.sheets, novasRegras);
+            }
+
+            // Para "Sem Pedido", geralmente não vinculamos a faturas existentes da mesma forma complexa, 
+            // ou assumimos o total da nota como "À Vista" ou buscamos faturas se existirem.
+            // Vamos reusar a lógica simplificada: se tem faturas no XML, usa; se não, gera à vista.
+            const faturas = await crud.getFaturasNF(req.sheets, [chaveAcesso]);
+            const linhasContasAPagar = [];
+            let valorTotalRateadoNota = Object.values(totaisPorSetor).reduce((s, v) => s + v, 0);
+
+             if (faturas && faturas.length > 0) {
+                const numFaturas = faturas.length;
+                const numSetores = Object.keys(totaisPorSetor).length;
+                const totalTitulos = numFaturas * numSetores;
+                let count = 1;
+
+                faturas.forEach(fatura => {
+                    const valorFatura = parseFloat(fatura["Valor da Parcela"]) || 0;
+                    Object.keys(totaisPorSetor).sort().forEach(setor => {
+                         let resumo = `NF ${numeroNF}`;
+                         if(mapaSetorParaItens && mapaSetorParaItens[setor]) {
+                             const itensArr = Array.isArray(mapaSetorParaItens[setor]) ? mapaSetorParaItens[setor] : [mapaSetorParaItens[setor]];
+                             resumo = itensArr.join(', ');
+                         }
+
+                         const val = (valorTotalRateadoNota > 0.001) ? (totaisPorSetor[setor] / valorTotalRateadoNota) * valorFatura : 0;
+
+                         linhasContasAPagar.push({
+                            'Chave de Acesso': chaveAcesso,
+                            'Número da Fatura': fatura["Número da Fatura"],
+                            'Número da Parcela': `${count++}/${totalTitulos} (Ref: ${fatura["Número da Parcela"]})`,
+                            'Resumo dos Itens': resumo,
+                            'Data de Vencimento': fatura["Data de Vencimento"],
+                            'Valor da Parcela': valorFatura,
+                            'Setor': setor,
+                            'Valor por Setor': val
+                         });
+                    });
+                });
+             } else {
+                 // À Vista
+                 const numSetores = Object.keys(totaisPorSetor).length;
+                 let count = 1;
+                 Object.keys(totaisPorSetor).sort().forEach(setor => {
+                     let resumo = `NF ${numeroNF}`;
+                     if(mapaSetorParaItens && mapaSetorParaItens[setor]) {
+                         const itensArr = Array.isArray(mapaSetorParaItens[setor]) ? mapaSetorParaItens[setor] : [mapaSetorParaItens[setor]];
+                         resumo = itensArr.join(', ');
+                     }
+                     linhasContasAPagar.push({
+                        'Chave de Acesso': chaveAcesso,
+                        'Número da Fatura': numeroNF,
+                        'Número da Parcela': `${count++}/${numSetores} (À Vista)`,
+                        'Resumo dos Itens': resumo,
+                        'Data de Vencimento': new Date().toLocaleDateString('pt-BR'),
+                        'Valor da Parcela': valorTotalRateadoNota,
+                        'Setor': setor,
+                        'Valor por Setor': totaisPorSetor[setor]
+                     });
+                 });
+             }
+
+             if (linhasContasAPagar.length > 0) {
+                 await crud.salvarContasAPagar(req.sheets, linhasContasAPagar);
+             }
+             await crud.atualizarStatusRateio(req.sheets, chaveAcesso, "Concluído");
+        }
+
+        res.json({ success: true, message: `Status atualizado para '${novoStatus}' com sucesso.` });
+
+    } catch (e) {
+        console.error(`ERRO em atualizarStatusNF: ${e.toString()}\n${e.stack}`);
+        res.status(500).json({ success: false, message: e.message });
+    }
+};
+
 // --- Exportações ---
 module.exports = {
   processarXMLs,
   uploadArquivos,
   getDadosPagina,
-  salvarLoteUnificado,
+  concluirConciliacao,
+  atualizarStatusNF,
   buscarFornecedorPorCnpj,
   salvarFornecedorViaNF,
   salvarProdutoViaNF,

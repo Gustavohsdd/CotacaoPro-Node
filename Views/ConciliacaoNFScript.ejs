@@ -8,7 +8,6 @@
     let mapaConciliacao = [];
     let regrasRateio = [];
     let setoresUnicos = [];
-    let stagedPayloads = [];
     let ajusteModalInstance = null;
     let activeItemForAdjustment = null;
     let selectedCotacaoItem = null;
@@ -61,15 +60,14 @@
         // Mostra o loader e busca os dados iniciais
         toggleLoader(true);
 
-        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        // Busca os dados iniciais via API
         fetch('/api/conciliacaonf/dados-pagina')
             .then(handleResponse)
-            .then(onDadosIniciaisSuccess) // onDadosIniciaisSuccess espera a estrutura { success: true, dados: {...} }
+            .then(onDadosIniciaisSuccess)
             .catch(onFailure);
     });
 
     function addEventListeners() {
-        // ... (Todo o conteúdo da função addEventListeners permanece O MESMO) ...
         // Se os listeners já foram anexados, interrompe a execução para evitar duplicidade.
         if (ConciliacaoNFScript_listenersAnexados) {
             return;
@@ -78,8 +76,11 @@
         // Header
         $('#btn-upload-xml').on('click', () => $('#xml-upload-input').click());
         $('#xml-upload-input').on('change', onFileUpload);
-        $('#btn-salvar-lote').on('click', onBtnSalvarLoteClick);
         $('#btn-abrir-relatorio-rateio').on('click', onAbrirRelatorioRateioClick);
+        
+        // [REMOVIDO] O listener do botão salvar lote foi retirado pois a função não existe mais
+        // $('#btn-salvar-lote').on('click', onBtnSalvarLoteClick); 
+
         // Painel Esquerdo
         $('#search-input').on('input', onSearchInputChange);
         $('#accordion-fornecedores').on('click', '.nf-list-item:not(.staged)', onNfListItemClick);
@@ -89,76 +90,144 @@
         panelDireito.on('change', '.select-cotacao-fornecedor', onSelectCotacaoChange);
         panelDireito.on('click', '#cotacao-items-list .list-group-item:not(.matched)', onCotacaoItemClick);
         panelDireito.on('click', '#nf-items-list .list-group-item', onNfItemClick);
+        
+        // Botões de Ação Principais
         panelDireito.on('click', '#btn-concluir-conciliacao', onBtnConcluirConciliacaoClick);
         panelDireito.on('click', '#btn-abrir-modal-fornecedor', onAbrirModalFornecedorClick);
-        $('#form-cadastro-fornecedor-nf').on('submit', onSalvarFornecedorViaNFSubmit);
         panelDireito.on('click', '#btn-abrir-cadastro-itens', onAbrirCadastroItensClick);
+
+        // Formulários
+        $('#form-cadastro-fornecedor-nf').on('submit', onSalvarFornecedorViaNFSubmit);
+        $('#form-cadastro-produto-nf').on('submit', onSalvarProdutoViaNFSubmit);
 
         // Listeners do Modal de Cadastro de Itens/Produtos
         const modalCadastroItens = $('#modalCadastroItensNF');
         modalCadastroItens.on('change', '.select-produto-vinculado', onProdutoVinculadoChange);
-        modalCadastroItens.on('click', '.btn-salvar-subproduto-individual', ConciliacaoNFScript_salvarSubProdutoIndividual); // NOVO LISTENER
-        $('#form-cadastro-produto-nf').on('submit', onSalvarProdutoViaNFSubmit);
-        // REMOVIDO: $('#btn-salvar-subprodutos-nf').on('click', onSalvarSubProdutosViaNFSubmit);
+        modalCadastroItens.on('click', '.btn-salvar-subproduto-individual', ConciliacaoNFScript_salvarSubProdutoIndividual);
 
-        // Listeners do modal de fornecedor via NF
+        // Listeners do modal de fornecedor via NF (Máscaras)
         $('#cadastro-fornecedor-cnpj').on('input', function (e) { e.target.value = ConciliacaoNFScript_mascaraCnpj(e.target.value); });
         $('#cadastro-fornecedor-telefone').on('input', function (e) { e.target.value = ConciliacaoNFScript_mascaraTelefone(e.target.value); });
         const pedidoMinimoInput = $('#cadastro-fornecedor-pedido-minimo');
         pedidoMinimoInput.on('input', function (e) { ConciliacaoNFScript_formatarMoedaInput(e.target); });
         pedidoMinimoInput.on('blur', function (e) { ConciliacaoNFScript_formatarMoedaInput(e.target); });
 
-
-        // Adiciona listeners para os novos botões de ação
+        // Botões de Status (Bonificação, Sem Pedido, Tipo B)
         panelDireito.on('click', '#btn-marcar-bonificacao', onMarcarBonificacaoClick);
         panelDireito.on('click', '#btn-marcar-sem-pedido', onMarcarSemPedidoClick);
         panelDireito.on('click', '#btn-marcar-tipo-b', onMarcarTipoBClick);
 
-        // Rateio
+        // Rateio Manual
         panelDireito.on('click', '.btn-add-setor', onAdicionarSetorManualClick);
         panelDireito.on('click', '.btn-remove-setor', onRemoverSetorManualClick);
         panelDireito.on('input', '.input-porcentagem, .input-setor', onPorcentagemOuSetorChange);
 
         // Ajuste Manual e Desfazer Conciliação
         panelDireito.on('click', '.btn-reajustar-item', onBtnReajustarItemClick);
-        panelDireito.on('click', '.btn-desfazer-conciliacao', ConciliacaoNFScript_onDesfazerConciliacaoClick); // <-- NOVA LINHA ADICIONADA AQUI
+        panelDireito.on('click', '.btn-desfazer-conciliacao', ConciliacaoNFScript_onDesfazerConciliacaoClick);
         $('#btn-salvar-ajuste-manual').on('click', onBtnSalvarAjusteManualClick);
         $('#ajuste-fator').on('input', calcularVisualizacaoAjuste);
+
         // Marca que os listeners foram anexados com sucesso.
         ConciliacaoNFScript_listenersAnexados = true;
     }
 
-    function resetApplication() {
-        toggleLoader(true);
-        stagedPayloads = [];
-        atualizarBotaoSalvarLote();
+/**
+     * Exibe uma notificação flutuante (Toast) em vez de um alert.
+     * @param {string} message A mensagem a ser exibida.
+     * @param {string} type O tipo de mensagem: 'success' (verde) ou 'error' (vermelho).
+     */
+    function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toast-message');
+        
+        // Define a cor com base no tipo
+        if (type === 'success') {
+            toastEl.classList.remove('bg-danger');
+            toastEl.classList.add('bg-success');
+        } else {
+            toastEl.classList.remove('bg-success');
+            toastEl.classList.add('bg-danger');
+        }
+
+        toastBody.textContent = message;
+        
+        // Usa o Bootstrap Toast para exibir
+        const toast = new bootstrap.Toast(toastEl, { delay: 4000 }); // Some após 4 segundos
+        toast.show();
+    }
+
+    /**
+     * Reseta a aplicação após uma ação.
+     * [OTIMIZADO] Aceita 'chaveAcessoProcessada' para remover a nota localmente sem recarregar tudo.
+     */
+    function resetApplication(chaveAcessoProcessada = null) {
+        // 1. Limpa a área de trabalho (Painel Direito)
         $('#workspace-content').addClass('d-none').empty();
         $('#workspace-welcome').removeClass('d-none');
 
-        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
+        // 2. Lógica Otimizada: Remoção Local (Instantânea)
+        if (chaveAcessoProcessada) {
+            console.log("Removendo nota processada da lista local:", chaveAcessoProcessada);
+            
+            // Remove a NF da lista global em memória
+            todasAsNFs = todasAsNFs.filter(nf => nf.chaveAcesso !== chaveAcessoProcessada);
+            
+            // (Opcional) Limpa itens relacionados para liberar memória do navegador
+            todosOsItensNF = todosOsItensNF.filter(item => item.chaveAcesso !== chaveAcessoProcessada);
+            todosOsDadosGeraisNF = todosOsDadosGeraisNF.filter(d => d.chaveAcesso !== chaveAcessoProcessada);
+            
+            // Re-renderiza a lista lateral com os dados atualizados
+            renderizarListaDeTrabalho();
+
+            // Reaplica o filtro de busca caso o usuário tenha algo digitado
+            $('#search-input').trigger('input');
+
+            // Se ainda restarem notas na lista, encerra aqui (não chama o servidor)
+            if (todasAsNFs.length > 0) {
+                toggleLoader(false);
+                return; 
+            }
+        }
+
+        // 3. Lógica Padrão: Busca Completa no Servidor
+        // Executada apenas se:
+        // a) Não foi passada uma chave (ex: upload de novos arquivos)
+        // b) A lista de notas ficou vazia (para garantir sincronia final)
+        toggleLoader(true);
         fetch('/api/conciliacaonf/dados-pagina')
             .then(handleResponse)
             .then(onDadosIniciaisSuccess)
             .catch(onFailure);
     }
 
-    // ... (onMarcarTipoBClick permanece a mesma) ...
     function onMarcarTipoBClick(event) {
         event.preventDefault();
         const nfInfo = $('#workspace-content').data('active-nf');
-        if (!nfInfo || !confirm(`Tem certeza que deseja marcar a NF ${nfInfo.numeroNF} como 'NF Tipo B'? Esta ação não poderá ser desfeita após salvar.`)) {
+        if (!nfInfo || !confirm(`Tem certeza que deseja marcar a NF ${nfInfo.numeroNF} como 'NF Tipo B'?`)) {
             return;
         }
-        stagedPayloads.push({
-            statusUpdates: [{ chaveAcesso: nfInfo.chaveAcesso, novoStatus: 'NF Tipo B' }]
-        });
-        const nfListItem = $(`.nf-list-item`).filter((i, el) => $(el).data('nf-info').chaveAcesso === nfInfo.chaveAcesso);
-        nfListItem.addClass('staged').removeClass('active');
-        nfListItem.find('.status-icon').removeClass('d-none');
-        nfListItem.find('.staged-status-badge').text('Tipo B').removeClass('d-none');
-        $('#workspace-content').addClass('d-none').empty();
-        $('#workspace-welcome').removeClass('d-none');
-        atualizarBotaoSalvarLote();
+
+        toggleLoader(true);
+        fetch('/api/conciliacaonf/atualizar-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chaveAcesso: nfInfo.chaveAcesso,
+                novoStatus: 'NF Tipo B'
+            })
+        })
+        .then(handleResponse)
+        .then(response => {
+            if (response.success) {
+                showToast(response.message, 'success');
+                // [CORREÇÃO] Passa a chave para remoção local
+                resetApplication(nfInfo.chaveAcesso); 
+            } else {
+                onFailure(response);
+            }
+        })
+        .catch(onFailure);
     }
 
     // ===== CALLBACKS DO SERVIDOR E PROCESSAMENTO DE DADOS =====
@@ -635,7 +704,6 @@
         }
     }
 
-    // ... (onBtnConcluirConciliacaoClick permanece a mesma) ...
     function onBtnConcluirConciliacaoClick() {
         let erroValidacao = false;
         $('.matched-item-card').each(function () {
@@ -650,15 +718,22 @@
         const nfInfo = workspace.data('active-nf');
         const compositeKey = workspace.find('.select-cotacao-fornecedor').val();
 
-        // ===== CORREÇÃO DE VALIDAÇÃO APLICADA AQUI =====
         if (!compositeKey) {
-            alert('Erro: Nenhuma cotação foi selecionada. Por favor, vincule a NF a uma cotação antes de concluir.');
+            showToast('Erro: Nenhuma cotação foi selecionada. Vincule a NF antes de concluir.', 'error');
             return;
         }
         const [idCotacao, ...nomeFornecedorParts] = compositeKey.split('-');
         const nomeFornecedor = nomeFornecedorParts.join('-');
 
-        const conciliacaoPayload = { idCotacao, nomeFornecedor, numeroNF: nfInfo.numeroNF, chavesAcessoNF: [nfInfo.chaveAcesso], itensConciliados: [], novosMapeamentos: [] };
+        const conciliacaoPayload = { 
+            idCotacao, 
+            nomeFornecedor, 
+            numeroNF: nfInfo.numeroNF, 
+            chavesAcessoNF: [nfInfo.chaveAcesso], 
+            itensConciliados: [], 
+            novosMapeamentos: [] 
+        };
+        
         const itensCortados = [];
 
         $('.matched-item-card').each(function () {
@@ -700,18 +775,15 @@
             const aplicarRateio = (setor, porcentagem) => {
                 if (!setor || !porcentagem) return;
                 setor = setor.trim();
-                // --- INÍCIO DA CORREÇÃO ---
                 const percNumerico = parseFloat(porcentagem) || 0;
                 totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
-                // --- FIM DA CORREÇÃO ---
+                
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
-                mapaSetorParaItens[setor].add(concInfo.itemCot.subProduto);
+                mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF); 
             };
 
             if (rateioInfo.isAutomatico) {
-                // --- INÍCIO DA CORREÇÃO ---
                 rateioInfo.regras.forEach(regra => aplicarRateio(regra["Setor"], regra["Porcentagem"]));
-                // --- FIM DA CORREÇÃO ---
             } else {
                 card.find('.manual-rate-row').each(function () {
                     const setor = $(this).find('.input-setor').val().trim();
@@ -734,56 +806,28 @@
             mapaSetorParaItens: mapaSetorParaItens
         };
 
-        stagedPayloads.push({
-            conciliacoes: [conciliacaoPayload],
-            itensCortados,
-            novosMapeamentos: conciliacaoPayload.novosMapeamentos,
-            rateios: [rateioPayload],
-            statusUpdates: []
-        });
-
-        $(`.nf-list-item`).filter((i, el) => $(el).data('nf-info').chaveAcesso === nfInfo.chaveAcesso)
-            .addClass('staged').removeClass('active').find('.status-icon').removeClass('d-none');
-        workspace.addClass('d-none').empty();
-        $('#workspace-welcome').removeClass('d-none');
-        atualizarBotaoSalvarLote();
-    }
-
-    function onBtnSalvarLoteClick() {
-        if (stagedPayloads.length === 0) return;
         toggleLoader(true);
-        const payloadFinal = stagedPayloads.reduce((acc, current) => {
-            acc.conciliacoes.push(...(current.conciliacoes || []));
-            acc.itensCortados.push(...(current.itensCortados || []));
-            acc.novosMapeamentos.push(...(current.novosMapeamentos || []));
-            acc.statusUpdates.push(...(current.statusUpdates || []));
-            acc.rateios.push(...(current.rateios || []));
-            return acc;
-        }, {
-            conciliacoes: [], itensCortados: [], novosMapeamentos: [], statusUpdates: [], rateios: []
-        });
-        // [MIGRADO E CORRIGIDO] Substituído google.script.run por fetch e adicionado /api
-        fetch('/api/conciliacaonf/salvar-lote', {
+        fetch('/api/conciliacaonf/concluir', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadFinal)
-        })
-            .then(handleResponse)
-            .then(response => {
-                if (response.success) {
-                    alert(response.message);
-                    resetApplication();
-                } else { onFailure(response); }
+            body: JSON.stringify({
+                conciliacao: conciliacaoPayload,
+                rateio: rateioPayload,
+                itensCortados: itensCortados,
+                novosMapeamentos: conciliacaoPayload.novosMapeamentos
             })
-            .catch(onFailure);
-    }
-
-    // ... (atualizarBotaoSalvarLote permanece a mesma) ...
-    function atualizarBotaoSalvarLote() {
-        const btn = $('#btn-salvar-lote');
-        const count = stagedPayloads.length; if (count > 0) { btn.find('#save-batch-text').text(`Salvar ${count} Alteração(ões)`); btn.removeClass('d-none'); } else {
-            btn.addClass('d-none');
-        }
+        })
+        .then(handleResponse)
+        .then(response => {
+            if (response.success) {
+                showToast(response.message, 'success');
+                // [CORREÇÃO] Passa a chave para remoção local
+                resetApplication(nfInfo.chaveAcesso); 
+            } else {
+                onFailure(response);
+            }
+        })
+        .catch(onFailure);
     }
 
     // ===== FUNÇÕES UTILITÁRIAS =====
@@ -813,23 +857,33 @@
         // Não é necessário loader, pois abre em nova aba.
     }
 
-    // ... (onMarcarBonificacaoClick permanece a mesma) ...
     function onMarcarBonificacaoClick(event) {
         event.preventDefault();
         const nfInfo = $('#workspace-content').data('active-nf');
-        if (!nfInfo || !confirm(`Tem certeza que deseja marcar a NF ${nfInfo.numeroNF} como 'Bonificação'? Esta ação não poderá ser desfeita após salvar.`)) {
+        if (!nfInfo || !confirm(`Tem certeza que deseja marcar a NF ${nfInfo.numeroNF} como 'Bonificação'?`)) {
             return;
         }
-        stagedPayloads.push({
-            statusUpdates: [{ chaveAcesso: nfInfo.chaveAcesso, novoStatus: 'Bonificação' }]
-        });
-        const nfListItem = $(`.nf-list-item`).filter((i, el) => $(el).data('nf-info').chaveAcesso === nfInfo.chaveAcesso);
-        nfListItem.addClass('staged').removeClass('active');
-        nfListItem.find('.status-icon').removeClass('d-none');
-        nfListItem.find('.staged-status-badge').text('Bonificação').removeClass('d-none');
-        $('#workspace-content').addClass('d-none').empty();
-        $('#workspace-welcome').removeClass('d-none');
-        atualizarBotaoSalvarLote();
+
+        toggleLoader(true);
+        fetch('/api/conciliacaonf/atualizar-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chaveAcesso: nfInfo.chaveAcesso,
+                novoStatus: 'Bonificação'
+            })
+        })
+        .then(handleResponse)
+        .then(response => {
+            if (response.success) {
+                showToast(response.message, 'success');
+                // [CORREÇÃO] Passa a chave para remoção local
+                resetApplication(nfInfo.chaveAcesso); 
+            } else {
+                onFailure(response);
+            }
+        })
+        .catch(onFailure);
     }
 
     // ... (onMarcarSemPedidoClick permanece a mesma) ...
@@ -874,7 +928,6 @@
             .off('click').on('click', onBtnConcluirRateioSemPedidoClick);
     }
 
-    // ... (onBtnConcluirRateioSemPedidoClick permanece a mesma) ...
     function onBtnConcluirRateioSemPedidoClick() {
         let erroValidacao = false;
         $('.matched-item-card').each(function () {
@@ -896,7 +949,7 @@
             const info = $(el).data('conciliacao-info');
             return sum + (info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF);
         }, 0);
-
+        
         const custosAdicionais = totaisNF.valorTotalNf - totalItensBruto;
         const mapaSetorParaItens = {};
 
@@ -912,28 +965,19 @@
             const aplicarRateio = (setor, porcentagem) => {
                 if (!setor || !porcentagem) return;
                 setor = setor.trim();
-                // --- INÍCIO DA CORREÇÃO ---
                 const percNumerico = parseFloat(porcentagem) || 0;
                 totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
-                // --- FIM DA CORREÇÃO ---
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
-
-                // ===== CORREÇÃO APLICADA AQUI =====
-                // Acessa o primeiro elemento do array antes de pegar a descrição.
                 mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF);
             };
 
             if (rateioInfo.isAutomatico) {
-                // --- INÍCIO DA CORREÇÃO ---
                 rateioInfo.regras.forEach(regra => aplicarRateio(regra["Setor"], regra["Porcentagem"]));
-                // --- FIM DA CORREÇÃO ---
             } else {
                 card.find('.manual-rate-row').each(function () {
                     const setor = $(this).find('.input-setor').val().trim();
                     const porcentagem = parseFloat($(this).find('.input-porcentagem').val()) || 0;
                     aplicarRateio(setor, porcentagem);
-
-                    // Corrigido para usar a descrição do item da NF, não da cotação
                     if (setor && porcentagem > 0) novasRegras.push({ itemCotacao: concInfo.itensNF_Original[0].descricaoNF, setor, porcentagem });
                 });
             }
@@ -951,16 +995,27 @@
             mapaSetorParaItens: mapaSetorParaItens
         };
 
-        stagedPayloads.push({
-            rateios: [rateioPayload],
-            statusUpdates: [{ chaveAcesso: nfInfo.chaveAcesso, novoStatus: 'Conciliada (Sem Pedido)' }]
-        });
-
-        $(`.nf-list-item`).filter((i, el) => $(el).data('nf-info').chaveAcesso === nfInfo.chaveAcesso)
-            .addClass('staged').removeClass('active').find('.status-icon').removeClass('d-none');
-        workspace.addClass('d-none').empty();
-        $('#workspace-welcome').removeClass('d-none');
-        atualizarBotaoSalvarLote();
+        toggleLoader(true);
+        fetch('/api/conciliacaonf/atualizar-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chaveAcesso: nfInfo.chaveAcesso,
+                novoStatus: 'Conciliada (Sem Pedido)',
+                rateio: rateioPayload
+            })
+        })
+        .then(handleResponse)
+        .then(response => {
+            if (response.success) {
+                showToast(response.message, 'success');
+                // [CORREÇÃO] Passa a chave para remoção local
+                resetApplication(nfInfo.chaveAcesso); 
+            } else {
+                onFailure(response);
+            }
+        })
+        .catch(onFailure);
     }
 
     function onAbrirModalFornecedorClick() {
