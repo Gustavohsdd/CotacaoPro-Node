@@ -11,7 +11,7 @@ const {
   CABECALHOS_SUBPRODUTOS,
   CABECALHOS_PRODUTOS,
   CABECALHOS_FORNECEDORES
-} = require('../config/constants');
+} = require('../Config/constants');
 
 // Define as colunas que queremos exibir na tabela principal
 const COLUNAS_EXIBICAO_NOMES = [

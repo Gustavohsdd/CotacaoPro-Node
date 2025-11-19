@@ -8,7 +8,7 @@ const {
   CABECALHOS_SUBPRODUTOS,
   ABA_FORNECEDORES,
   CABECALHOS_FORNECEDORES
-} = require('../config/constants');
+} = require('../Config/constants');
 
 // --- Funções Auxiliares Internas ---
 

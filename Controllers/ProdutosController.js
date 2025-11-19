@@ -10,7 +10,7 @@ const FornecedoresCRUD = require('./FornecedoresCRUD'); // Mantém a importaçã
 const {
   CABECALHOS_PRODUTOS,
   CABECALHOS_SUBPRODUTOS
-} = require('../config/constants');
+} = require('../Config/constants');
 
 // Define as colunas que queremos exibir na tabela principal
 const COLUNAS_EXIBICAO_NOMES = [

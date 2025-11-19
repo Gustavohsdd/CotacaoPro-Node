@@ -9,7 +9,7 @@ const {
     ABA_SUBPRODUTOS,
     CABECALHOS_SUBPRODUTOS,
     COLUNAS_PARA_ABA_SUBPRODUTOS // Esta constante não estava em constants.js, mas é referenciada.
-} = require('../config/constants');
+} = require('../Config/constants');
 
 // Status que será usado ao adicionar novos itens
 const COTacoesCRUD_STATUS_NOVA_COTACAO = "Nova Cotação";

@@ -7,7 +7,7 @@ const ejs = require('ejs'); // Importamos o EJS para renderizar HTML
 const { google } = require('googleapis');
 
 // Importa nossas constantes do arquivo que acabamos de criar
-const constants = require('./config/constants');
+const constants = require('./Config/constants');
 
 // --- Importa os roteadores da API ---
 const fornecedoresRouterApi = require('./Routes/fornecedores');
@@ -18,6 +18,7 @@ const cotacaoIndividualRouterApi = require('./Routes/cotacaoIndividual');
 const etapasRouterApi = require('./Routes/etapas');
 const FuncoesRouterApi = require('./Routes/funcoes');
 const conciliacaoNFRouterApi = require('./Routes/conciliacaonf');
+const notasFiscaisRouterApi = require('./Routes/notasFiscais');
 
 // (Você importará os outros, como subprodutosRouterApi, aqui)
 
@@ -185,6 +186,7 @@ app.use('/api/cotacaoIndividual', cotacaoIndividualRouterApi);
 app.use('/api/etapas', etapasRouterApi);
 app.use('/api/funcoes', FuncoesRouterApi);
 app.use('/api/conciliacaonf', conciliacaoNFRouterApi);
+app.use('/api/notasfiscais', notasFiscaisRouterApi);
 // (Você adicionará os outros aqui, ex: app.use('/api/subprodutos', subprodutosRouterApi);)
 
 

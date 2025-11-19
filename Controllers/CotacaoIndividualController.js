@@ -2,7 +2,7 @@
 const CotacaoIndividualCRUD = require('./CotacaoIndividualCRUD');
 
 // Importa as constantes necessárias
-const { CABECALHOS_COTACOES } = require('../config/constants');
+const { CABECALHOS_COTACOES } = require('../Config/constants');
 
 /**
  * Obtém os detalhes de uma cotação específica para exibição na página.
