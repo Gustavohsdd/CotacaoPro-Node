@@ -7,28 +7,48 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+    
     .success-message { background-color: #D1FAE5; color: #065F46; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #6EE7B7; margin-bottom: 1rem; }
     .error-message { background-color: #FEE2E2; color: #991B1B; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #FCA5A5; margin-bottom: 1rem; }
+    
     input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select {
       padding: 0.6rem 0.75rem;
     }
-    main::-webkit-scrollbar { width: 8px; }
-    main::-webkit-scrollbar-thumb { background-color: #60A5FA; border-radius: 4px; }
-    main::-webkit-scrollbar-track { background-color: #EFF6FF; }
-    .h-screen-flex { display: flex; min-height: 100vh; }
+
+    /* Estilo da barra de rolagem interna */
+    #mainContentArea::-webkit-scrollbar { width: 8px; }
+    #mainContentArea::-webkit-scrollbar-thumb { background-color: #60A5FA; border-radius: 4px; }
+    #mainContentArea::-webkit-scrollbar-track { background-color: #EFF6FF; }
+
+    /* [CORREÇÃO DE LAYOUT] Trava a altura da tela para evitar scroll no body */
+    .h-screen-flex { 
+      display: flex; 
+      height: 100vh; /* Altura fixa da viewport */
+      overflow: hidden; /* Esconde scrollbar do body */
+    }
+    
     @media (max-width: 768px) {
       .h-screen-flex { flex-direction: column; }
-      aside { width: 100% !important; height: auto !important; }
+      aside { width: 100% !important; height: auto !important; flex-shrink: 0; }
       #mainContentArea { padding: 1rem; }
     }
+    
     .table-auto th, .table-auto td { padding: 0.75rem 1rem; border-bottom: 1px solid #E5E7EB; text-align: left; }
     .menu-item.active { background-color: #2563EB; font-weight: 600; }
+
+    /* Ajustes de Impressão */
+    @media print {
+      aside { display: none !important; }
+      .h-screen-flex { display: block !important; height: auto !important; overflow: visible !important; }
+      #mainContentArea { width: 100% !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; height: auto !important; }
+      body { background-color: white !important; color: black !important; }
+    }
   </style>
 </head>
 <body class="bg-blue-50 text-gray-800">
   <div class="h-screen-flex">
-    <aside class="w-60 md:w-64 bg-blue-700 text-blue-50 p-5 space-y-6 shadow-lg">
+    <aside class="w-60 md:w-64 bg-blue-700 text-blue-50 p-5 space-y-6 shadow-lg no-print overflow-y-auto">
       <h1 class="text-3xl font-bold text-center md:text-left">CotaçãoPRO</h1>
       <nav>
         <ul class="space-y-2">
@@ -47,28 +67,41 @@
             </a>
           </li>
           <li>
-            <a href="#" onclick="navigateTo('subprodutos'); return false;" id="menuSubprodutos" class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
+            <a href="#" onclick="navigateTo('subprodutos'); return false;" id="menuSubprodutos"
+               class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
               <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10m-5 5v5m-5-5h10a2 2 0 012 2v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 012-2z"/></svg>
               SubProdutos
             </a>
           </li>
           <li>
-            <a href="#" onclick="navigateTo('cotacoes'); return false;" id="menuCotacoes" class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
+             <a href="#" onclick="navigateTo('cotacoes'); return false;" id="menuCotacoes"
+                class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
               <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
               Cotações
             </a>
           </li>
           <li>
-            <a href="#" onclick="navigateTo('notasfiscais'); return false;" id="menuNotasfiscais" class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
+            <a href="#" onclick="navigateTo('notasfiscais'); return false;" id="menuNotasfiscais"
+               class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
               <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
               Notas Fiscais
+            </a>
+          </li>
+          <li>
+            <a href="#" onclick="navigateTo('relatoriorateio'); return false;" id="menuRelatoriorateio"
+               class="menu-item flex items-center py-2.5 px-4 rounded-lg transition duration-200 hover:bg-blue-600">
+              <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+              </svg>
+              Rateio
             </a>
           </li>
         </ul>
       </nav>
     </aside>
 
-    <main id="mainContentArea" class="flex-1 p-6 md:p-10 overflow-y-auto">
+    <main id="mainContentArea" class="flex-1 p-6 md:p-10 overflow-y-auto bg-gray-50">
       <div>
         <h2 class="text-2xl font-semibold mb-4">Bem-vindo ao CotaçãoPRO</h2>
         <p>Selecione uma opção no menu ao lado para começar.</p>
@@ -90,65 +123,55 @@
         currentElement.classList.add('active');
         activeMenuItem = currentElement;
       } else {
-        console.warn("Menu item não encontrado para o ID:", menuItemId, ". Verifique se o ID no HTML corresponde à viewName '"+viewName+"'.");
+        console.warn("Menu item não encontrado para o ID:", menuItemId);
       }
     }
 
-    /**
-     * Executa scripts de um container HTML
-     * Isso é necessário porque o .innerHTML não executa <script> tags.
-     */
     function executeScripts(container) {
       const scriptsToExecute = Array.from(container.querySelectorAll('script'));
       scriptsToExecute.forEach(oldScript => {
         const newScript = document.createElement('script');
-        // Copia atributos (ex: src)
         Array.from(oldScript.attributes).forEach(attr => {
           newScript.setAttribute(attr.name, attr.value);
         });
         
         if (oldScript.src) {
-          // Se for um script externo, anexa ao <head> para carregar
           newScript.onload = () => console.log(`Script ${oldScript.src} carregado.`);
           newScript.onerror = () => console.error(`Erro ao carregar script ${oldScript.src}`);
           document.head.appendChild(newScript);
         } else {
-          // Se for script inline, copia o conteúdo e executa
           newScript.textContent = oldScript.textContent;
           document.body.appendChild(newScript).parentNode.removeChild(newScript);
         }
       });
     }
 
-    /**
-     * Esta é a nova função navigateTo, migrada do google.script.run
-     */
     async function navigateTo(viewName) {
+      // Mostra loading e reseta a view
       mainContentArea.innerHTML = `<div class="p-4 text-center text-blue-600"><svg class="animate-spin h-6 w-6 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Carregando ${viewName}...</div>`;
       setActiveMenu(viewName);
 
       try {
-        // 1. Faz a chamada de rede para a nossa rota /view/:viewName
         const response = await fetch(`/view/${viewName}`);
         
         if (!response.ok) {
-          // Se a resposta for 404 ou 500, exibe o erro
           const errorText = await response.text();
           throw new Error(`Erro ${response.status}: ${errorText}`);
         }
 
-        // 2. Pega o HTML puro retornado pelo servidor
         const htmlContent = await response.text();
-        
-        // 3. Injeta o HTML na página
         mainContentArea.innerHTML = htmlContent;
+
+        // [CORREÇÃO] Força o scroll para o topo após carregar o novo conteúdo
+        // O setTimeout garante que o render tenha ocorrido antes de rolar
+        setTimeout(() => {
+            mainContentArea.scrollTop = 0;
+            window.scrollTo(0, 0);
+        }, 10);
         
-        // 4. A mágica: Encontra e executa os scripts que vieram no HTML
-        // (Isso substitui a lógica complexa de 'scriptLoadChain' que você tinha)
         executeScripts(mainContentArea);
 
       } catch (error) {
-        // 5. Exibe um erro de falha
         let errMsg = "Erro desconhecido.";
         if (error && error.message) {
           const match = String(error.message).match(/Exception: (.*)/);
@@ -159,5 +182,5 @@
       }
     }
   </script>
-  </body>
+</body>
 </html>

@@ -1,155 +1,423 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<style>
+    /* Ajustes locais para o layout */
+    .RelatorioRateioView_container {
+        max-width: 100%;
+        padding: 0;
+    }
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Rateio Financeiro | CotaçãoPro</title>
+    .RelatorioRateioView_min-vh-50 {
+        min-height: 50vh;
+    }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* Estilos específicos para impressão */
+    @media print {
+        .no-print {
+            display: none !important;
         }
 
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
+        .card,
+        .RelatorioRateioView_container {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
         }
 
-        .min-vh-50 {
-            min-height: 50vh;
+        #RelatorioRateioScript_resultContainer {
+            padding: 0 !important;
         }
 
-        /* Estilos específicos para impressão */
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-
-            .card,
-            .main-container {
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                max-width: 100% !important;
-            }
-
-            body {
-                background-color: white;
-            }
-
-            #relatorio-result-container {
-                padding: 0 !important;
-            }
-
-            /* Força impressão de cores de fundo (importante para tabelas) */
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
+        /* Força impressão de cores de fundo */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
-    </style>
-</head>
+    }
+</style>
 
-<body>
+<div class="RelatorioRateioView_container w-full p-4">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary no-print shadow-sm mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="#">
-                <i class="bi bi-file-earmark-bar-graph-fill me-2"></i>Relatório de Rateio Financeiro
-            </a>
-            <div class="d-flex">
-                <button class="btn btn-sm btn-outline-light" onclick="window.close()">
-                    <i class="bi bi-x-lg me-1"></i>Fechar
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Rateio</h2>
+
+    <div class="bg-white rounded-lg shadow-md mb-6 border border-gray-200 no-print">
+        <div class="bg-blue-50 px-6 py-4 border-b border-gray-200 rounded-t-lg">
+            <h5 class="text-lg font-semibold text-blue-700 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                </svg>
+                Filtros de Busca
+            </h5>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-8">
+                    <label for="RelatorioRateioScript_inputTermosBusca" class="block text-sm font-medium text-gray-700 mb-2">Buscar Notas Fiscais</label>
+                    <textarea id="RelatorioRateioScript_inputTermosBusca" rows="3" 
+                        class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="Cole aqui as Chaves de Acesso (44 dígitos) ou Números das NFs.&#10;Separe por linha, vírgula ou espaço."></textarea>
+                    <p class="mt-1 text-sm text-gray-500">
+                        O sistema buscará por correspondências exatas na planilha de Notas Fiscais.
+                    </p>
+                </div>
+
+                <div class="lg:col-span-4 flex flex-col justify-end space-y-3">
+                    <button id="RelatorioRateioScript_btnGerarDetalhado" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded shadow transition duration-150 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        Relatório Detalhado
+                    </button>
+                    <button id="RelatorioRateioScript_btnGerarSintetico" class="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-4 border border-gray-300 rounded shadow-sm transition duration-150 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" /><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" /></svg>
+                        Relatório Sintético (Por Setor)
+                    </button>
+                </div>
+            </div>
+
+            <hr class="my-6 border-gray-200">
+
+            <div class="flex justify-between items-center">
+                <button id="RelatorioRateioScript_btnLimparBusca" class="text-red-600 hover:text-red-800 font-medium text-sm flex items-center gap-1 px-3 py-1 border border-red-200 rounded hover:bg-red-50 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    Limpar Busca
+                </button>
+                <button id="RelatorioRateioScript_btnImprimirRelatorio" class="bg-gray-800 hover:bg-gray-900 text-white font-medium text-sm py-2 px-4 rounded flex items-center gap-2 shadow transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" /></svg>
+                    Imprimir Relatório
                 </button>
             </div>
         </div>
-    </nav>
-
-    <div class="main-container">
-
-        <div class="card shadow-sm mb-4 no-print">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 text-primary"><i class="bi bi-funnel-fill me-2"></i>Filtros de Busca</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-lg-8">
-                        <label for="input-termos-busca" class="form-label fw-bold">Buscar Notas Fiscais</label>
-                        <textarea class="form-control" id="input-termos-busca" rows="3"
-                            placeholder="Cole aqui as Chaves de Acesso (44 dígitos) ou Números das NFs.&#10;Você pode colar múltiplos valores separados por linha, vírgula ou espaço."></textarea>
-                        <div class="form-text text-muted">
-                            <i class="bi bi-info-circle me-1"></i>O sistema buscará por correspondências exatas na
-                            planilha de Notas Fiscais.
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 d-flex flex-column justify-content-end">
-                        <div class="d-grid gap-2 mb-3">
-                            <button id="btn-gerar-detalhado" class="btn btn-primary btn-lg">
-                                <i class="bi bi-list-check me-2"></i>Relatório Detalhado
-                            </button>
-                            <button id="btn-gerar-sintetico" class="btn btn-outline-secondary">
-                                <i class="bi bi-pie-chart-fill me-2"></i>Relatório Sintético (Por Setor)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="my-3">
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <button id="btn-limpar-busca" class="btn btn-outline-danger btn-sm">
-                        <i class="bi bi-trash me-1"></i>Limpar Busca
-                    </button>
-                    <button id="btn-imprimir-relatorio" class="btn btn-dark btn-sm">
-                        <i class="bi bi-printer-fill me-1"></i>Imprimir Relatório
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="feedback-mensagem" class="alert d-none shadow-sm no-print" role="alert"></div>
-
-        <div id="container-nao-encontrados" class="alert alert-warning d-none no-print shadow-sm mt-3" role="alert">
-            <h6 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Os seguintes itens não
-                foram encontrados:</h6>
-            <hr>
-            <ul id="lista-nao-encontrados" class="mb-0 small" style="column-count: 3; column-gap: 20px;"></ul>
-        </div>
-
-        <div id="loading-spinner" class="d-none text-center py-5 bg-white rounded shadow-sm mb-4">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                <span class="visually-hidden">Carregando...</span>
-            </div>
-            <h5 class="mt-3 text-muted fw-normal">Processando dados, por favor aguarde...</h5>
-            <small class="text-muted">Isso pode levar alguns segundos dependendo da quantidade de notas.</small>
-        </div>
-
-        <div id="relatorio-result-container" class="bg-white p-4 rounded shadow-sm min-vh-50 border">
-            <div class="text-center text-muted py-5 my-5">
-                <i class="bi bi-search-heart" style="font-size: 4rem; opacity: 0.3;"></i>
-                <h4 class="mt-3 fw-light">Nenhum relatório gerado</h4>
-                <p>Utilize os filtros acima para buscar notas e gerar a visualização desejada.</p>
-            </div>
-        </div>
-
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
+    <div id="RelatorioRateioScript_feedbackMensagem" class="hidden mb-4 p-4 rounded-md shadow-sm no-print"></div>
 
-    <%- include('RelatorioRateioScript') %>
+    <div id="RelatorioRateioScript_containerNaoEncontrados" class="hidden mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow-sm no-print">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800">Os seguintes itens não foram encontrados:</h3>
+                <div class="mt-2 text-sm text-yellow-700">
+                    <ul id="RelatorioRateioScript_listaNaoEncontrados" class="list-disc pl-5 space-y-1" style="columns: 3;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
 
-</body>
+    <div id="RelatorioRateioScript_loadingSpinner" class="hidden text-center py-10 bg-white rounded-lg shadow-sm mb-4">
+        <svg class="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <h5 class="text-gray-700 font-medium">Processando dados, por favor aguarde...</h5>
+    </div>
 
-</html>
+    <div id="RelatorioRateioScript_resultContainer" class="bg-white p-6 rounded-lg shadow-sm min-h-[50vh] border border-gray-200">
+        <div class="text-center text-gray-400 py-20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h4 class="text-xl font-light text-gray-500">Nenhum relatório gerado</h4>
+            <p class="mt-2 text-sm">Utilize os filtros acima para buscar notas e gerar a visualização desejada.</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function initRelatorioRateioScript() {
+        console.log("Inicializando RelatorioRateioScript (Versão Unificada)...");
+
+        const ID_BTN_DETALHADO = 'RelatorioRateioScript_btnGerarDetalhado';
+        const ID_BTN_SINTETICO = 'RelatorioRateioScript_btnGerarSintetico';
+        const ID_BTN_LIMPAR = 'RelatorioRateioScript_btnLimparBusca';
+        const ID_BTN_IMPRIMIR = 'RelatorioRateioScript_btnImprimirRelatorio';
+        const ID_INPUT_BUSCA = 'RelatorioRateioScript_inputTermosBusca';
+        const ID_CONTAINER_RESULTADO = 'RelatorioRateioScript_resultContainer';
+        const ID_LOADING = 'RelatorioRateioScript_loadingSpinner';
+        const ID_FEEDBACK = 'RelatorioRateioScript_feedbackMensagem';
+        const ID_CONTAINER_NAO_ENCONTRADOS = 'RelatorioRateioScript_containerNaoEncontrados';
+        const ID_LISTA_NAO_ENCONTRADOS = 'RelatorioRateioScript_listaNaoEncontrados';
+
+        let feedbackTimeout;
+
+        const btnDetalhado = document.getElementById(ID_BTN_DETALHADO);
+        const btnSintetico = document.getElementById(ID_BTN_SINTETICO);
+        const btnLimpar = document.getElementById(ID_BTN_LIMPAR);
+        const btnImprimir = document.getElementById(ID_BTN_IMPRIMIR);
+        const inputBusca = document.getElementById(ID_INPUT_BUSCA);
+
+        if (btnDetalhado) btnDetalhado.addEventListener('click', () => gerarRelatorio('detalhado'));
+        if (btnSintetico) btnSintetico.addEventListener('click', () => gerarRelatorio('sintetico'));
+        if (btnLimpar) btnLimpar.addEventListener('click', limparTela);
+        if (btnImprimir) btnImprimir.addEventListener('click', () => window.print());
+        if (inputBusca) inputBusca.focus();
+
+        async function gerarRelatorio(tipo) {
+            const textoBusca = inputBusca.value.trim();
+            if (!textoBusca) {
+                exibirFeedback('Por favor, insira pelo menos um número de NF ou Chave de Acesso.', 'warning');
+                return;
+            }
+
+            const termos = textoBusca.split(/[\n,;]+/).map(t => t.trim()).filter(t => t.length > 0);
+            if (termos.length === 0) return;
+
+            const container = document.getElementById(ID_CONTAINER_RESULTADO);
+            const loading = document.getElementById(ID_LOADING);
+            const feedback = document.getElementById(ID_FEEDBACK);
+            const containerNaoEncontrados = document.getElementById(ID_CONTAINER_NAO_ENCONTRADOS);
+
+            container.innerHTML = '';
+            alternarBotoes(true);
+            if (feedback) feedback.classList.add('hidden');
+            if (containerNaoEncontrados) containerNaoEncontrados.classList.add('hidden'); 
+            if (loading) loading.classList.remove('hidden');
+
+            try {
+                const endpoint = tipo === 'detalhado'
+                    ? '/api/conciliacaonf/relatorio/detalhado'
+                    : '/api/conciliacaonf/relatorio/sintetico';
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ termos: termos })
+                });
+                const resultado = await response.json();
+
+                if (loading) loading.classList.add('hidden');
+
+                if (resultado.success) {
+                    verificarItensNaoEncontrados(termos, resultado.dados || []);
+                    
+                    if (resultado.dados && resultado.dados.length > 0) {
+                        if (tipo === 'detalhado') {
+                            renderizarTabelaDetalhada(resultado.dados, container);
+                        } else {
+                            renderizarTabelaSintetica(resultado.dados, container);
+                        }
+                        exibirFeedback(`Relatório gerado com sucesso! ${resultado.dados.length} nota(s) encontrada(s).`, 'success');
+                    } else {
+                        exibirFeedback('Nenhuma nota encontrada para os termos informados.', 'info');
+                    }
+                } else {
+                    throw new Error(resultado.message || 'Erro desconhecido no servidor.');
+                }
+
+            } catch (error) {
+                console.error('Erro ao gerar relatório:', error);
+                if (loading) loading.classList.add('hidden');
+                exibirFeedback(`Erro ao gerar relatório: ${error.message}`, 'error');
+            } finally {
+                alternarBotoes(false);
+            }
+        }
+
+        function renderizarTabelaDetalhada(dados, container) {
+            let html = `
+                <div class="overflow-x-auto mt-4 border rounded-lg shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-center font-semibold text-gray-700 uppercase tracking-wider w-24">Data</th>
+                                <th scope="col" class="px-4 py-3 text-center font-semibold text-gray-700 uppercase tracking-wider w-24">NF</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider w-1/5">Fornecedor</th>
+                                <th scope="col" class="px-4 py-3 text-right font-semibold text-gray-700 uppercase tracking-wider w-32">Valor Total</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Detalhamento do Rateio</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+            `;
+            dados.forEach(nf => {
+                let detalhesHtml = `
+                    <div class="p-3 bg-gray-50 rounded-md m-2 border border-gray-200">
+                        <table class="min-w-full text-xs text-gray-600">
+                            <thead class="font-medium text-gray-500 border-b border-gray-200">
+                                <tr>
+                                    <th class="text-left pb-1 w-1/3">Fatura/Parcela</th>
+                                    <th class="text-left pb-1 w-1/3">Setor</th>
+                                    <th class="text-center pb-1 w-1/6">Vencimento</th>
+                                    <th class="text-right pb-1 w-1/6">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                `;
+
+                if (nf.contasAPagar && nf.contasAPagar.length > 0) {
+                    nf.contasAPagar.forEach(conta => {
+                        detalhesHtml += `
+                            <tr class="hover:bg-gray-100">
+                                <td class="py-1.5">Fat. ${conta.numeroFatura} (${conta.numeroParcela})</td>
+                                <td class="py-1.5 font-semibold text-gray-800">${conta.setor || 'Sem Setor'}</td>
+                                <td class="py-1.5 text-center">${formatarData(conta.dataVencimento)}</td>
+                                <td class="py-1.5 text-right text-gray-800">${formatarMoeda(conta.valorPorSetor)}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    detalhesHtml += '<tr><td colspan="4" class="py-2 text-center italic text-gray-500">Nenhum rateio registrado.</td></tr>';
+                }
+                detalhesHtml += '</tbody></table></div>';
+                
+                html += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 whitespace-nowrap text-center text-gray-600">${formatarData(nf.dataEmissao)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-gray-800">${nf.numeroNF}</td>
+                        <td class="px-4 py-4">
+                            <div class="font-medium text-gray-900 truncate max-w-[200px]" title="${nf.nomeFornecedor}">${nf.nomeFornecedor}</div>
+                            <div class="text-xs text-gray-500 truncate max-w-[200px]">${nf.chaveAcesso}</div>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right font-bold text-blue-700">${formatarMoeda(nf.valorTotalNf)}</td>
+                        <td class="px-2 py-2 align-top">${detalhesHtml}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+
+            if (dados.length > 1) {
+                const totalGeral = dados.reduce((acc, nf) => acc + (parseFloat(nf.valorTotalNf) || 0), 0);
+                html += `<div class="mt-4 p-4 bg-gray-100 rounded-lg border border-gray-300 text-right text-lg font-bold text-gray-800">Total Geral das Notas: <span class="text-blue-700">${formatarMoeda(totalGeral)}</span></div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderizarTabelaSintetica(dados, container) {
+            let html = `
+                <div class="overflow-x-auto mt-4 border rounded-lg shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-800 text-white">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-center font-medium uppercase tracking-wider w-24">Data</th>
+                                <th scope="col" class="px-4 py-3 text-center font-medium uppercase tracking-wider w-24">NF</th>
+                                <th scope="col" class="px-4 py-3 text-left font-medium uppercase tracking-wider w-1/5">Fornecedor</th>
+                                <th scope="col" class="px-4 py-3 text-right font-medium uppercase tracking-wider w-32">Valor Total</th>
+                                <th scope="col" class="px-4 py-3 text-left font-medium uppercase tracking-wider">Resumo por Setor (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+            `;
+            dados.forEach(nf => {
+                let resumoHtml = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">';
+                if (nf.rateioPorSetor && nf.rateioPorSetor.length > 0) {
+                    nf.rateioPorSetor.forEach(item => {
+                        resumoHtml += `
+                            <div class="bg-gray-50 border border-gray-200 rounded p-2 flex justify-between items-center text-xs">
+                                <span class="font-bold text-gray-700 truncate max-w-[60%]" title="${item.setor}">${item.setor}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-900">${formatarMoeda(item.valor)}</span>
+                                    <span class="bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">${item.porcentagem.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    resumoHtml += '<div class="col-span-2 text-gray-400 italic text-xs">Sem dados.</div>';
+                }
+                resumoHtml += '</div>';
+                
+                html += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 whitespace-nowrap text-center text-gray-600">${formatarData(nf.dataEmissao)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-gray-800">${nf.numeroNF}</td>
+                        <td class="px-4 py-4">
+                            <div class="font-medium text-gray-900 truncate max-w-[180px]" title="${nf.nomeFornecedor}">${nf.nomeFornecedor}</div>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right font-bold text-blue-700">${formatarMoeda(nf.valorTotalNf)}</td>
+                        <td class="px-4 py-2">${resumoHtml}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+
+            if (dados.length > 1) {
+                const totalGeral = dados.reduce((acc, nf) => acc + (parseFloat(nf.valorTotalNf) || 0), 0);
+                html += `<div class="mt-4 p-4 bg-gray-800 text-white rounded-lg text-right text-lg font-bold">Total Geral: <span class="text-green-400">${formatarMoeda(totalGeral)}</span></div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function limparTela() {
+            document.getElementById(ID_INPUT_BUSCA).value = '';
+            document.getElementById(ID_CONTAINER_RESULTADO).innerHTML = '';
+            document.getElementById(ID_FEEDBACK).classList.add('hidden');
+            document.getElementById(ID_CONTAINER_NAO_ENCONTRADOS).classList.add('hidden');
+            document.getElementById(ID_INPUT_BUSCA).focus();
+        }
+
+        function exibirFeedback(mensagem, tipo = 'info') {
+            const feedback = document.getElementById(ID_FEEDBACK);
+            if (feedback) {
+                if (feedbackTimeout) clearTimeout(feedbackTimeout);
+                
+                let classeCor = 'bg-blue-100 text-blue-800 border-blue-300'; 
+                if (tipo === 'success') classeCor = 'bg-green-100 text-green-800 border-green-300';
+                if (tipo === 'warning') classeCor = 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                if (tipo === 'error' || tipo === 'danger') classeCor = 'bg-red-100 text-red-800 border-red-300';
+
+                feedback.className = `mb-4 p-4 rounded-md shadow-sm border no-print ${classeCor}`;
+                feedback.innerHTML = `<div class="flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>${mensagem}</div>`;
+                feedback.classList.remove('hidden');
+                
+                feedbackTimeout = setTimeout(() => { feedback.classList.add('hidden'); }, 3000);
+            } else {
+                alert(mensagem);
+            }
+        }
+
+        function alternarBotoes(desabilitar) {
+            const botoes = document.querySelectorAll(`#${ID_BTN_DETALHADO}, #${ID_BTN_SINTETICO}, #${ID_BTN_LIMPAR}`);
+            botoes.forEach(btn => {
+                btn.disabled = desabilitar;
+                if(desabilitar) btn.classList.add('opacity-50', 'cursor-not-allowed');
+                else btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
+        }
+
+        function formatarMoeda(valor) {
+            if (valor === undefined || valor === null) return 'R$ 0,00';
+            const numero = typeof valor === 'string' ? parseFloat(valor) : valor;
+            if (isNaN(numero)) return 'R$ 0,00';
+            return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function formatarData(dataString) {
+            if (!dataString) return '-';
+            const data = new Date(dataString);
+            if (isNaN(data.getTime())) return dataString;
+            return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        }
+
+        function verificarItensNaoEncontrados(termosBuscados, dadosEncontrados) {
+            const container = document.getElementById(ID_CONTAINER_NAO_ENCONTRADOS);
+            const lista = document.getElementById(ID_LISTA_NAO_ENCONTRADOS);
+            if (!container || !lista) return;
+
+            const encontradosSet = new Set();
+            dadosEncontrados.forEach(nf => {
+                if (nf.chaveAcesso) encontradosSet.add(String(nf.chaveAcesso).trim());
+                if (nf.numeroNF) encontradosSet.add(String(nf.numeroNF).trim());
+            });
+
+            const naoEncontrados = termosBuscados.filter(termo => {
+                const t = String(termo).trim();
+                return t.length > 0 && !encontradosSet.has(t);
+            });
+
+            if (naoEncontrados.length > 0) {
+                const unicosFaltantes = [...new Set(naoEncontrados)];
+                const htmlItens = unicosFaltantes.map(item => `<li><strong>${item}</strong></li>`).join('');
+                lista.innerHTML = htmlItens;
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+    }
+
+    // Inicializa o script quando carregado
+    initRelatorioRateioScript();
+</script>

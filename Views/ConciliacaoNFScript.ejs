@@ -76,7 +76,6 @@
         // Header
         $('#btn-upload-xml').on('click', () => $('#xml-upload-input').click());
         $('#xml-upload-input').on('change', onFileUpload);
-        $('#btn-abrir-relatorio-rateio').on('click', onAbrirRelatorioRateioClick);
 
         // [REMOVIDO] O listener do botão salvar lote foi retirado pois a função não existe mais
         // $('#btn-salvar-lote').on('click', onBtnSalvarLoteClick); 
@@ -891,14 +890,6 @@
     function formatarMoeda(valor) {
         if (typeof valor !== 'number' || isNaN(valor)) return "R$ 0,00";
         return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-
-
-    function onAbrirRelatorioRateioClick() {
-        // Abre a nova view de relatório em uma nova aba
-        // Certifique-se que a rota '/view/relatoriorateio' está configurada no server.js
-        window.open('/view/relatoriorateio', '_blank');
     }
 
     /**
