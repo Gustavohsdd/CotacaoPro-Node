@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ConciliacaoNFController = require('../Controllers/ConciliacaoNFController');
+const controller = require('../Controllers/ConciliacaoNFController');
 
 // --- Rotas de Inicialização e Leitura ---
 router.get('/dados-pagina', ConciliacaoNFController.getDadosPagina);
@@ -23,5 +24,8 @@ router.post('/atualizar-status', ConciliacaoNFController.atualizarStatusNF);
 router.post('/salvar-fornecedor', ConciliacaoNFController.salvarFornecedorViaNF);
 router.post('/salvar-produto-via-nf', ConciliacaoNFController.salvarProdutoViaNF);
 router.post('/salvar-subprodutos-via-nf', ConciliacaoNFController.salvarSubProdutosViaNF);
+router.get('/notas-para-ratear', controller.ConciliacaoNFController_obterNotasParaRatear);
+router.post('/relatorio/detalhado', controller.ConciliacaoNFController_buscarDadosRelatorioDetalhado);
+router.post('/relatorio/sintetico', controller.ConciliacaoNFController_buscarDadosRelatorioSintetico);
 
 module.exports = router;

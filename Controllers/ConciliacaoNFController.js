@@ -5,6 +5,7 @@
 const crud = require('./ConciliacaoNFCrud'); // O ConciliacaoNFCrud.js corrigido
 const constants = require('../config/constants');
 const { parseStringPromise } = require('xml2js');
+const ConciliacaoNFCrud = require('./ConciliacaoNFCrud');
 
 // [REMOVIDO] Não precisamos mais dos outros CRUDs aqui para a função getDadosPagina
 // const cotacoesCRUD = require('./CotacoesCRUD');
@@ -858,6 +859,58 @@ const atualizarStatusNF = async (req, res) => {
     }
 };
 
+/**
+ * Retorna a lista de NFs prontas para rateio (Conciliadas mas sem Status de Rateio).
+ */
+async function ConciliacaoNFController_obterNotasParaRatear(req, res) {
+  try {
+    const notas = await ConciliacaoNFCrud.ConciliacaoNFCrud_obterNotasParaRatear(req.sheets);
+    res.json({ success: true, notas: notas });
+  } catch (error) {
+    console.error("Erro no Controller obterNotasParaRatear:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * Retorna os dados para o Relatório Detalhado de Rateio.
+ * Espera receber um body JSON: { termos: ["chave1", "NF123"] }
+ */
+async function ConciliacaoNFController_buscarDadosRelatorioDetalhado(req, res) {
+  try {
+    const { termos } = req.body;
+    if (!termos || !Array.isArray(termos)) {
+      return res.status(400).json({ success: false, message: "Parâmetro 'termos' inválido ou ausente." });
+    }
+
+    const dados = await ConciliacaoNFCrud.ConciliacaoNFCrud_obterDadosParaRelatorio(req.sheets, termos);
+    res.json({ success: true, dados: dados });
+  } catch (error) {
+    console.error("Erro no Controller buscarDadosRelatorioDetalhado:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * Retorna os dados para o Relatório Sintético de Rateio.
+ * Espera receber um body JSON: { termos: ["chave1", "NF123"] }
+ */
+async function ConciliacaoNFController_buscarDadosRelatorioSintetico(req, res) {
+  try {
+    const { termos } = req.body;
+    if (!termos || !Array.isArray(termos)) {
+      return res.status(400).json({ success: false, message: "Parâmetro 'termos' inválido ou ausente." });
+    }
+
+    const dados = await ConciliacaoNFCrud.ConciliacaoNFCrud_obterDadosParaRelatorioSintetico(req.sheets, termos);
+    res.json({ success: true, dados: dados });
+  } catch (error) {
+    console.error("Erro no Controller buscarDadosRelatorioSintetico:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+
 // --- Exportações ---
 module.exports = {
   processarXMLs,
@@ -869,5 +922,8 @@ module.exports = {
   salvarFornecedorViaNF,
   salvarProdutoViaNF,
   obterDadosParaCadastroItens,
-  salvarSubProdutosViaNF
+  salvarSubProdutosViaNF,
+  ConciliacaoNFController_obterNotasParaRatear,
+  ConciliacaoNFController_buscarDadosRelatorioDetalhado,
+  ConciliacaoNFController_buscarDadosRelatorioSintetico
 };

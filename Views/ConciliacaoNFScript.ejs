@@ -77,7 +77,7 @@
         $('#btn-upload-xml').on('click', () => $('#xml-upload-input').click());
         $('#xml-upload-input').on('change', onFileUpload);
         $('#btn-abrir-relatorio-rateio').on('click', onAbrirRelatorioRateioClick);
-        
+
         // [REMOVIDO] O listener do botão salvar lote foi retirado pois a função não existe mais
         // $('#btn-salvar-lote').on('click', onBtnSalvarLoteClick); 
 
@@ -90,7 +90,7 @@
         panelDireito.on('change', '.select-cotacao-fornecedor', onSelectCotacaoChange);
         panelDireito.on('click', '#cotacao-items-list .list-group-item:not(.matched)', onCotacaoItemClick);
         panelDireito.on('click', '#nf-items-list .list-group-item', onNfItemClick);
-        
+
         // Botões de Ação Principais
         panelDireito.on('click', '#btn-concluir-conciliacao', onBtnConcluirConciliacaoClick);
         panelDireito.on('click', '#btn-abrir-modal-fornecedor', onAbrirModalFornecedorClick);
@@ -132,15 +132,15 @@
         ConciliacaoNFScript_listenersAnexados = true;
     }
 
-/**
-     * Exibe uma notificação flutuante (Toast) em vez de um alert.
-     * @param {string} message A mensagem a ser exibida.
-     * @param {string} type O tipo de mensagem: 'success' (verde) ou 'error' (vermelho).
-     */
+    /**
+         * Exibe uma notificação flutuante (Toast) em vez de um alert.
+         * @param {string} message A mensagem a ser exibida.
+         * @param {string} type O tipo de mensagem: 'success' (verde) ou 'error' (vermelho).
+         */
     function showToast(message, type = 'success') {
         const toastEl = document.getElementById('liveToast');
         const toastBody = document.getElementById('toast-message');
-        
+
         // Define a cor com base no tipo
         if (type === 'success') {
             toastEl.classList.remove('bg-danger');
@@ -151,7 +151,7 @@
         }
 
         toastBody.textContent = message;
-        
+
         // Usa o Bootstrap Toast para exibir
         const toast = new bootstrap.Toast(toastEl, { delay: 4000 }); // Some após 4 segundos
         toast.show();
@@ -170,21 +170,21 @@
         // 2. Lógica Otimizada: Remoção Local (Instantânea)
         if (chaveAcessoProcessada) {
             console.log("Removendo nota processada da lista local:", chaveAcessoProcessada);
-            
+
             // Remove a NF das listas globais em memória
             todasAsNFs = todasAsNFs.filter(nf => nf.chaveAcesso !== chaveAcessoProcessada);
-            
+
             // Remove itens relacionados para liberar memória e manter consistência
             todosOsItensNF = todosOsItensNF.filter(item => item.chaveAcesso !== chaveAcessoProcessada);
             todosOsDadosGeraisNF = todosOsDadosGeraisNF.filter(d => d.chaveAcesso !== chaveAcessoProcessada);
-            
+
             // Re-renderiza a lista lateral com os dados atualizados (agora sem a nota removida)
             // Se a lista estiver vazia, a função renderizarListaDeTrabalho já exibirá "Nenhuma nota pendente"
             renderizarListaDeTrabalho();
-            
+
             // Reaplica o filtro de busca caso o usuário tenha algo digitado
             $('#search-input').trigger('input');
-            
+
             // Garante que o loader esteja oculto para liberar a UI imediatamente
             toggleLoader(false);
 
@@ -192,7 +192,7 @@
             // Interrompe a execução AQUI.
             // Não permitimos que o código desça para o fetch, independente se a lista está vazia ou não.
             // Isso evita buscar a nota no servidor enquanto ela ainda está sendo salva.
-            return; 
+            return;
         }
 
         // 3. Lógica Padrão: Busca Completa no Servidor
@@ -228,23 +228,23 @@
                 novoStatus: 'NF Tipo B'
             })
         })
-        .then(handleResponse)
-        .then(response => {
-            if (response.success) {
-                console.log(`Sucesso background Tipo B: ${nfInfo.numeroNF}`);
-            } else {
-                // Erro de negócio
-                console.error("Erro no salvamento (Tipo B):", response.message);
-                alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF} como Tipo B.\n${response.message}\nA página será recarregada.`);
+            .then(handleResponse)
+            .then(response => {
+                if (response.success) {
+                    console.log(`Sucesso background Tipo B: ${nfInfo.numeroNF}`);
+                } else {
+                    // Erro de negócio
+                    console.error("Erro no salvamento (Tipo B):", response.message);
+                    alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF} como Tipo B.\n${response.message}\nA página será recarregada.`);
+                    window.location.reload(); // Reverte estado
+                }
+            })
+            .catch(err => {
+                // Erro de rede
+                console.error("Erro crítico (Tipo B):", err);
+                alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
                 window.location.reload(); // Reverte estado
-            }
-        })
-        .catch(err => {
-            // Erro de rede
-            console.error("Erro crítico (Tipo B):", err);
-            alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
-            window.location.reload(); // Reverte estado
-        });
+            });
     }
 
     // ===== CALLBACKS DO SERVIDOR E PROCESSAMENTO DE DADOS =====
@@ -743,23 +743,23 @@
         const workspace = $('#workspace-content');
         const nfInfo = workspace.data('active-nf');
         const compositeKey = workspace.find('.select-cotacao-fornecedor').val();
-        
+
         if (!compositeKey) {
             showToast('Erro: Nenhuma cotação foi selecionada. Vincule a NF antes de concluir.', 'error');
             return;
         }
-        
+
         const [idCotacao, ...nomeFornecedorParts] = compositeKey.split('-');
         const nomeFornecedor = nomeFornecedorParts.join('-');
 
         // 2. Prepara o Payload (Pacote de dados exclusivo desta requisição)
-        const conciliacaoPayload = { 
-            idCotacao, 
-            nomeFornecedor, 
-            numeroNF: nfInfo.numeroNF, 
-            chavesAcessoNF: [nfInfo.chaveAcesso], 
-            itensConciliados: [], 
-            novosMapeamentos: [] 
+        const conciliacaoPayload = {
+            idCotacao,
+            nomeFornecedor,
+            numeroNF: nfInfo.numeroNF,
+            chavesAcessoNF: [nfInfo.chaveAcesso],
+            itensConciliados: [],
+            novosMapeamentos: []
         };
         const itensCortados = [];
 
@@ -807,7 +807,7 @@
                 setor = setor.trim();
                 const percNumerico = parseFloat(porcentagem) || 0;
                 totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
-                
+
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
                 mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF);
             };
@@ -839,7 +839,7 @@
         // 3. AÇÃO OTIMISTA (UI): Remove da tela IMEDIATAMENTE
         // Não ativamos o loader global para não bloquear o usuário.
         resetApplication(nfInfo.chaveAcesso); // Remove da lista lateral e limpa o painel
-        
+
         // Feedback visual instantâneo
         showToast(`NF ${nfInfo.numeroNF} enviada para processamento!`, 'success');
 
@@ -854,32 +854,32 @@
                 novosMapeamentos: conciliacaoPayload.novosMapeamentos
             })
         })
-        .then(handleResponse)
-        .then(response => {
-            if (response.success) {
-                console.log(`[Sucesso Background] NF ${nfInfo.numeroNF} salva com sucesso.`);
-                // Opcional: Um toast discreto confirmando o salvamento real
-                // showToast(`Dados da NF ${nfInfo.numeroNF} gravados com segurança.`, 'success');
-            } else {
-                // Erro de negócio (ex: planilha bloqueada, dados inválidos no server)
-                throw new Error(response.message || "Erro desconhecido no servidor.");
-            }
-        })
-        .catch(err => {
-            // 5. REDE DE SEGURANÇA (CRÍTICO)
-            // Se der erro, avisamos o usuário e RECARREGAMOS a página.
-            // Isso garante que a nota (que não foi salva) reapareça na lista de pendentes.
-            console.error(`ERRO CRÍTICO ao salvar NF ${nfInfo.numeroNF}:`, err);
-            
-            alert(
-                `ATENÇÃO: Ocorreu um erro ao salvar a NF ${nfInfo.numeroNF} no sistema!\n\n` +
-                `Erro: ${err.message}\n\n` +
-                `A página será recarregada para recuperar os dados da nota e evitar inconsistências.`
-            );
-            
-            // Força o recarregamento para desfazer a "mentira" da UI Otimista
-            window.location.reload();
-        });
+            .then(handleResponse)
+            .then(response => {
+                if (response.success) {
+                    console.log(`[Sucesso Background] NF ${nfInfo.numeroNF} salva com sucesso.`);
+                    // Opcional: Um toast discreto confirmando o salvamento real
+                    // showToast(`Dados da NF ${nfInfo.numeroNF} gravados com segurança.`, 'success');
+                } else {
+                    // Erro de negócio (ex: planilha bloqueada, dados inválidos no server)
+                    throw new Error(response.message || "Erro desconhecido no servidor.");
+                }
+            })
+            .catch(err => {
+                // 5. REDE DE SEGURANÇA (CRÍTICO)
+                // Se der erro, avisamos o usuário e RECARREGAMOS a página.
+                // Isso garante que a nota (que não foi salva) reapareça na lista de pendentes.
+                console.error(`ERRO CRÍTICO ao salvar NF ${nfInfo.numeroNF}:`, err);
+
+                alert(
+                    `ATENÇÃO: Ocorreu um erro ao salvar a NF ${nfInfo.numeroNF} no sistema!\n\n` +
+                    `Erro: ${err.message}\n\n` +
+                    `A página será recarregada para recuperar os dados da nota e evitar inconsistências.`
+                );
+
+                // Força o recarregamento para desfazer a "mentira" da UI Otimista
+                window.location.reload();
+            });
     }
 
     // ===== FUNÇÕES UTILITÁRIAS =====
@@ -894,19 +894,11 @@
     }
 
 
-    /**
-     * [FUNÇÃO CORRIGIDA]
-     * A lógica de `fetch('/funcoes/url-webapp'...)` estava errada.
-     * Esta função não precisa chamar a API, ela só precisa abrir a view correta
-     * do lado do cliente, que é `/view/relatoriorateio`.
-     */
+
     function onAbrirRelatorioRateioClick() {
-        // Esta view é renderizada pelo servidor na rota /view/relatoriorateio
-        // Apenas precisamos abrir essa URL.
-        console.log("Abrindo /view/relatoriorateio em nova aba...");
-        const url = window.location.origin + '/view/relatoriorateio';
-        window.open(url, '_blank');
-        // Não é necessário loader, pois abre em nova aba.
+        // Abre a nova view de relatório em uma nova aba
+        // Certifique-se que a rota '/view/relatoriorateio' está configurada no server.js
+        window.open('/view/relatoriorateio', '_blank');
     }
 
     /**
@@ -934,23 +926,23 @@
                 novoStatus: 'Bonificação'
             })
         })
-        .then(handleResponse)
-        .then(response => {
-            if (response.success) {
-                console.log(`Sucesso background Bonificação: ${nfInfo.numeroNF}`);
-            } else {
-                 // Erro de negócio
-                 console.error("Erro no salvamento (Bonificação):", response.message);
-                 alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF} como Bonificação.\n${response.message}\nA página será recarregada.`);
-                 window.location.reload(); // Reverte estado
-            }
-        })
-        .catch(err => {
-             // Erro de rede
-             console.error("Erro crítico (Bonificação):", err);
-             alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
-             window.location.reload(); // Reverte estado
-        });
+            .then(handleResponse)
+            .then(response => {
+                if (response.success) {
+                    console.log(`Sucesso background Bonificação: ${nfInfo.numeroNF}`);
+                } else {
+                    // Erro de negócio
+                    console.error("Erro no salvamento (Bonificação):", response.message);
+                    alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF} como Bonificação.\n${response.message}\nA página será recarregada.`);
+                    window.location.reload(); // Reverte estado
+                }
+            })
+            .catch(err => {
+                // Erro de rede
+                console.error("Erro crítico (Bonificação):", err);
+                alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
+                window.location.reload(); // Reverte estado
+            });
     }
 
     // ... (onMarcarSemPedidoClick permanece a mesma) ...
@@ -1012,7 +1004,7 @@
 
         const workspace = $('#workspace-content');
         const nfInfo = workspace.data('active-nf');
-        
+
         // Coleta dos dados
         const totaisPorSetor = {};
         const novasRegras = [];
@@ -1079,23 +1071,23 @@
                 rateio: rateioPayload
             })
         })
-        .then(handleResponse)
-        .then(response => {
-            if (response.success) {
-                console.log(`Sucesso background Sem Pedido: ${nfInfo.numeroNF}`);
-            } else {
-                 // Erro de negócio
-                 console.error("Erro no salvamento (Sem Pedido):", response.message);
-                 alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF}.\n${response.message}\nA página será recarregada.`);
-                 window.location.reload(); // Reverte estado
-            }
-        })
-        .catch(err => {
-             // Erro de rede
-             console.error("Erro crítico (Sem Pedido):", err);
-             alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
-             window.location.reload(); // Reverte estado
-        });
+            .then(handleResponse)
+            .then(response => {
+                if (response.success) {
+                    console.log(`Sucesso background Sem Pedido: ${nfInfo.numeroNF}`);
+                } else {
+                    // Erro de negócio
+                    console.error("Erro no salvamento (Sem Pedido):", response.message);
+                    alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF}.\n${response.message}\nA página será recarregada.`);
+                    window.location.reload(); // Reverte estado
+                }
+            })
+            .catch(err => {
+                // Erro de rede
+                console.error("Erro crítico (Sem Pedido):", err);
+                alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
+                window.location.reload(); // Reverte estado
+            });
     }
 
     function onAbrirModalFornecedorClick() {
@@ -1189,24 +1181,70 @@
             });
     }
 
-    // ... (Funções de máscara e formatação permanecem as mesmas) ...
+    // =================================================================
+    // FUNÇÕES UTILITÁRIAS (MÁSCARAS E FORMATAÇÃO)
+    // =================================================================
+
+    /**
+     * Aplica máscara de CNPJ (00.000.000/0000-00) a um valor.
+     * @param {string} value O valor a ser formatado.
+     * @returns {string} O valor com a máscara aplicada.
+     */
     function ConciliacaoNFScript_mascaraCnpj(value) {
         if (!value) return "";
-        return value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').slice(0, 18);
+        return value.replace(/\D/g, '')
+            .replace(/^(\d{2})(\d)/, '$1.$2')
+            .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d)/, '.$1/$2')
+            .replace(/(\d{4})(\d)/, '$1-$2')
+            .slice(0, 18);
     }
+
+    /**
+     * Aplica máscara de Telefone ((00) 00000-0000) a um valor.
+     * @param {string} value O valor a ser formatado.
+     * @returns {string} O valor com a máscara aplicada.
+     */
     function ConciliacaoNFScript_mascaraTelefone(value) {
         if (!value) return "";
-        value = value.replace(/\D/g, ''); if (value.length > 11) value = value.slice(0, 11);
+        value = value.replace(/\D/g, '');
+        if (value.length > 11) value = value.slice(0, 11);
         if (value.length > 10) {
             value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
         } else if (value.length > 6) {
             value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
         } else if (value.length > 2) {
             value = value.replace(/^(\d{2})(\d*)/, '($1) $2');
-        } else if (value.length > 0) { value = value.replace(/^(\d*)/, '($1'); } return value;
+        } else if (value.length > 0) {
+            value = value.replace(/^(\d*)/, '($1');
+        }
+        return value;
     }
-    function ConciliacaoNFScript_formatarMoedaInput(inputElement) { let value = inputElement.value.replace(/\D/g, ''); if (value === '') { inputElement.value = ''; return; } const numero = parseInt(value, 10) / 100; inputElement.value = numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-    function ConciliacaoNFScript_obterValorMoedaCru(formattedValue) { if (!formattedValue) return ''; return formattedValue.replace('R$', '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.'); }
+
+    /**
+     * Formata o valor de um campo de input para o formato de moeda BRL (R$).
+     * @param {HTMLInputElement} inputElement O elemento do input a ser formatado.
+     */
+    function ConciliacaoNFScript_formatarMoedaInput(inputElement) {
+        let value = inputElement.value.replace(/\D/g, '');
+        if (value === '') {
+            inputElement.value = '';
+            return;
+        }
+        const numero = parseInt(value, 10) / 100;
+        inputElement.value = numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    /**
+     * Converte um valor de moeda formatado (ex: "R$ 1.234,56") para um formato numérico cru (ex: "1234.56").
+     * @param {string} formattedValue O valor formatado a ser convertido.
+     * @returns {string} O valor numérico como string.
+     */
+    function ConciliacaoNFScript_obterValorMoedaCru(formattedValue) {
+        if (!formattedValue) return '';
+        return formattedValue.replace('R$', '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+    }
+
 
 
     function onAbrirCadastroItensClick() {

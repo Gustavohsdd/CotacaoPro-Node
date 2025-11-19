@@ -1,0 +1,337 @@
+<script>
+    /**
+     * RelatorioRateioScript.ejs
+     * Gerencia a lógica da página de Relatório de Rateio Financeiro.
+     * Migrado para Node.js
+     */
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializa os listeners dos botões
+        const btnDetalhado = document.getElementById('btn-gerar-detalhado');
+        const btnSintetico = document.getElementById('btn-gerar-sintetico');
+        const btnLimpar = document.getElementById('btn-limpar-busca');
+        const btnImprimir = document.getElementById('btn-imprimir-relatorio');
+
+        if (btnDetalhado) btnDetalhado.addEventListener('click', () => gerarRelatorio('detalhado'));
+        if (btnSintetico) btnSintetico.addEventListener('click', () => gerarRelatorio('sintetico'));
+        if (btnLimpar) btnLimpar.addEventListener('click', limparTela);
+        if (btnImprimir) btnImprimir.addEventListener('click', () => window.print());
+
+        // Foco inicial no campo de busca
+        const inputBusca = document.getElementById('input-termos-busca');
+        if (inputBusca) inputBusca.focus();
+    });
+
+    // =================================================================
+    // LÓGICA PRINCIPAL DE BUSCA
+    // =================================================================
+
+    /**
+     * Processa a busca e gera o relatório solicitado.
+     * @param {string} tipo 'detalhado' | 'sintetico'
+     */
+    async function gerarRelatorio(tipo) {
+        const inputBusca = document.getElementById('input-termos-busca');
+        const container = document.getElementById('relatorio-result-container');
+        const loading = document.getElementById('loading-spinner');
+
+        // Elementos de feedback e não encontrados
+        const feedback = document.getElementById('feedback-mensagem');
+        const containerNaoEncontrados = document.getElementById('container-nao-encontrados');
+
+        // 1. Validação e Preparação dos Termos
+        const textoBusca = inputBusca.value.trim();
+        if (!textoBusca) {
+            exibirFeedback('Por favor, insira pelo menos um número de NF ou Chave de Acesso.', 'warning');
+            return;
+        }
+
+        // Separa por quebras de linha, vírgulas ou espaços e remove vazios
+        const termos = textoBusca.split(/[\n,;]+/).map(t => t.trim()).filter(t => t.length > 0);
+        if (termos.length === 0) return;
+
+        // 2. Controle de Interface (Loading e Limpeza)
+        container.innerHTML = '';
+        alternarBotoes(true);
+        if (feedback) feedback.classList.add('d-none');
+        if (containerNaoEncontrados) containerNaoEncontrados.classList.add('d-none'); // Limpa lista anterior
+        if (loading) loading.classList.remove('d-none');
+
+        try {
+            const endpoint = tipo === 'detalhado'
+                ? '/api/conciliacaonf/relatorio/detalhado'
+                : '/api/conciliacaonf/relatorio/sintetico';
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ termos: termos })
+            });
+
+            const resultado = await response.json();
+
+            if (loading) loading.classList.add('d-none');
+
+            if (resultado.success) {
+                // --- NOVO: Verifica e exibe o que não foi encontrado ---
+                verificarItensNaoEncontrados(termos, resultado.dados || []);
+
+                if (resultado.dados && resultado.dados.length > 0) {
+                    if (tipo === 'detalhado') {
+                        renderizarTabelaDetalhada(resultado.dados, container);
+                    } else {
+                        renderizarTabelaSintetica(resultado.dados, container);
+                    }
+                    exibirFeedback(`Relatório gerado com sucesso! ${resultado.dados.length} nota(s) encontrada(s).`, 'success');
+                } else {
+                    exibirFeedback('Nenhuma nota encontrada para os termos informados.', 'info');
+                }
+            } else {
+                throw new Error(resultado.message || 'Erro desconhecido no servidor.');
+            }
+
+        } catch (error) {
+            console.error('Erro ao gerar relatório:', error);
+            if (loading) loading.classList.add('d-none');
+            exibirFeedback(`Erro ao gerar relatório: ${error.message}`, 'danger');
+        } finally {
+            alternarBotoes(false);
+        }
+    }
+
+    // =================================================================
+    // RENDERIZAÇÃO (DETALHADO)
+    // =================================================================
+
+    function renderizarTabelaDetalhada(dados, container) {
+        let html = `
+            <div class="table-responsive mt-3">
+                <table class="table table-bordered table-hover table-sm align-middle">
+                    <thead class="table-light">
+                        <tr class="text-center align-middle">
+                            <th style="width: 8%">Data</th>
+                            <th style="width: 8%">NF</th>
+                            <th style="width: 20%">Fornecedor</th>
+                            <th style="width: 12%">Valor Total</th>
+                            <th style="width: 52%">Detalhamento do Rateio (Contas a Pagar)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        dados.forEach(nf => {
+            // Detalhes: Usando table-striped para cores alternadas e bg-light para destacar a área
+            let detalhesHtml = `
+                <div class="p-2 bg-light bg-opacity-50">
+                    <table class="table table-sm table-striped table-bordered mb-0 bg-white small">
+                        <thead class="text-muted" style="font-size: 0.75rem;">
+                            <tr>
+                                <th style="width: 30%">Fatura/Parcela</th>
+                                <th style="width: 30%">Setor</th>
+                                <th style="width: 20%">Vencimento</th>
+                                <th style="width: 20%" class="text-end">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            if (nf.contasAPagar && nf.contasAPagar.length > 0) {
+                nf.contasAPagar.forEach(conta => {
+                    detalhesHtml += `
+                        <tr>
+                            <td>Fat. ${conta.numeroFatura} (${conta.numeroParcela})</td>
+                            <td class="fw-bold text-dark">${conta.setor || 'Sem Setor'}</td>
+                            <td>${formatarData(conta.dataVencimento)}</td>
+                            <td class="text-end">${formatarMoeda(conta.valorPorSetor)}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                detalhesHtml += '<tr><td colspan="4" class="text-muted fst-italic text-center">Nenhum rateio registrado.</td></tr>';
+            }
+            detalhesHtml += '</tbody></table></div>';
+
+            html += `
+                <tr>
+                    <td class="text-center">${formatarData(nf.dataEmissao)}</td>
+                    <td class="text-center fw-bold">${nf.numeroNF}</td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 200px;" title="${nf.nomeFornecedor}">${nf.nomeFornecedor}</div>
+                        <small class="text-muted d-block" style="font-size: 0.7rem;">${nf.chaveAcesso}</small>
+                    </td>
+                    <td class="text-end fw-bold text-primary">${formatarMoeda(nf.valorTotalNf)}</td>
+                    <td class="p-0 align-top">${detalhesHtml}</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+
+        if (dados.length > 1) {
+            const totalGeral = dados.reduce((acc, nf) => acc + (parseFloat(nf.valorTotalNf) || 0), 0);
+            html += `<div class="alert alert-secondary text-end fw-bold">Total Geral das Notas: ${formatarMoeda(totalGeral)}</div>`;
+        }
+
+        container.innerHTML = html;
+    }
+
+    // =================================================================
+    // RENDERIZAÇÃO (SINTÉTICO) - TAGS LADO A LADO (GRID)
+    // =================================================================
+
+    function renderizarTabelaSintetica(dados, container) {
+        let html = `
+            <div class="table-responsive mt-3">
+                <table class="table table-bordered table-hover table-sm align-middle">
+                    <thead class="table-dark text-white">
+                        <tr class="text-center">
+                            <th style="width: 10%">Data</th>
+                            <th style="width: 8%">NF</th>
+                            <th style="width: 20%">Fornecedor</th>
+                            <th style="width: 12%">Valor Total</th>
+                            <th style="width: 50%">Resumo por Setor (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        dados.forEach(nf => {
+            // Usando Grid System (row/col-6) para forçar 2 itens por linha
+            let resumoHtml = '<div class="row g-1">';
+
+            if (nf.rateioPorSetor && nf.rateioPorSetor.length > 0) {
+                nf.rateioPorSetor.forEach(item => {
+                    resumoHtml += `
+                        <div class="col-6">
+                            <div class="border rounded p-1 d-flex justify-content-between align-items-center bg-light h-100" style="font-size: 0.85rem;">
+                                <span class="fw-bold text-truncate me-1" style="max-width: 55%;" title="${item.setor}">${item.setor}</span>
+                                <span class="text-nowrap">
+                                    ${formatarMoeda(item.valor)} 
+                                    <span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">${item.porcentagem.toFixed(1)}%</span>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                resumoHtml += '<div class="col-12"><span class="text-muted fst-italic small">Sem dados.</span></div>';
+            }
+            resumoHtml += '</div>';
+
+            html += `
+                <tr>
+                    <td class="text-center">${formatarData(nf.dataEmissao)}</td>
+                    <td class="text-center fw-bold">${nf.numeroNF}</td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 180px;" title="${nf.nomeFornecedor}">${nf.nomeFornecedor}</div>
+                    </td>
+                    <td class="text-end fw-bold text-primary">${formatarMoeda(nf.valorTotalNf)}</td>
+                    <td class="py-2">${resumoHtml}</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+
+        // Adiciona totais gerais no rodapé da tabela sintética também
+        if (dados.length > 1) {
+            const totalGeral = dados.reduce((acc, nf) => acc + (parseFloat(nf.valorTotalNf) || 0), 0);
+            html += `<div class="alert alert-dark text-end fw-bold mt-2">Total Geral: ${formatarMoeda(totalGeral)}</div>`;
+        }
+
+        container.innerHTML = html;
+    }
+
+    // =================================================================
+    // FUNÇÕES UTILITÁRIAS
+    // =================================================================
+
+    function limparTela() {
+        document.getElementById('input-termos-busca').value = '';
+        document.getElementById('relatorio-result-container').innerHTML = '';
+        
+        const feedback = document.getElementById('feedback-mensagem');
+        if (feedback) feedback.classList.add('d-none');
+        
+        // --- NOVO: Limpa o container de não encontrados ---
+        const containerNaoEncontrados = document.getElementById('container-nao-encontrados');
+        if (containerNaoEncontrados) containerNaoEncontrados.classList.add('d-none');
+
+        document.getElementById('input-termos-busca').focus();
+    }
+
+    let feedbackTimeout; // Variável para controlar o tempo da mensagem
+
+    function exibirFeedback(mensagem, tipo = 'info') {
+        const feedback = document.getElementById('feedback-mensagem');
+        if (feedback) {
+            // Se já houver um timer rodando, cancela ele para reiniciar a contagem
+            if (feedbackTimeout) clearTimeout(feedbackTimeout);
+
+            feedback.className = `alert alert-${tipo} mt-3 no-print shadow`;
+            feedback.innerHTML = `<i class="bi bi-info-circle-fill me-2"></i>${mensagem}`;
+            feedback.classList.remove('d-none');
+
+            // Define o tempo para desaparecer (5 segundos)
+            feedbackTimeout = setTimeout(() => {
+                // Adiciona um efeito de fade-out suave (opcional, via CSS) ou apenas oculta
+                feedback.classList.add('d-none');
+            }, 3000); // 3000 milissegundos = 3 segundos
+        } else {
+            alert(mensagem);
+        }
+    }
+
+    function alternarBotoes(desabilitar) {
+        const botoes = document.querySelectorAll('button');
+        botoes.forEach(btn => btn.disabled = desabilitar);
+    }
+
+    function formatarMoeda(valor) {
+        if (valor === undefined || valor === null) return 'R$ 0,00';
+        const numero = typeof valor === 'string' ? parseFloat(valor) : valor;
+        if (isNaN(numero)) return 'R$ 0,00';
+        return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatarData(dataString) {
+        if (!dataString) return '-';
+        const data = new Date(dataString);
+        if (isNaN(data.getTime())) return dataString; // Retorna original se não for data válida
+        return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    }
+
+    function verificarItensNaoEncontrados(termosBuscados, dadosEncontrados) {
+        const container = document.getElementById('container-nao-encontrados');
+        const lista = document.getElementById('lista-nao-encontrados');
+
+        if (!container || !lista) return;
+
+        // 1. Cria um conjunto (Set) com todas as chaves e números retornados pelo banco
+        const encontradosSet = new Set();
+        dadosEncontrados.forEach(nf => {
+            if (nf.chaveAcesso) encontradosSet.add(String(nf.chaveAcesso).trim());
+            if (nf.numeroNF) encontradosSet.add(String(nf.numeroNF).trim());
+        });
+
+        // 2. Filtra os termos originais que NÃO estão no conjunto de encontrados
+        const naoEncontrados = termosBuscados.filter(termo => {
+            const t = String(termo).trim();
+            // Retorna true se o termo não estiver no set (ou seja, não foi encontrado)
+            return t.length > 0 && !encontradosSet.has(t);
+        });
+
+        // 3. Exibe ou oculta o container
+        if (naoEncontrados.length > 0) {
+            // Remove duplicatas visuais caso o usuário tenha digitado o mesmo termo 2x
+            const unicosFaltantes = [...new Set(naoEncontrados)];
+
+            const htmlItens = unicosFaltantes.map(item => `<li><strong>${item}</strong></li>`).join('');
+            lista.innerHTML = htmlItens;
+            container.classList.remove('d-none');
+        } else {
+            container.classList.add('d-none');
+        }
+    }
+
+</script>

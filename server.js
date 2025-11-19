@@ -140,7 +140,8 @@ app.get('/view/:viewName', async (req, res) => {
     "conciliacaonf": "ConciliacaoNFView",
     "relatoriorateio": "RelatorioRateioView",
     "notasfiscais": "NotasFiscaisView",
-    "ImprimirPedidosView": "ImprimirPedidosView"
+    "ImprimirPedidosView": "ImprimirPedidosView",
+    "relatoriorateio": "RelatorioRateioView"
     // Adicione os outros mapeamentos do seu App.js aqui
   };
 

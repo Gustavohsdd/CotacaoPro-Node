@@ -1077,6 +1077,236 @@ async function atualizarStatusRateio(sheets, chaveAcesso, novoStatus) {
   }
 }
 
+// --- INÍCIO DAS FUNÇÕES MIGRADAS DE RateioCrud.js ---
+
+/**
+ * Helper para converter valores numéricos com segurança (Migrado de _RateioCrud_parsearValorNumerico)
+ * @param {*} valor 
+ * @returns {number}
+ */
+function ConciliacaoNFCrud_parsearValorNumerico(valor) {
+  if (typeof valor === 'number') return valor;
+  if (valor === null || valor === undefined || String(valor).trim() === '') return 0;
+
+  let strValor = String(valor).trim();
+  // Remove R$ e espaços
+  strValor = strValor.replace(/R\$\s*/, '');
+  // Remove pontos de milhar (ex: 1.000,00 -> 1000,00)
+  strValor = strValor.replace(/\.(?=\d{3})/g, '');
+  // Substitui vírgula decimal por ponto
+  strValor = strValor.replace(',', '.');
+  
+  const numero = parseFloat(strValor);
+  return isNaN(numero) ? 0 : numero;
+}
+
+/**
+ * Busca notas fiscais conciliadas que ainda não possuem status de rateio.
+ * Migrado de: RateioCrud_obterNotasParaRatear
+ * @param {object} sheets Cliente Sheets
+ */
+async function ConciliacaoNFCrud_obterNotasParaRatear(sheets) {
+  try {
+    // Reutiliza a função de leitura já existente
+    const todasNFs = await getNotasFiscais(sheets);
+    
+    // Filtra em memória
+    const notasParaRatear = todasNFs
+      .filter(nf => {
+        const statusConciliacao = nf["Status da Conciliação"];
+        const statusRateio = nf["Status do Rateio"];
+        return statusConciliacao === 'Conciliada' && (!statusRateio || statusRateio.trim() === '');
+      })
+      .map(nf => ({
+        chaveAcesso: nf["Chave de Acesso"],
+        nomeEmitente: nf["Nome Emitente"], // Ajustado para o nome da coluna no seu CSV/Planilha
+        numeroNF: nf["Número NF"],
+        dataEmissao: nf["Data e Hora Emissão"] // Mantém formato original ou converte se necessário
+      }));
+
+    return notasParaRatear;
+  } catch (e) {
+    console.error(`Erro em ConciliacaoNFCrud_obterNotasParaRatear: ${e.message}`);
+    throw e;
+  }
+}
+
+/**
+ * Gera os dados para o Relatório Detalhado de Rateio.
+ * Migrado de: RateioCrud_obterDadosParaRelatorio
+ * @param {object} sheets Cliente Sheets
+ * @param {Array<string>} termosDeBusca Array de strings (chaves ou números de NF)
+ */
+async function ConciliacaoNFCrud_obterDadosParaRelatorio(sheets, termosDeBusca) {
+  console.log(`[ConciliacaoNFCrud] Gerando relatório detalhado para termos: ${termosDeBusca}`);
+  
+  if (!termosDeBusca || termosDeBusca.length === 0) return [];
+
+  const termosSet = new Set(termosDeBusca.map(t => String(t).trim()));
+
+  try {
+    // 1. Busca todos os dados necessários em paralelo usando as funções existentes
+    const [todasNFs, todosTributos, todasContasAPagar] = await Promise.all([
+      getNotasFiscais(sheets),
+      getTributosTotaisNF(sheets),
+      getContasAPagar(sheets)
+    ]);
+
+    // 2. Mapeamentos para acesso rápido
+    const mapaTributos = {};
+    todosTributos.forEach(t => {
+      mapaTributos[t["Chave de Acesso"]] = ConciliacaoNFCrud_parsearValorNumerico(t["Valor Total da NF"]);
+    });
+
+    const mapaContas = {};
+    todasContasAPagar.forEach(conta => {
+      const chave = conta["Chave de Acesso"];
+      if (!mapaContas[chave]) mapaContas[chave] = [];
+      
+      mapaContas[chave].push({
+        numeroFatura: conta["Número da Fatura"],
+        numeroParcela: conta["Número da Parcela"],
+        resumoItens: conta["Resumo dos Itens"],
+        dataVencimento: conta["Data de Vencimento"],
+        valorParcela: ConciliacaoNFCrud_parsearValorNumerico(conta["Valor da Parcela"]),
+        setor: conta["Setor"],
+        valorPorSetor: ConciliacaoNFCrud_parsearValorNumerico(conta["Valor por Setor"])
+      });
+    });
+
+    // 3. Filtragem e Construção do Resultado
+    const resultados = [];
+    const chavesProcessadas = new Set();
+
+    todasNFs.forEach(nf => {
+      const chave = nf["Chave de Acesso"];
+      const numero = String(nf["Número NF"]);
+
+      // Verifica se a NF bate com os termos de busca (pela chave ou pelo número)
+      if (termosSet.has(chave) || termosSet.has(numero)) {
+        if (chavesProcessadas.has(chave)) return; // Evita duplicatas
+
+        resultados.push({
+          numeroNF: numero,
+          nomeFornecedor: nf["Nome Emitente"],
+          chaveAcesso: chave,
+          dataEmissao: nf["Data e Hora Emissão"],
+          valorTotalNf: mapaTributos[chave] || 0,
+          contasAPagar: mapaContas[chave] || []
+        });
+
+        chavesProcessadas.add(chave);
+      }
+    });
+
+    return resultados;
+
+  } catch (e) {
+    console.error(`Erro em ConciliacaoNFCrud_obterDadosParaRelatorio: ${e.message}`);
+    throw e;
+  }
+}
+
+/**
+ * Gera os dados para o Relatório Sintético (Agregado por Setor).
+ * Migrado de: RateioCrud_obterDadosParaRelatorioSintetico
+ * @param {object} sheets Cliente Sheets
+ * @param {Array<string>} termosDeBusca Array de strings (chaves ou números de NF)
+ */
+async function ConciliacaoNFCrud_obterDadosParaRelatorioSintetico(sheets, termosDeBusca) {
+  console.log(`[ConciliacaoNFCrud] Gerando relatório sintético para termos: ${termosDeBusca}`);
+  
+  if (!termosDeBusca || termosDeBusca.length === 0) return [];
+
+  const termosSet = new Set(termosDeBusca.map(t => String(t).trim()));
+  const resultadosMap = {};
+
+  try {
+    // 1. Busca dados em paralelo
+    const [todasNFs, todosTributos, todasContasAPagar] = await Promise.all([
+      getNotasFiscais(sheets),
+      getTributosTotaisNF(sheets),
+      getContasAPagar(sheets)
+    ]);
+
+    // 2. Mapa de totais das NFs
+    const mapaTotaisNF = {};
+    todosTributos.forEach(t => {
+      mapaTotaisNF[t["Chave de Acesso"]] = ConciliacaoNFCrud_parsearValorNumerico(t["Valor Total da NF"]);
+    });
+
+    // 3. Identifica NFs relevantes e inicializa estrutura
+    const chavesRelevantes = new Set();
+    
+    todasNFs.forEach(nf => {
+      const chave = nf["Chave de Acesso"];
+      const numero = String(nf["Número NF"]);
+
+      if (termosSet.has(chave) || termosSet.has(numero)) {
+        if (!chavesRelevantes.has(chave)) {
+          resultadosMap[chave] = {
+            numeroNF: numero,
+            nomeFornecedor: nf["Nome Emitente"],
+            chaveAcesso: chave,
+            dataEmissao: nf["Data e Hora Emissão"],
+            valorTotalNf: mapaTotaisNF[chave] || 0,
+            rateioPorSetor: {} // Acumulador: { "TI": 100.00, "RH": 50.00 }
+          };
+          chavesRelevantes.add(chave);
+        }
+      }
+    });
+
+    // 4. Itera sobre Contas a Pagar para somar por setor
+    todasContasAPagar.forEach(conta => {
+      const chave = conta["Chave de Acesso"];
+      
+      // Só processa se a conta pertencer a uma das NFs filtradas
+      if (chavesRelevantes.has(chave)) {
+        const setor = conta["Setor"];
+        const valor = ConciliacaoNFCrud_parsearValorNumerico(conta["Valor por Setor"]);
+
+        if (setor && valor > 0) {
+          if (!resultadosMap[chave].rateioPorSetor[setor]) {
+            resultadosMap[chave].rateioPorSetor[setor] = 0;
+          }
+          resultadosMap[chave].rateioPorSetor[setor] += valor;
+        }
+      }
+    });
+
+    // 5. Formata o resultado final (converte objeto de setores em array com porcentagem)
+    const relatorioFinal = Object.values(resultadosMap).map(nf => {
+      const setoresArray = [];
+      const totalNota = nf.valorTotalNf;
+
+      for (const setorNome in nf.rateioPorSetor) {
+        const valorSetor = nf.rateioPorSetor[setorNome];
+        const porcentagem = (totalNota > 0) ? (valorSetor / totalNota) * 100 : 0;
+        
+        setoresArray.push({
+          setor: setorNome,
+          valor: valorSetor,
+          porcentagem: porcentagem
+        });
+      }
+      
+      // Ordena setores alfabeticamente
+      setoresArray.sort((a, b) => a.setor.localeCompare(b.setor));
+
+      nf.rateioPorSetor = setoresArray;
+      return nf;
+    });
+
+    return relatorioFinal;
+
+  } catch (e) {
+    console.error(`Erro em ConciliacaoNFCrud_obterDadosParaRelatorioSintetico: ${e.message}`);
+    throw e;
+  }
+}
+
+
 // Exporta as funções para serem usadas pelo Controller
 module.exports = {
   // Funções de Leitura (Já existentes)
@@ -1109,5 +1339,11 @@ module.exports = {
   // Helpers (Já existentes)
   mapDataToObjects,
   mapObjectToRow,
-  findHeaderIndices
+  findHeaderIndices,
+
+  // FUNÇÕES DE RATEIO
+  ConciliacaoNFCrud_obterNotasParaRatear,
+  ConciliacaoNFCrud_obterDadosParaRelatorio,
+  ConciliacaoNFCrud_obterDadosParaRelatorioSintetico,
+  ConciliacaoNFCrud_parsearValorNumerico
 };
