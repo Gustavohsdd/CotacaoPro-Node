@@ -159,7 +159,8 @@
 
     /**
      * Reseta a aplicação após uma ação.
-     * [OTIMIZADO] Aceita 'chaveAcessoProcessada' para remover a nota localmente sem recarregar tudo.
+     * [CORREÇÃO] Impede o recarregamento do servidor quando a última nota é removida,
+     * evitando que ela reapareça momentaneamente ("efeito fantasma").
      */
     function resetApplication(chaveAcessoProcessada = null) {
         // 1. Limpa a área de trabalho (Painel Direito)
@@ -170,30 +171,32 @@
         if (chaveAcessoProcessada) {
             console.log("Removendo nota processada da lista local:", chaveAcessoProcessada);
             
-            // Remove a NF da lista global em memória
+            // Remove a NF das listas globais em memória
             todasAsNFs = todasAsNFs.filter(nf => nf.chaveAcesso !== chaveAcessoProcessada);
             
-            // (Opcional) Limpa itens relacionados para liberar memória do navegador
+            // Remove itens relacionados para liberar memória e manter consistência
             todosOsItensNF = todosOsItensNF.filter(item => item.chaveAcesso !== chaveAcessoProcessada);
             todosOsDadosGeraisNF = todosOsDadosGeraisNF.filter(d => d.chaveAcesso !== chaveAcessoProcessada);
             
-            // Re-renderiza a lista lateral com os dados atualizados
+            // Re-renderiza a lista lateral com os dados atualizados (agora sem a nota removida)
+            // Se a lista estiver vazia, a função renderizarListaDeTrabalho já exibirá "Nenhuma nota pendente"
             renderizarListaDeTrabalho();
-
+            
             // Reaplica o filtro de busca caso o usuário tenha algo digitado
             $('#search-input').trigger('input');
+            
+            // Garante que o loader esteja oculto para liberar a UI imediatamente
+            toggleLoader(false);
 
-            // Se ainda restarem notas na lista, encerra aqui (não chama o servidor)
-            if (todasAsNFs.length > 0) {
-                toggleLoader(false);
-                return; 
-            }
+            // [PONTO CRÍTICO DA CORREÇÃO]
+            // Interrompe a execução AQUI.
+            // Não permitimos que o código desça para o fetch, independente se a lista está vazia ou não.
+            // Isso evita buscar a nota no servidor enquanto ela ainda está sendo salva.
+            return; 
         }
 
         // 3. Lógica Padrão: Busca Completa no Servidor
-        // Executada apenas se:
-        // a) Não foi passada uma chave (ex: upload de novos arquivos)
-        // b) A lista de notas ficou vazia (para garantir sincronia final)
+        // Executada APENAS se não foi passada uma chave (ex: Upload de novos arquivos ou Refresh manual)
         toggleLoader(true);
         fetch('/api/conciliacaonf/dados-pagina')
             .then(handleResponse)
@@ -201,6 +204,10 @@
             .catch(onFailure);
     }
 
+    /**
+     * [OTIMIZADO] Marca como Tipo B (Optimistic UI).
+     * Remove da tela imediatamente e salva em background.
+     */
     function onMarcarTipoBClick(event) {
         event.preventDefault();
         const nfInfo = $('#workspace-content').data('active-nf');
@@ -208,7 +215,11 @@
             return;
         }
 
-        toggleLoader(true);
+        // 1. AÇÃO OTIMISTA: Remove da tela imediatamente
+        resetApplication(nfInfo.chaveAcesso);
+        showToast(`NF ${nfInfo.numeroNF} marcada como Tipo B! Salvando...`, 'success');
+
+        // 2. ENVIO EM BACKGROUND
         fetch('/api/conciliacaonf/atualizar-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -220,14 +231,20 @@
         .then(handleResponse)
         .then(response => {
             if (response.success) {
-                showToast(response.message, 'success');
-                // [CORREÇÃO] Passa a chave para remoção local
-                resetApplication(nfInfo.chaveAcesso); 
+                console.log(`Sucesso background Tipo B: ${nfInfo.numeroNF}`);
             } else {
-                onFailure(response);
+                // Erro de negócio
+                console.error("Erro no salvamento (Tipo B):", response.message);
+                alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF} como Tipo B.\n${response.message}\nA página será recarregada.`);
+                window.location.reload(); // Reverte estado
             }
         })
-        .catch(onFailure);
+        .catch(err => {
+            // Erro de rede
+            console.error("Erro crítico (Tipo B):", err);
+            alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
+            window.location.reload(); // Reverte estado
+        });
     }
 
     // ===== CALLBACKS DO SERVIDOR E PROCESSAMENTO DE DADOS =====
@@ -704,7 +721,16 @@
         }
     }
 
+    /**
+     * [OTIMIZADO E SEGURO] Envia os dados de conciliação com tratamento de falha.
+     * Estratégia:
+     * 1. Remove a nota da tela IMEDIATAMENTE (Sensação de instantâneo).
+     * 2. Dispara o salvamento em segundo plano.
+     * 3. SEGURANÇA: Se o salvamento falhar, avisa o usuário e RECARREGA a página
+     * para trazer a nota de volta para a lista de pendentes.
+     */
     function onBtnConcluirConciliacaoClick() {
+        // 1. Validação Inicial
         let erroValidacao = false;
         $('.matched-item-card').each(function () {
             if ($(this).find('.total-percent-item').hasClass('is-invalid')) {
@@ -717,14 +743,16 @@
         const workspace = $('#workspace-content');
         const nfInfo = workspace.data('active-nf');
         const compositeKey = workspace.find('.select-cotacao-fornecedor').val();
-
+        
         if (!compositeKey) {
             showToast('Erro: Nenhuma cotação foi selecionada. Vincule a NF antes de concluir.', 'error');
             return;
         }
+        
         const [idCotacao, ...nomeFornecedorParts] = compositeKey.split('-');
         const nomeFornecedor = nomeFornecedorParts.join('-');
 
+        // 2. Prepara o Payload (Pacote de dados exclusivo desta requisição)
         const conciliacaoPayload = { 
             idCotacao, 
             nomeFornecedor, 
@@ -733,9 +761,9 @@
             itensConciliados: [], 
             novosMapeamentos: [] 
         };
-        
         const itensCortados = [];
 
+        // Coleta dados dos cards de conciliação
         $('.matched-item-card').each(function () {
             const info = $(this).data('conciliacao-info');
             conciliacaoPayload.itensConciliados.push({
@@ -753,10 +781,12 @@
             });
         });
 
+        // Coleta itens cortados (que sobraram na lista da cotação)
         $('#cotacao-items-list .list-group-item:not(.matched)').each(function () {
             itensCortados.push({ idCotacao, nomeFornecedor, subProduto: $(this).data('item-info').subProduto });
         });
 
+        // Coleta dados do Rateio Financeiro
         const totaisPorSetor = {};
         const novasRegras = [];
         const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso);
@@ -779,7 +809,7 @@
                 totaisPorSetor[setor] = (totaisPorSetor[setor] || 0) + (custoEfetivoItem * (percNumerico / 100));
                 
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
-                mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF); 
+                mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF);
             };
 
             if (rateioInfo.isAutomatico) {
@@ -806,7 +836,14 @@
             mapaSetorParaItens: mapaSetorParaItens
         };
 
-        toggleLoader(true);
+        // 3. AÇÃO OTIMISTA (UI): Remove da tela IMEDIATAMENTE
+        // Não ativamos o loader global para não bloquear o usuário.
+        resetApplication(nfInfo.chaveAcesso); // Remove da lista lateral e limpa o painel
+        
+        // Feedback visual instantâneo
+        showToast(`NF ${nfInfo.numeroNF} enviada para processamento!`, 'success');
+
+        // 4. ENVIO EM BACKGROUND (A prova de falhas)
         fetch('/api/conciliacaonf/concluir', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -820,14 +857,29 @@
         .then(handleResponse)
         .then(response => {
             if (response.success) {
-                showToast(response.message, 'success');
-                // [CORREÇÃO] Passa a chave para remoção local
-                resetApplication(nfInfo.chaveAcesso); 
+                console.log(`[Sucesso Background] NF ${nfInfo.numeroNF} salva com sucesso.`);
+                // Opcional: Um toast discreto confirmando o salvamento real
+                // showToast(`Dados da NF ${nfInfo.numeroNF} gravados com segurança.`, 'success');
             } else {
-                onFailure(response);
+                // Erro de negócio (ex: planilha bloqueada, dados inválidos no server)
+                throw new Error(response.message || "Erro desconhecido no servidor.");
             }
         })
-        .catch(onFailure);
+        .catch(err => {
+            // 5. REDE DE SEGURANÇA (CRÍTICO)
+            // Se der erro, avisamos o usuário e RECARREGAMOS a página.
+            // Isso garante que a nota (que não foi salva) reapareça na lista de pendentes.
+            console.error(`ERRO CRÍTICO ao salvar NF ${nfInfo.numeroNF}:`, err);
+            
+            alert(
+                `ATENÇÃO: Ocorreu um erro ao salvar a NF ${nfInfo.numeroNF} no sistema!\n\n` +
+                `Erro: ${err.message}\n\n` +
+                `A página será recarregada para recuperar os dados da nota e evitar inconsistências.`
+            );
+            
+            // Força o recarregamento para desfazer a "mentira" da UI Otimista
+            window.location.reload();
+        });
     }
 
     // ===== FUNÇÕES UTILITÁRIAS =====
@@ -857,6 +909,10 @@
         // Não é necessário loader, pois abre em nova aba.
     }
 
+    /**
+     * [OTIMIZADO] Marca como Bonificação (Optimistic UI).
+     * Remove da tela imediatamente e salva em background.
+     */
     function onMarcarBonificacaoClick(event) {
         event.preventDefault();
         const nfInfo = $('#workspace-content').data('active-nf');
@@ -864,7 +920,12 @@
             return;
         }
 
-        toggleLoader(true);
+        // 1. AÇÃO OTIMISTA: Remove da tela imediatamente
+        // Removemos o loader (toggleLoader) para não travar a UI
+        resetApplication(nfInfo.chaveAcesso);
+        showToast(`NF ${nfInfo.numeroNF} marcada como Bonificação! Salvando...`, 'success');
+
+        // 2. ENVIO EM BACKGROUND
         fetch('/api/conciliacaonf/atualizar-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -876,14 +937,20 @@
         .then(handleResponse)
         .then(response => {
             if (response.success) {
-                showToast(response.message, 'success');
-                // [CORREÇÃO] Passa a chave para remoção local
-                resetApplication(nfInfo.chaveAcesso); 
+                console.log(`Sucesso background Bonificação: ${nfInfo.numeroNF}`);
             } else {
-                onFailure(response);
+                 // Erro de negócio
+                 console.error("Erro no salvamento (Bonificação):", response.message);
+                 alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF} como Bonificação.\n${response.message}\nA página será recarregada.`);
+                 window.location.reload(); // Reverte estado
             }
         })
-        .catch(onFailure);
+        .catch(err => {
+             // Erro de rede
+             console.error("Erro crítico (Bonificação):", err);
+             alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
+             window.location.reload(); // Reverte estado
+        });
     }
 
     // ... (onMarcarSemPedidoClick permanece a mesma) ...
@@ -928,7 +995,12 @@
             .off('click').on('click', onBtnConcluirRateioSemPedidoClick);
     }
 
+    /**
+     * [OTIMIZADO] Conclui Rateio Direto / Sem Pedido (Optimistic UI).
+     * Remove da tela imediatamente e salva em background.
+     */
     function onBtnConcluirRateioSemPedidoClick() {
+        // Validação
         let erroValidacao = false;
         $('.matched-item-card').each(function () {
             if ($(this).find('.total-percent-item').hasClass('is-invalid')) {
@@ -940,16 +1012,15 @@
 
         const workspace = $('#workspace-content');
         const nfInfo = workspace.data('active-nf');
-
+        
+        // Coleta dos dados
         const totaisPorSetor = {};
         const novasRegras = [];
         const totaisNF = todosOsDadosGeraisNF.find(t => t.chaveAcesso === nfInfo.chaveAcesso);
-
         const totalItensBruto = $('.matched-item-card').toArray().reduce((sum, el) => {
             const info = $(el).data('conciliacao-info');
             return sum + (info.itemNF_Agregada.qtdNF * info.itemNF_Agregada.precoNF);
         }, 0);
-        
         const custosAdicionais = totaisNF.valorTotalNf - totalItensBruto;
         const mapaSetorParaItens = {};
 
@@ -970,7 +1041,6 @@
                 if (!mapaSetorParaItens[setor]) mapaSetorParaItens[setor] = new Set();
                 mapaSetorParaItens[setor].add(concInfo.itensNF_Original[0].descricaoNF);
             };
-
             if (rateioInfo.isAutomatico) {
                 rateioInfo.regras.forEach(regra => aplicarRateio(regra["Setor"], regra["Porcentagem"]));
             } else {
@@ -995,7 +1065,11 @@
             mapaSetorParaItens: mapaSetorParaItens
         };
 
-        toggleLoader(true);
+        // 1. AÇÃO OTIMISTA: Remove da tela imediatamente
+        resetApplication(nfInfo.chaveAcesso);
+        showToast(`NF ${nfInfo.numeroNF} (Sem Pedido) enviada! Salvando...`, 'success');
+
+        // 2. ENVIO EM BACKGROUND
         fetch('/api/conciliacaonf/atualizar-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1008,14 +1082,20 @@
         .then(handleResponse)
         .then(response => {
             if (response.success) {
-                showToast(response.message, 'success');
-                // [CORREÇÃO] Passa a chave para remoção local
-                resetApplication(nfInfo.chaveAcesso); 
+                console.log(`Sucesso background Sem Pedido: ${nfInfo.numeroNF}`);
             } else {
-                onFailure(response);
+                 // Erro de negócio
+                 console.error("Erro no salvamento (Sem Pedido):", response.message);
+                 alert(`ATENÇÃO: Erro ao salvar NF ${nfInfo.numeroNF}.\n${response.message}\nA página será recarregada.`);
+                 window.location.reload(); // Reverte estado
             }
         })
-        .catch(onFailure);
+        .catch(err => {
+             // Erro de rede
+             console.error("Erro crítico (Sem Pedido):", err);
+             alert(`ERRO CRÍTICO: Falha de comunicação ao salvar NF ${nfInfo.numeroNF}.\nO sistema será recarregado para evitar perda de dados.`);
+             window.location.reload(); // Reverte estado
+        });
     }
 
     function onAbrirModalFornecedorClick() {
