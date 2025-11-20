@@ -8,6 +8,7 @@ const ID_PLANILHA_FINANCEIRO = process.env.ID_PLANILHA_FINANCEIRO;
 // Adicionado com base no ConstantesNF.js original
 const ID_PASTA_XML = process.env.ID_PASTA_XML;
 const ID_PASTA_XML_PROCESSADOS = process.env.ID_PASTA_XML_PROCESSADOS;
+const ID_PASTA_PEDIDOS_PDF = process.env.ID_PASTA_PEDIDOS_PDF;
 
 // Nomes de Abas Principais
 const ABA_FORNECEDORES = "Fornecedores";
@@ -203,6 +204,7 @@ module.exports = {
   ID_PLANILHA_FINANCEIRO,
   ID_PASTA_XML,
   ID_PASTA_XML_PROCESSADOS,
+  ID_PASTA_PEDIDOS_PDF,
   
   // Abas Principais
   ABA_FORNECEDORES,
