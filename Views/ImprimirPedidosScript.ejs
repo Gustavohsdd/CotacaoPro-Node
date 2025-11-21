@@ -478,20 +478,16 @@
         });
     }
 
-    /**
-     * Copia a mensagem personalizada e o link do PDF para a área de transferência.
-     * @param {Event} event - O evento de clique do botão.
-     */
     function ImprimirPedidosScript_copiarParaAreaDeTransferencia(event) {
-        const
-            botao = event.currentTarget;
+        const botao = event.currentTarget;
         const pedido = JSON.parse(botao.dataset.pedido);
 
-        // Constrói a URL absoluta para o PDF
-        // window.location.origin nos dá "http://localhost:8080" ou o domínio de produção
-        const urlAbsolutaPdf = window.location.origin + pedido.linkPdf;
+        // CORREÇÃO: Usa o link direto que veio do servidor (https://storage...)
+        const urlAbsolutaPdf = pedido.linkPdf;
+        
         const totalFormatado = ImprimirPedidosScript_formatarMoeda(pedido.totalPedido);
         const condicaoPagamento = pedido.condicaoPagamento || "Não informada";
+        
         const textoParaCopiar = `Pedido ${pedido.numeroCotacao} - ${pedido.fornecedor}
 Faturar para: ${pedido.empresaFaturada}
 Condição de Pagamento: ${condicaoPagamento}
@@ -500,31 +496,69 @@ Valor Total: ${totalFormatado}
 *Atenção à forma de pagamento escolhida, qualquer coisa estou à disposição.*
 
 Link para o pedido: ${urlAbsolutaPdf}`;
-        // Usa a URL absoluta
 
-        navigator.clipboard
-            .writeText(textoParaCopiar)
-            .then(() => {
+        // Tenta usar a API moderna de Clipboard
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(textoParaCopiar)
+                .then(() => {
+                    const textoOriginal = botao.textContent;
+                    botao.textContent = "Copiado!";
+                    botao.style.backgroundColor = "#16a34a"; // Verde sucesso
+
+                    setTimeout(() => {
+                        botao.textContent = textoOriginal;
+                        botao.style.backgroundColor = "#0891b2"; // Cor original
+                    }, 2000);
+                })
+                .catch((err) => {
+                    console.error("Falha ao copiar texto: ", err);
+                    // Fallback para execCommand se falhar
+                    copiarFallback(textoParaCopiar, botao);
+                });
+        } else {
+            // Fallback para navegadores antigos ou contexto não seguro (http)
+            copiarFallback(textoParaCopiar, botao);
+        }
+    }
+
+    // Função auxiliar para garantir a cópia em qualquer situação
+    function copiarFallback(texto, botao) {
+        const textArea = document.createElement("textarea");
+        textArea.value = texto;
+        
+        // Garante que o elemento não seja visível
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
                 const textoOriginal = botao.textContent;
                 botao.textContent = "Copiado!";
-                botao.style.backgroundColor = "#16a34a"; // Verde sucesso
-
-
+                botao.style.backgroundColor = "#16a34a";
                 setTimeout(() => {
                     botao.textContent = textoOriginal;
-                    botao.style.backgroundColor = "#0891b2"; // Cor original
+                    botao.style.backgroundColor = "#0891b2";
                 }, 2000);
-            })
-
-            .catch((err) => {
-                console.error("Falha ao copiar texto: ", err);
-                alert("Não foi possível copiar o texto. Por favor, copie manualmente.");
-            });
+            } else {
+                alert("Não foi possível copiar o texto automaticamente.");
+            }
+        } catch (err) {
+            console.error('Erro ao copiar fallback', err);
+            alert("Não foi possível copiar o texto.");
+        }
+        
+        document.body.removeChild(textArea);
     }
 
     /**
-     * Formata um número como moeda BRL.
-*/
+    * Formata um número como moeda BRL.
+    */
     function ImprimirPedidosScript_formatarMoeda(valor) {
         const numero = Number(valor) || 0;
         return numero.toLocaleString("pt-BR", {

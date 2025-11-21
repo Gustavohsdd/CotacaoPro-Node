@@ -1,15 +1,159 @@
-// controllers/FuncoesController.js
-// Lógica de negócios para o módulo "Funções".
-// *** VERSÃO CORRIGIDA: Implementa geração de PDF com Puppeteer ***
-
+// Controllers/FuncoesController.js
 const FuncoesCRUD = require('./FuncoesCRUD');
-const PdfController = require('./PdfController'); // Importa o novo controller de PDF
+const PdfController = require('./PdfController');
 
 /**
- * (Migrado de FuncoesController_obterDadosGerenciarCotacoes)
- * Obtém dados das cotações e seus fornecedores da aba Portal.
+ * Helper para formatar moeda
  */
-async function obterDadosGerenciarCotacoes(req, res) {
+function FuncoesController_formatarMoeda(valor) {
+    const numero = Number(valor) || 0;
+    return numero.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+}
+
+/**
+ * Gera a Definição de Documento (JSON) para o pdfmake.
+ * Substitui o antigo HTML.
+ * @param {object} pedido - O objeto do pedido.
+ * @returns {object} - O objeto docDefinition para o pdfmake.
+ */
+function FuncoesController_gerarDocDefinitionParaPedidoPdf(pedido) {
+    
+    // Cria o corpo da tabela (Array de Arrays)
+    // Cabeçalho da tabela
+    const tableBody = [
+        [
+            { text: 'PRODUTO (SUBPRODUTO)', style: 'tableHeader', alignment: 'left' },
+            { text: 'UN', style: 'tableHeader', alignment: 'center' },
+            { text: 'QTD.', style: 'tableHeader', alignment: 'center' },
+            { text: 'VALOR UNIT.', style: 'tableHeader', alignment: 'right' },
+            { text: 'VALOR TOTAL', style: 'tableHeader', alignment: 'right' }
+        ]
+    ];
+
+    // Linhas de dados
+    pedido.itens.forEach(item => {
+        tableBody.push([
+            { text: item.subProduto || '', style: 'tableCell', alignment: 'left' },
+            { text: item.un || '', style: 'tableCell', alignment: 'center' },
+            { text: Number(item.qtd).toLocaleString('pt-BR'), style: 'tableCell', alignment: 'center' },
+            { text: FuncoesController_formatarMoeda(item.valorUnit), style: 'tableCell', alignment: 'right' },
+            { text: FuncoesController_formatarMoeda(item.valorTotal), style: 'tableCell', alignment: 'right' }
+        ]);
+    });
+
+    // Definição completa do documento
+    const docDefinition = {
+        content: [
+            // Título (Nome do Fornecedor)
+            { text: pedido.fornecedor, style: 'header' },
+            
+            // Grid de Informações (Empresa e CNPJ)
+            {
+                style: 'infoGrid',
+                columns: [
+                    {
+                        width: '*',
+                        text: [
+                            { text: 'EMPRESA PARA FATURAMENTO:\n', bold: true, color: '#555' },
+                            { text: pedido.empresaFaturada || '' }
+                        ]
+                    },
+                    {
+                        width: 'auto',
+                        text: [
+                            { text: 'CNPJ:\n', bold: true, color: '#555' },
+                            { text: pedido.cnpj || 'Não informado' }
+                        ]
+                    }
+                ]
+            },
+            // Condição de Pagamento
+            {
+                style: 'infoGrid',
+                text: [
+                    { text: 'CONDIÇÃO DE PAGAMENTO: ', bold: true, color: '#555' },
+                    { text: pedido.condicaoPagamento || 'Não informada' }
+                ],
+                margin: [0, 5, 0, 15]
+            },
+
+            // Tabela
+            {
+                style: 'itensTable',
+                table: {
+                    headerRows: 1,
+                    widths: ['*', 'auto', 'auto', 'auto', 'auto'], // '*' ocupa o resto, 'auto' ajusta ao conteúdo
+                    body: tableBody
+                },
+                layout: {
+                    hLineWidth: function (i, node) {
+                        return (i === 0 || i === node.table.body.length) ? 1 : 1;
+                    },
+                    vLineWidth: function (i, node) {
+                        return 0;
+                    },
+                    hLineColor: function (i, node) {
+                        return (i === 0 || i === 1) ? '#aaaaaa' : '#eeeeee';
+                    },
+                    paddingTop: function(i, node) { return 5; },
+                    paddingBottom: function(i, node) { return 5; }
+                }
+            },
+
+            // Total Geral
+            {
+                text: [
+                    { text: 'TOTAL DO PEDIDO: ', bold: true },
+                    { text: FuncoesController_formatarMoeda(pedido.totalPedido) }
+                ],
+                style: 'totalFooter',
+                alignment: 'right',
+                margin: [0, 15, 0, 0]
+            }
+        ],
+        styles: {
+            header: {
+                fontSize: 18,
+                bold: true,
+                margin: [0, 0, 0, 10],
+                color: '#222'
+            },
+            infoGrid: {
+                fontSize: 10,
+                margin: [0, 2, 0, 2],
+                color: '#333'
+            },
+            tableHeader: {
+                bold: true,
+                fontSize: 9,
+                color: 'black',
+                fillColor: '#f3f3f3',
+                margin: [0, 3, 0, 3]
+            },
+            tableCell: {
+                fontSize: 10,
+                color: '#333'
+            },
+            totalFooter: {
+                fontSize: 14,
+                bold: true,
+                color: '#000'
+            }
+        },
+        defaultStyle: {
+            font: 'Roboto' // Importante: deve bater com a config do PdfController
+        }
+    };
+
+    return docDefinition;
+}
+
+// --- Rotas do Controller ---
+
+async function FuncoesController_obterDadosGerenciarCotacoes(req, res) {
     try {
         const dados = await FuncoesCRUD.getDadosGerenciarCotacoes(req.sheets, req.ID_PLANILHA_PRINCIPAL);
         res.json({ success: true, dados: dados });
@@ -19,11 +163,7 @@ async function obterDadosGerenciarCotacoes(req, res) {
     }
 }
 
-/**
- * (Migrado de FuncoesController_excluirFornecedoresDeCotacaoPortal)
- * Exclui uma lista de fornecedores de uma cotação na aba Portal.
- */
-async function excluirFornecedoresDeCotacaoPortal(req, res) {
+async function FuncoesController_excluirFornecedoresDeCotacaoPortal(req, res) {
     try {
         const { idCotacao, nomesFornecedores } = req.body;
         if (!idCotacao || !Array.isArray(nomesFornecedores) || nomesFornecedores.length === 0) {
@@ -35,10 +175,8 @@ async function excluirFornecedoresDeCotacaoPortal(req, res) {
         );
         
         const results = await Promise.allSettled(promises);
-        
         const sucessoCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
         const falhaCount = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
-
 
         if (falhaCount > 0) {
              const erros = results
@@ -49,24 +187,18 @@ async function excluirFornecedoresDeCotacaoPortal(req, res) {
         }
 
         res.json({ success: true, message: `${sucessoCount} fornecedor(es) excluído(s) com sucesso.` });
-
     } catch (e) {
         console.error("ERRO em excluirFornecedoresDeCotacaoPortal:", e);
         res.status(500).json({ success: false, message: e.message });
     }
 }
 
-/**
- * (Migrado de FuncoesController_salvarTextoGlobalCotacaoPortal)
- * Salva o texto personalizado GLOBAL para uma cotação na aba Portal.
- */
-async function salvarTextoGlobalCotacaoPortal(req, res) {
+async function FuncoesController_salvarTextoGlobalCotacaoPortal(req, res) {
     try {
         const { idCotacao, textoPersonalizado } = req.body;
         if (!idCotacao) {
             return res.status(400).json({ success: false, message: "ID da Cotação é obrigatório." });
         }
-
         const resultado = await FuncoesCRUD.salvarTextoGlobalCotacaoPortal(req.sheets, req.ID_PLANILHA_PRINCIPAL, idCotacao, textoPersonalizado);
         res.json(resultado);
     } catch (e) {
@@ -75,17 +207,12 @@ async function salvarTextoGlobalCotacaoPortal(req, res) {
     }
 }
 
-/**
- * (Migrado de FuncoesController_preencherUltimosPrecos)
- * Preenche os últimos preços em uma cotação.
- */
-async function preencherUltimosPrecos(req, res) {
+async function FuncoesController_preencherUltimosPrecos(req, res) {
     try {
         const { idCotacao } = req.body;
         if (!idCotacao) {
             return res.status(400).json({ success: false, message: "ID da Cotação não fornecido." });
         }
-        
         const resultado = await FuncoesCRUD.preencherUltimosPrecos(req.sheets, req.ID_PLANILHA_PRINCIPAL, idCotacao);
         res.json(resultado);
     } catch (e) {
@@ -94,162 +221,68 @@ async function preencherUltimosPrecos(req, res) {
     }
 }
 
-// =========================================================================
-// FUNÇÃO DE GERAÇÃO DE PDF (LÓGICA REVERTIDA CONFORME SOLICITADO)
-// =========================================================================
-
-/**
- * Helper para formatar moeda (usado no HTML do PDF)
- */
-function formatarMoeda(valor) {
-    const numero = Number(valor) || 0;
-    return numero.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    });
-}
-
-/**
- * Helper para gerar o HTML de um pedido (baseado no FuncoesCRUD.js do Apps Script)
- * @param {object} pedido - O objeto do pedido.
- * @returns {string} - O HTML completo para o PDF.
- */
-function _gerarHtmlParaPedidoPdf(pedido) {
-    let itensHtml = '';
-    pedido.itens.forEach(item => {
-        itensHtml += `
-          <tr>
-            <td>${item.subProduto}</td>
-            <td class="col-un">${item.un}</td>
-            <td class="col-qtd">${item.qtd}</td>
-            <td class="col-valor">${formatarMoeda(item.valorUnit)}</td>
-            <td class="col-valor">${formatarMoeda(item.valorTotal)}</td>
-          </tr>
-        `;
-    });
-
-    // Estilos CSS inline são mais confiáveis em HTML-para-PDF
-    const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; font-size: 10pt; }
-          .pedido-container { border: 1px solid #ccc; padding: 20px; margin: 20px; }
-          .pedido-header-fornecedor { border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 10px; }
-          h2 { font-size: 16pt; margin: 0 0 10px 0; color: #000; }
-          .info-grid { font-size: 9pt; }
-          .info-grid p { margin: 4px 0; }
-          .info-grid strong { font-weight: bold; color: #444; }
-          .itens-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-          .itens-table th { background-color: #f2f2f2; padding: 8px; text-align: left; font-size: 8pt; text-transform: uppercase; border-bottom: 1px solid #ccc; }
-          .itens-table td { padding: 8px; border-bottom: 1px solid #ddd; }
-          .col-un, .col-qtd { text-align: center; }
-          .col-valor { text-align: right; }
-          .total-pedido-footer { margin-top: 15px; text-align: right; font-size: 12pt; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="pedido-container">
-          <div class="pedido-header-fornecedor">
-            <h2>${pedido.fornecedor}</h2>
-            <div class="info-grid">
-              <p><strong>EMPRESA PARA FATURAMENTO:</strong> ${pedido.empresaFaturada}</p>
-              <p><strong>CNPJ:</strong> ${pedido.cnpj || 'Não informado'}</p>
-              <p><strong>CONDIÇÃO DE PAGAMENTO:</strong> ${pedido.condicaoPagamento || 'Não informada'}</p>
-            </div>
-          </div>
-          <table class="itens-table">
-            <thead>
-              <tr>
-                <th>PRODUTO (SUBPRODUTO)</th>
-                <th class="col-un">UN</th>
-                <th class="col-qtd">QTD.</th>
-                <th class="col-valor">VALOR UNIT.</th>
-                <th class="col-valor">VALOR TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itensHtml}
-            </tbody>
-          </table>
-          <div class="total-pedido-footer">
-            TOTAL DO PEDIDO: ${formatarMoeda(pedido.totalPedido)}
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-    return html;
-}
-
-/**
- * (Substitui EtapasController_gerarDadosParaEnvioManual)
- * Busca os dados dos pedidos, GERA ARQUIVOS PDF REAIS e retorna os links.
- */
-async function gerarPdfsEnvioManual(req, res) {
+async function FuncoesController_gerarPdfsEnvioManual(req, res) {
     try {
         const { idCotacao } = req.body;
         if (!idCotacao) {
             return res.status(400).json({ success: false, message: "ID da Cotação não fornecido." });
         }
 
-        // 1. Busca os dados dos pedidos (do FuncoesCRUD.js)
         const dadosAgrupados = await FuncoesCRUD.obterDadosParaImpressaoManual(req.sheets, req.ID_PLANILHA_PRINCIPAL, idCotacao);
 
         if (!dadosAgrupados || Object.keys(dadosAgrupados).length === 0) {
             return res.json({ success: true, dados: [], message: "Nenhum pedido com itens a comprar foi encontrado." });
         }
 
-        // 2. Processa todos os pedidos em paralelo
+        // Pega a URL base ou localhost
+        const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
+
         const linksGeradosPromises = [];
         for (const nomeFornecedor in dadosAgrupados) {
             const pedidosDoFornecedor = dadosAgrupados[nomeFornecedor];
             
             for (const pedido of pedidosDoFornecedor) {
-                // Para cada pedido, iniciamos uma promessa de geração de PDF
                 const promise = (async () => {
                     try {
-                        // Define um nome de arquivo único
-                        const nomeArquivo = `Pedido-${idCotacao}-${pedido.fornecedor.replace(/[^a-zA-Z0-9]/g, '_')}-${pedido.empresaFaturada.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+                        const fornSafe = pedido.fornecedor.replace(/[^a-zA-Z0-9]/g, '_');
+                        const empSafe = pedido.empresaFaturada.replace(/[^a-zA-Z0-9]/g, '_');
+                        const nomeArquivo = `Pedido-${idCotacao}-${fornSafe}-${empSafe}.pdf`;
                         
-                        // Gera o HTML
-                        const htmlPedido = _gerarHtmlParaPedidoPdf(pedido);
+                        const docDefinition = FuncoesController_gerarDocDefinitionParaPedidoPdf(pedido);
                         
-                        // Chama o PdfController para gerar e salvar o arquivo
-                        const urlRelativaPdf = await PdfController.generatePdfFromHtml(htmlPedido, nomeArquivo);
+                        // O PdfController agora retorna o TOKEN CRIPTOGRAFADO
+                        const tokenSeguro = await PdfController.generateAndUploadPdf(docDefinition, nomeArquivo);
 
-                        // --- CORREÇÃO APLICADA AQUI ---
-                        // Adicionamos a propriedade "itens" ao objeto de resposta.
-                        // O frontend precisa disso para renderizar os detalhes do pedido.
+                        // Montamos o link com o token
+                        // Ex: https://seu-site.com/pedido/a8f9s8d7f98sd7f98sd7f...
+                        const linkComToken = `${baseUrl}/pedido/${tokenSeguro}`;
+
                         return {
                             fornecedor: pedido.fornecedor,
                             empresaFaturada: pedido.empresaFaturada,
                             valorTotal: pedido.totalPedido,
-                            linkPdf: urlRelativaPdf, // Esta é a URL que o cliente usará
+                            linkPdf: linkComToken, // Envia o link bonito e seguro
                             numeroCotacao: idCotacao,
                             condicaoPagamento: pedido.condicaoPagamento || 'Não informada',
                             totalPedido: pedido.totalPedido,
-                            itens: pedido.itens // <-- ESTA LINHA FOI ADICIONADA
+                            itens: pedido.itens
                         };
                     } catch (pdfError) {
                         console.error(`Falha ao gerar PDF para ${pedido.fornecedor}: ${pdfError.message}`);
-                        return null; // Retorna null em caso de falha neste PDF específico
+                        return null;
                     }
                 })();
                 linksGeradosPromises.push(promise);
             }
         }
 
-        // 3. Aguarda todos os PDFs serem gerados
         const resultados = await Promise.all(linksGeradosPromises);
-        const dadosParaCliente = resultados.filter(r => r !== null); // Filtra os que falharam
+        const dadosParaCliente = resultados.filter(r => r !== null);
 
         res.json({
             success: true,
             dados: dadosParaCliente,
-            message: `${dadosParaCliente.length} PDF(s) de pedido processados com sucesso.`
+            message: `${dadosParaCliente.length} PDF(s) gerados. Links seguros criados.`
         });
 
     } catch (e) {
@@ -258,12 +291,10 @@ async function gerarPdfsEnvioManual(req, res) {
     }
 }
 
-
-// --- Exporta todas as funções do controller ---
 module.exports = {
-    obterDadosGerenciarCotacoes,
-    excluirFornecedoresDeCotacaoPortal,
-    salvarTextoGlobalCotacaoPortal,
-    preencherUltimosPrecos,
-    gerarPdfsEnvioManual // <--- Nome da função corrigido
+    obterDadosGerenciarCotacoes: FuncoesController_obterDadosGerenciarCotacoes,
+    excluirFornecedoresDeCotacaoPortal: FuncoesController_excluirFornecedoresDeCotacaoPortal,
+    salvarTextoGlobalCotacaoPortal: FuncoesController_salvarTextoGlobalCotacaoPortal,
+    preencherUltimosPrecos: FuncoesController_preencherUltimosPrecos,
+    gerarPdfsEnvioManual: FuncoesController_gerarPdfsEnvioManual
 };

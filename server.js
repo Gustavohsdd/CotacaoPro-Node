@@ -66,6 +66,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Define a pasta /public para servir arquivos estáticos (CSS, JS de cliente, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ... importações ...
+const PdfController = require('./Controllers/PdfController');
 
 // --- Middleware de Autenticação (Injeção de Clientes) ---
 // Isso roda antes de QUALQUER rota de API.

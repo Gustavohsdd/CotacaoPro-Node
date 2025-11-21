@@ -1,98 +1,89 @@
-// controllers/PdfController.js
-// NOVO ARQUIVO: Centraliza a lógica de geração de PDF com Puppeteer
-
-const puppeteer = require('puppeteer');
+// Controllers/PdfController.js
+const PdfPrinter = require('pdfmake/src/printer');
+const { Storage } = require('@google-cloud/storage');
 const path = require('path');
-const fs = require('fs'); // File System, nativo do Node.js
 
-// Define o caminho para a pasta pública onde os PDFs serão salvos
-const publicDir = path.join(__dirname, '..', 'public');
-const pdfDir = path.join(publicDir, 'pedidos_pdf');
+// Caminho da chave
+const PdfController_keyFilePath = path.join(__dirname, '..', 'cotacaopro-node-service-account.json');
+
+// Configuração Storage
+const PdfController_storage = new Storage({
+    keyFilename: PdfController_keyFilePath
+});
+
+const PdfController_bucketName = 'cotacaopro-storage';
+const PdfController_bucket = PdfController_storage.bucket(PdfController_bucketName);
+
+const PdfController_fonts = {
+    Roboto: {
+        normal: path.join(__dirname, '..', 'fonts', 'Roboto-Regular.ttf'),
+        bold: path.join(__dirname, '..', 'fonts', 'Roboto-Medium.ttf'),
+        italics: path.join(__dirname, '..', 'fonts', 'Roboto-Italic.ttf'),
+        bolditalics: path.join(__dirname, '..', 'fonts', 'Roboto-MediumItalic.ttf')
+    }
+};
 
 /**
- * Garante que a pasta /public/pedidos_pdf exista.
+ * Gera um PDF na memória e faz upload direto para o Google Cloud Storage.
+ * RETORNA A URL ASSINADA (LONGA) para acesso direto.
+ * * @param {object} docDefinition - A definição do documento (JSON) do pdfmake.
+ * @param {string} fileName - O nome do arquivo (ex: "pedido_123.pdf").
+ * @param {string} folder - A pasta lógica dentro do bucket (padrão: "geral").
+ * @returns {Promise<string>} - A URL assinada (válida por 7 dias) para baixar o arquivo.
  */
-function ensurePdfDirectory() {
-    if (!fs.existsSync(publicDir)) {
-        fs.mkdirSync(publicDir);
-    }
-    if (!fs.existsSync(pdfDir)) {
-        fs.mkdirSync(pdfDir);
-    }
-}
+async function PdfController_generateAndUploadPdf(docDefinition, fileName, folder = 'geral') {
+    return new Promise((resolve, reject) => {
+        try {
+            console.log(`[PdfController] Iniciando geração e upload: ${fileName} na pasta '${folder}'`);
+            
+            const printer = new PdfPrinter(PdfController_fonts);
+            const pdfDoc = printer.createPdfKitDocument(docDefinition);
+            
+            const destination = `${folder}/pedidos/${fileName}`;
+            const file = PdfController_bucket.file(destination);
 
-/**
- * Gera um PDF a partir de um conteúdo HTML e o salva na pasta pública.
- * Retorna a URL pública (relativa) do arquivo gerado.
- *
- * @param {string} htmlContent O conteúdo HTML completo do pedido.
- * @param {string} fileName O nome do arquivo (ex: "Pedido-123.pdf").
- * @returns {Promise<string>} A URL pública do arquivo (ex: "/pedidos_pdf/Pedido-123.pdf").
- */
-async function generatePdfFromHtml(htmlContent, fileName) {
-    let browser = null;
-    try {
-        console.log(`[PdfController] Iniciando geração do PDF: ${fileName}`);
-        ensurePdfDirectory(); // Garante que a pasta /public/pedidos_pdf exista
+            const writeStream = file.createWriteStream({
+                metadata: {
+                    contentType: 'application/pdf',
+                    cacheControl: 'no-cache',
+                },
+                resumable: false
+            });
 
-        const filePath = path.join(pdfDir, fileName);
-        
-        // 1. Inicia o Puppeteer
-        // 'headless: "new"' é a sintaxe moderna
-        browser = await puppeteer.launch({
-            headless: "new",
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox',
-                // Adiciona um argumento para lidar com memória compartilhada (comum em servidores)
-                '--disable-dev-shm-usage' 
-            ]
-        });
+            pdfDoc.pipe(writeStream);
+            pdfDoc.end();
 
-        // 2. Abre uma nova página
-        const page = await browser.newPage();
+            writeStream.on('finish', async () => {
+                console.log(`[PdfController] Upload concluído: gs://${PdfController_bucketName}/${destination}`);
+                
+                try {
+                    // Gera uma URL assinada válida por 7 dias
+                    // Isso permite que quem tiver o link baixe o arquivo sem precisar de login no Google Cloud
+                    const [url] = await file.getSignedUrl({
+                        action: 'read',
+                        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 dias
+                    });
+                    
+                    // RETORNA A URL COMPLETA DIRETA
+                    resolve(url);
+                } catch (signErr) {
+                    console.error(`[PdfController] Erro ao gerar URL assinada:`, signErr);
+                    reject(signErr);
+                }
+            });
 
-        // 3. Define o conteúdo da página como o seu HTML
-        
-        // --- CORREÇÃO APLICADA AQUI ---
-        // 'networkidle0' causa timeout ao carregar HTML local.
-        // Trocado para 'domcontentloaded', que apenas espera o HTML ser carregado.
-        await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
-        // --- FIM DA CORREÇÃO ---
+            writeStream.on('error', (err) => {
+                console.error(`[PdfController] Erro no upload para o GCS:`, err);
+                reject(err);
+            });
 
-        // 4. Gera o PDF
-        await page.pdf({
-            path: filePath,
-            format: 'A4',
-            printBackground: true, // Garante que cores de fundo (como no header da tabela) sejam impressas
-            margin: {
-                top: '20px',
-                right: '20px',
-                bottom: '20px',
-                left: '20px'
-            }
-        });
-
-        console.log(`[PdfController] PDF salvo com sucesso em: ${filePath}`);
-
-        // 5. Fecha o navegador
-        await browser.close();
-        browser = null;
-
-        // 6. Retorna a URL pública (relativa)
-        // O servidor Express servirá esta pasta estaticamente
-        return `/pedidos_pdf/${fileName}`;
-
-    } catch (error) {
-        console.error(`[PdfController] Erro ao gerar PDF ${fileName}:`, error.message);
-        if (browser) {
-            await browser.close(); // Garante que o navegador feche em caso de erro
+        } catch (error) {
+            console.error(`[PdfController] Erro fatal no processo:`, error);
+            reject(new Error(`Falha ao gerar/enviar PDF (${fileName}): ${error.message}`));
         }
-        // Lança o erro para que o FuncoesController possa tratá-lo
-        throw new Error(`Falha ao gerar PDF (${fileName}): ${error.message}`);
-    }
+    });
 }
 
 module.exports = {
-    generatePdfFromHtml
+    generateAndUploadPdf: PdfController_generateAndUploadPdf
 };
