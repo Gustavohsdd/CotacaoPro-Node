@@ -10,7 +10,7 @@ const {
     ABA_FINANCEIRO_CONTAS_A_PAGAR,
     ABA_COTACOES,
     CABECALHOS_FINANCEIRO_CONTAS_A_PAGAR
-} = require('../Config/constants');
+} = require('../config/constants');
 
 /**
  * Função auxiliar para converter dados da planilha (Array de Arrays) em Array de Objetos.

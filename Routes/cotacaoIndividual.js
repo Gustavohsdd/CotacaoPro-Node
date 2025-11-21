@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Importa o Controller que contém a lógica de negócios
-const CotacaoIndividualController = require('../Controllers/CotacaoIndividualController');
+const CotacaoIndividualController = require('../controllers/CotacaoIndividualController');
 
 /*
  * Mapeamento das Rotas de Cotação Individual:

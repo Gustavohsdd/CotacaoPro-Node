@@ -7,18 +7,18 @@ const ejs = require('ejs'); // Importamos o EJS para renderizar HTML
 const { google } = require('googleapis');
 
 // Importa nossas constantes do arquivo que acabamos de criar
-const constants = require('./Config/constants');
+const constants = require('./config/constants');
 
 // --- Importa os roteadores da API ---
-const fornecedoresRouterApi = require('./Routes/fornecedores');
-const produtosRouterApi = require('./Routes/produtos');
-const subprodutosRouterApi = require('./Routes/subprodutos');
-const cotacoesRouterApi = require('./Routes/cotacoes');
-const cotacaoIndividualRouterApi = require('./Routes/cotacaoIndividual');
-const etapasRouterApi = require('./Routes/etapas');
-const FuncoesRouterApi = require('./Routes/funcoes');
-const conciliacaoNFRouterApi = require('./Routes/conciliacaonf');
-const notasFiscaisRouterApi = require('./Routes/notasFiscais');
+const fornecedoresRouterApi = require('./routes/fornecedores');
+const produtosRouterApi = require('./routes/produtos');
+const subprodutosRouterApi = require('./routes/subprodutos');
+const cotacoesRouterApi = require('./routes/cotacoes');
+const cotacaoIndividualRouterApi = require('./routes/cotacaoIndividual');
+const etapasRouterApi = require('./routes/etapas');
+const FuncoesRouterApi = require('./routes/funcoes');
+const conciliacaoNFRouterApi = require('./routes/conciliacaonf');
+const notasFiscaisRouterApi = require('./routes/notasFiscais');
 
 // (Você importará os outros, como subprodutosRouterApi, aqui)
 
@@ -31,22 +31,26 @@ const PORT = process.env.PORT || 8080;
 // --- Autenticação com Google ---
 // Esta função nos dará um cliente autenticado para usar as APIs
 async function getAuthClient() {
-  // *** CORREÇÃO: Lendo o arquivo .json diretamente ***
-  // Este método é mais robusto e corrige o erro 'Invalid JWT Signature'
-  // causado pelos '\n' na chave privada dentro do arquivo .env.
-
-  // Define o caminho para o arquivo JSON da conta de serviço
   const keyFilePath = path.join(__dirname, 'cotacaopro-node-service-account.json');
-
-  // A GoogleAuth pode carregar diretamente do caminho do arquivo
-  const auth = new google.auth.GoogleAuth({
-    keyFile: keyFilePath, // Usamos 'keyFile' em vez de 'credentials'
+  
+  // Verifica se o arquivo existe (Desenvolvimento Local)
+  const fs = require('fs');
+  let authOptions = {
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive',
     ],
-  });
+  };
 
+  if (fs.existsSync(keyFilePath)) {
+    console.log("Rodando com arquivo de credenciais local.");
+    authOptions.keyFile = keyFilePath;
+  } else {
+    console.log("Rodando com Default Credentials (Cloud Run).");
+    // No Cloud Run, não passamos keyFile; ele usa a identidade do serviço automaticamente
+  }
+
+  const auth = new google.auth.GoogleAuth(authOptions);
   return auth.getClient();
 }
 

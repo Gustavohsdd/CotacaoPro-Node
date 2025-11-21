@@ -4,10 +4,10 @@ const express = require('express');
 const router = express.Router();
 
 // Importa o Controller que contém a nova lógica de negócios
-const ProdutosController = require('../Controllers/ProdutosController');
+const ProdutosController = require('../controllers/ProdutosController');
 
 // Importa o CRUD de Produtos (necessário para a rota legada usada pelo FornecedoresScript)
-const ProdutosCRUD = require('../Controllers/ProdutosCRUD');
+const ProdutosCRUD = require('../controllers/ProdutosCRUD');
 
 /**
  * Rota: GET /api/produtos/listarNomesIds

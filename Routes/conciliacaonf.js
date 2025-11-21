@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const ConciliacaoNFController = require('../Controllers/ConciliacaoNFController');
-const controller = require('../Controllers/ConciliacaoNFController');
+const ConciliacaoNFController = require('../controllers/ConciliacaoNFController');
+const controller = require('../controllers/ConciliacaoNFController');
 
 // --- Rotas de Inicialização e Leitura ---
 router.get('/dados-pagina', ConciliacaoNFController.getDadosPagina);

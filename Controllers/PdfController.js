@@ -2,14 +2,16 @@
 const PdfPrinter = require('pdfmake/src/printer');
 const { Storage } = require('@google-cloud/storage');
 const path = require('path');
-
-// Caminho da chave
+const fs = require('fs');
 const PdfController_keyFilePath = path.join(__dirname, '..', 'cotacaopro-node-service-account.json');
 
-// Configuração Storage
-const PdfController_storage = new Storage({
-    keyFilename: PdfController_keyFilePath
-});
+let storageOptions = {};
+if (fs.existsSync(PdfController_keyFilePath)) {
+    storageOptions.keyFilename = PdfController_keyFilePath;
+}
+// Se não passar nada, ele usa o ambiente do Cloud Run automaticamente
+
+const PdfController_storage = new Storage(storageOptions);
 
 const PdfController_bucketName = 'cotacaopro-storage';
 const PdfController_bucket = PdfController_storage.bucket(PdfController_bucketName);

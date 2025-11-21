@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('../Controllers/NotasFiscaisController');
+const controller = require('../controllers/NotasFiscaisController');
 
 // GET: Listar notas com filtros
 router.get('/listar', controller.NotasFiscaisController_listarNotas);

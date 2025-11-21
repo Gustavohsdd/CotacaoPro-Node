@@ -13,7 +13,7 @@ const {
   obterOutrosFornecedores,
   excluirFornecedor,
   listarNomesIds // <<< ADICIONADO
-} = require('../Controllers/FornecedoresController');
+} = require('../controllers/FornecedoresController');
 
 /*
  * Mapeamento das Rotas de Fornecedores:

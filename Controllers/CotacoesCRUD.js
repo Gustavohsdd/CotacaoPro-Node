@@ -10,7 +10,7 @@ const {
   CABECALHOS_PRODUTOS,
   ABA_FORNECEDORES,
   CABECALHOS_FORNECEDORES
-} = require('../Config/constants');
+} = require('../config/constants');
 
 const STATUS_NOVA_COTACAO = "Nova Cotação";
 

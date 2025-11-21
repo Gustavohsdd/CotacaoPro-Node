@@ -26,7 +26,7 @@ const {
   CABECALHOS_SUBPRODUTOS,
   ABA_PRODUTOS,
   CABECALHOS_PRODUTOS
-} = require('../Config/constants');
+} = require('../config/constants');
 
 // --- Funções Auxiliares de Lógica (Migradas) ---
 

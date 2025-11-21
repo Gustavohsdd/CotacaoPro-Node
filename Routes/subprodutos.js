@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Importa o Controller (que ainda vamos migrar, mas já referenciamos)
-const SubProdutosController = require('../Controllers/SubProdutosController');
+const SubProdutosController = require('../controllers/SubProdutosController');
 
 /*
  * ====================================================================

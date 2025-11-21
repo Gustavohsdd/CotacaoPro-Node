@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 
 // Importa o Controller que contém a lógica de negócios
-const FuncoesController = require('../Controllers/FuncoesController');
+const FuncoesController = require('../controllers/FuncoesController');
 
 /*
  * ====================================================================

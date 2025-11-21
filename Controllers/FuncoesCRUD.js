@@ -14,7 +14,7 @@ const {
     CABECALHOS_PRODUTOS,
     ABA_CADASTROS,
     CABECALHOS_CADASTROS
-} = require('../Config/constants');
+} = require('../config/constants');
 
 // --- Funções Auxiliares (reutilizadas de outros CRUDs) ---
 

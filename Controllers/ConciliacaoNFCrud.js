@@ -2,7 +2,7 @@
 // VERSÃO CORRIGIDA - Funções refatoradas para aceitar clientes 'sheets' e 'drive'
 // E ADICIONADAS AS FUNÇÕES DE LEITURA QUE FALTAVAM (MIGRADAS DO GAS)
 
-const constants = require('../Config/constants');
+const constants = require('../config/constants');
 // [NOVO] Importa os CRUDs necessários para buscar dados de outras abas
 const FornecedoresCRUD = require('./FornecedoresCRUD');
 

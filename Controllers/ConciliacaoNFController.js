@@ -3,7 +3,7 @@
 // A FUNÇÃO 'getDadosPagina' FOI TOTALMENTE REESCRITA.
 
 const crud = require('./ConciliacaoNFCrud'); // O ConciliacaoNFCrud.js corrigido
-const constants = require('../Config/constants');
+const constants = require('../config/constants');
 const { parseStringPromise } = require('xml2js');
 const ConciliacaoNFCrud = require('./ConciliacaoNFCrud');
 

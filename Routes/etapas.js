@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Importa o Controller que contém a lógica de negócios
-const EtapasController = require('../Controllers/EtapasController');
+const EtapasController = require('../controllers/EtapasController');
 
 /*
  * Mapeamento das Rotas de Etapas:

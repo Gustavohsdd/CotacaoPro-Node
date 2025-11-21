@@ -12,7 +12,7 @@ const {
   CABECALHOS_CADASTROS,
   ABA_FORNECEDORES,
   CABECALHOS_FORNECEDORES
-} = require('../Config/constants');
+} = require('../config/constants');
 
 // Importa o módulo 'crypto' do Node.js para gerar UUIDs
 const crypto = require('crypto');
